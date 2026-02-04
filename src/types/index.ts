@@ -36,7 +36,6 @@ export interface Produto {
   fabricante: string;
   linha: string;
   preco_por_m2: number;
-  perda_padrao: number;
   created_at: string;
 }
 

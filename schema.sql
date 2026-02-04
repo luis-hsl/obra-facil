@@ -87,7 +87,6 @@ create table produtos (
   fabricante text not null,
   linha text not null,
   preco_por_m2 numeric not null,
-  perda_padrao numeric not null default 10,
   created_at timestamp with time zone default now()
 );
 

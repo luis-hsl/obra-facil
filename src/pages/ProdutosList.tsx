@@ -70,7 +70,7 @@ export default function ProdutosList() {
                 <div>
                   <p className="font-semibold text-gray-900">{p.fabricante} — {p.linha}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    {formatCurrency(p.preco_por_m2)}/m² • Perda: {p.perda_padrao}%
+                    {formatCurrency(p.preco_por_m2)}/m²
                   </p>
                 </div>
                 <div className="flex gap-3">

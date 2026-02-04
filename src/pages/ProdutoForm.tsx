@@ -12,7 +12,6 @@ export default function ProdutoForm() {
   const [fabricante, setFabricante] = useState('');
   const [linha, setLinha] = useState('');
   const [precoPorM2, setPrecoPorM2] = useState('');
-  const [perdaPadrao, setPerdaPadrao] = useState('10');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
 
@@ -31,7 +30,6 @@ export default function ProdutoForm() {
           setFabricante(data.fabricante);
           setLinha(data.linha);
           setPrecoPorM2(String(data.preco_por_m2));
-          setPerdaPadrao(String(data.perda_padrao));
         });
     }
   }, [id, isEditing]);
@@ -41,14 +39,9 @@ export default function ProdutoForm() {
     setErro('');
 
     const preco = parseFloat(precoPorM2);
-    const perda = parseFloat(perdaPadrao);
 
     if (!preco || preco <= 0) {
       setErro('O valor do m² precisa ser maior que zero.');
-      return;
-    }
-    if (isNaN(perda) || perda < 0) {
-      setErro('A perda precisa ser zero ou maior.');
       return;
     }
 
@@ -58,7 +51,6 @@ export default function ProdutoForm() {
       fabricante,
       linha,
       preco_por_m2: preco,
-      perda_padrao: perda,
     };
 
     const { error } = isEditing
@@ -134,24 +126,6 @@ export default function ProdutoForm() {
           <p className="text-xs text-gray-400 mt-1">Preço por metro quadrado do piso</p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Perda padrão (%)
-          </label>
-          <input
-            type="number"
-            inputMode="numeric"
-            step="1"
-            min="0"
-            value={perdaPadrao}
-            onChange={(e) => setPerdaPadrao(e.target.value)}
-            required
-            placeholder="Ex: 10"
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="text-xs text-gray-400 mt-1">Pode alterar depois no orçamento</p>
-        </div>
-
         <div className="flex gap-3">
           <button
             type="button"
@@ -175,7 +149,6 @@ export default function ProdutoForm() {
         <div className="mt-6 bg-green-100 rounded-lg p-4 space-y-1">
           <p className="text-sm font-semibold text-green-800">{fabricante} — {linha}</p>
           <p className="text-sm text-green-800">{formatCurrency(preco)}/m²</p>
-          <p className="text-xs text-green-700">Perda padrão: {perdaPadrao}%</p>
         </div>
       )}
     </div>

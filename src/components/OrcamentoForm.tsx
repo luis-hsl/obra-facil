@@ -46,9 +46,8 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
 
   const handleProdutoChange = (id: string) => {
     setProdutoId(id);
-    const prod = produtos.find((p) => p.id === id);
-    if (prod) {
-      setPerdaPercentual(String(prod.perda_padrao));
+    if (!perdaPercentual) {
+      setPerdaPercentual('10');
     }
   };
 
