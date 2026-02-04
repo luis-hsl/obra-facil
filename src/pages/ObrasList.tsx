@@ -21,7 +21,7 @@ export default function ObrasList() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      setErro('Erro ao carregar obras.');
+      setErro('Erro ao carregar visitas.');
     } else {
       setObras(data || []);
     }
@@ -41,12 +41,12 @@ export default function ObrasList() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Obras</h2>
+        <h2 className="text-xl font-bold text-gray-900">Visitas</h2>
         <Link
           to="/obras/nova"
           className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold no-underline"
         >
-          + Nova Obra
+          + Nova Visita
         </Link>
       </div>
 
@@ -62,7 +62,7 @@ export default function ObrasList() {
 
       {obrasFiltradas.length === 0 ? (
         <p className="text-center text-gray-400 mt-8">
-          {obras.length === 0 ? 'Nenhuma obra cadastrada' : 'Nenhum resultado encontrado'}
+          {obras.length === 0 ? 'Nenhuma visita cadastrada' : 'Nenhum resultado encontrado'}
         </p>
       ) : (
         <div className="space-y-3">

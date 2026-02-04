@@ -27,7 +27,7 @@ export default function ObraDetail() {
     ]);
 
     if (obraRes.error) {
-      setErro('Erro ao carregar obra.');
+      setErro('Erro ao carregar visita.');
       return;
     }
 
@@ -38,13 +38,13 @@ export default function ObraDetail() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Tem certeza que deseja excluir esta obra? Todas as medições, orçamentos e execuções serão excluídos também.')) {
+    if (!confirm('Tem certeza que deseja excluir esta visita? Todas as medições, orçamentos e execuções serão excluídos também.')) {
       return;
     }
     setDeleting(true);
     const { error } = await supabase.from('obras').delete().eq('id', id);
     if (error) {
-      setErro('Erro ao excluir obra.');
+      setErro('Erro ao excluir visita.');
       setDeleting(false);
       return;
     }
@@ -81,14 +81,14 @@ export default function ObraDetail() {
             to={`/obras/${obra.id}/editar`}
             className="text-sm text-blue-600 font-medium no-underline"
           >
-            Editar obra
+            Editar visita
           </Link>
           <button
             onClick={handleDelete}
             disabled={deleting}
             className="text-sm text-red-500 font-medium disabled:opacity-50"
           >
-            {deleting ? 'Excluindo...' : 'Excluir obra'}
+            {deleting ? 'Excluindo...' : 'Excluir visita'}
           </button>
         </div>
       </div>

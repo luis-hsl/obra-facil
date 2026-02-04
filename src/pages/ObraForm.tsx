@@ -26,7 +26,7 @@ export default function ObraForm() {
         .single()
         .then(({ data, error }) => {
           if (error || !data) {
-            setErro('Erro ao carregar obra.');
+            setErro('Erro ao carregar visita.');
             return;
           }
           setClienteNome(data.cliente_nome);
@@ -56,7 +56,7 @@ export default function ObraForm() {
       : await supabase.from('obras').insert({ ...obraData, user_id: user!.id });
 
     if (error) {
-      setErro('Erro ao salvar obra. Tente novamente.');
+      setErro('Erro ao salvar visita. Tente novamente.');
       setLoading(false);
       return;
     }
@@ -67,7 +67,7 @@ export default function ObraForm() {
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-4">
-        {isEditing ? 'Editar Obra' : 'Nova Obra'}
+        {isEditing ? 'Editar Visita' : 'Nova Visita'}
       </h2>
 
       {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}

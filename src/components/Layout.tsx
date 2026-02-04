@@ -19,7 +19,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="flex gap-4 mt-2">
           <a href="/" className="text-sm font-medium text-gray-600 no-underline hover:text-gray-900">
-            Obras
+            Visitas
           </a>
           <a href="/produtos" className="text-sm font-medium text-gray-600 no-underline hover:text-gray-900">
             Produtos
