@@ -2,7 +2,32 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Obra } from '../types';
-import StatusBadge from '../components/StatusBadge';
+
+function StepIndicator({ status }: { status: string }) {
+  // Derivar etapa do status da obra
+  const steps = [
+    { label: 'Medição', done: ['medicao', 'orcado', 'execucao', 'finalizado'].includes(status) },
+    { label: 'Orçamento', done: ['orcado', 'execucao', 'finalizado'].includes(status) },
+    { label: 'Execução', done: ['finalizado'].includes(status) },
+  ];
+
+  return (
+    <div className="flex gap-2 mt-2">
+      {steps.map((step) => (
+        <span
+          key={step.label}
+          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            step.done
+              ? 'bg-green-100 text-green-700'
+              : 'bg-gray-100 text-gray-400'
+          }`}
+        >
+          {step.done ? '✓' : '○'} {step.label}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export default function ObrasList() {
   const [obras, setObras] = useState<Obra[]>([]);
@@ -72,18 +97,14 @@ export default function ObrasList() {
               to={`/obras/${obra.id}`}
               className="block bg-white rounded-lg border border-gray-200 p-4 no-underline"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-semibold text-gray-900">{obra.cliente_nome}</p>
-                  {obra.endereco && (
-                    <p className="text-sm text-gray-500 mt-1">{obra.endereco}</p>
-                  )}
-                  {obra.tipo_servico && (
-                    <p className="text-sm text-gray-400 mt-1">{obra.tipo_servico}</p>
-                  )}
-                </div>
-                <StatusBadge status={obra.status} />
-              </div>
+              <p className="font-semibold text-gray-900">{obra.cliente_nome}</p>
+              {obra.endereco && (
+                <p className="text-sm text-gray-500 mt-1">{obra.endereco}</p>
+              )}
+              {obra.tipo_servico && (
+                <p className="text-sm text-gray-400 mt-1">{obra.tipo_servico}</p>
+              )}
+              <StepIndicator status={obra.status} />
             </Link>
           ))}
         </div>

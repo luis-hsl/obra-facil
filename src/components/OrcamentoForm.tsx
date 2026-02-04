@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Orcamento, Produto } from '../types';
+import type { Orcamento, Produto, Obra } from '../types';
 import StatusBadge from './StatusBadge';
+import { gerarPDF } from '../lib/gerarPDF';
 
 interface Props {
   obraId: string;
+  obra: Obra;
   orcamentos: Orcamento[];
+  areaMedicao: number;
   onSave: () => void;
 }
 
@@ -15,7 +18,7 @@ function calcularOrcamento(area: number, perda: number, precoPorM2: number) {
   return { areaComPerda, total };
 }
 
-export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
+export default function OrcamentoForm({ obraId, obra, orcamentos, areaMedicao, onSave }: Props) {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [produtoId, setProdutoId] = useState('');
   const [areaTotal, setAreaTotal] = useState('');
@@ -41,6 +44,13 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
         setProdutosMap(map);
       });
   }, []);
+
+  // Pré-preencher área da medição ao abrir o formulário
+  useEffect(() => {
+    if (showForm && areaMedicao > 0 && !areaTotal) {
+      setAreaTotal(String(areaMedicao));
+    }
+  }, [showForm, areaMedicao]);
 
   const produtoSelecionado = produtos.find((p) => p.id === produtoId);
 
@@ -120,6 +130,11 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
     setDeletingId(null);
   };
 
+  const handleGerarPDF = (orcamento: Orcamento) => {
+    const produto = orcamento.produto_id ? produtosMap[orcamento.produto_id] : null;
+    gerarPDF({ obra, orcamento, produto });
+  };
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -181,6 +196,12 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                       Perdido
                     </button>
                   )}
+                  <button
+                    onClick={() => handleGerarPDF(o)}
+                    className="text-sm text-purple-600 font-medium"
+                  >
+                    PDF
+                  </button>
                   <button
                     onClick={() => handleDelete(o.id)}
                     disabled={deletingId === o.id}
@@ -245,6 +266,9 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                   placeholder="Ex: 38"
                   className="w-full px-3 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {areaMedicao > 0 && (
+                  <p className="text-xs text-gray-400 mt-1">Área da medição: {areaMedicao} m²</p>
+                )}
               </div>
 
               <div>

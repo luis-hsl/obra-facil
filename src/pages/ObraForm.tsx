@@ -51,17 +51,28 @@ export default function ObraForm() {
       observacoes: observacoes || null,
     };
 
-    const { error } = isEditing
-      ? await supabase.from('obras').update(obraData).eq('id', id)
-      : await supabase.from('obras').insert({ ...obraData, user_id: user!.id });
+    if (isEditing) {
+      const { error } = await supabase.from('obras').update(obraData).eq('id', id);
+      if (error) {
+        setErro('Erro ao salvar visita. Tente novamente.');
+        setLoading(false);
+        return;
+      }
+      navigate(`/obras/${id}`);
+    } else {
+      const { data, error } = await supabase
+        .from('obras')
+        .insert({ ...obraData, user_id: user!.id })
+        .select()
+        .single();
 
-    if (error) {
-      setErro('Erro ao salvar visita. Tente novamente.');
-      setLoading(false);
-      return;
+      if (error || !data) {
+        setErro('Erro ao salvar visita. Tente novamente.');
+        setLoading(false);
+        return;
+      }
+      navigate(`/obras/${data.id}`);
     }
-
-    navigate(isEditing ? `/obras/${id}` : '/');
   };
 
   return (
@@ -82,31 +93,35 @@ export default function ObraForm() {
             value={clienteNome}
             onChange={(e) => setClienteNome(e.target.value)}
             required
+            placeholder="Ex: João da Silva"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Endereço
+            Endereço *
           </label>
           <input
             type="text"
             value={endereco}
             onChange={(e) => setEndereco(e.target.value)}
+            required
+            placeholder="Ex: Rua das Flores, 123"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tipo de Serviço
+            Tipo de Serviço *
           </label>
           <input
             type="text"
             value={tipoServico}
             onChange={(e) => setTipoServico(e.target.value)}
-            placeholder="Ex: Vidro temperado, Gesso, Piso"
+            required
+            placeholder="Ex: Piso laminado, Vidro temperado, Gesso"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -138,6 +153,7 @@ export default function ObraForm() {
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             rows={3}
+            placeholder="Ex: Cliente prefere horário pela manhã"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
