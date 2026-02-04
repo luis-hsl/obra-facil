@@ -9,7 +9,8 @@ export default function ProdutoForm() {
   const { user } = useAuth();
   const isEditing = Boolean(id);
 
-  const [nome, setNome] = useState('');
+  const [fabricante, setFabricante] = useState('');
+  const [linha, setLinha] = useState('');
   const [metragemPorCaixa, setMetragemPorCaixa] = useState('');
   const [precoPorM2, setPrecoPorM2] = useState('');
   const [perdaPadrao, setPerdaPadrao] = useState('10');
@@ -28,7 +29,8 @@ export default function ProdutoForm() {
             setErro('Erro ao carregar produto.');
             return;
           }
-          setNome(data.nome);
+          setFabricante(data.fabricante);
+          setLinha(data.linha);
           setMetragemPorCaixa(String(data.metragem_por_caixa));
           setPrecoPorM2(String(data.preco_por_m2));
           setPerdaPadrao(String(data.perda_padrao));
@@ -60,7 +62,8 @@ export default function ProdutoForm() {
     setLoading(true);
 
     const produtoData = {
-      nome,
+      fabricante,
+      linha,
       metragem_por_caixa: metragem,
       preco_por_m2: preco,
       perda_padrao: perda,
@@ -97,14 +100,28 @@ export default function ProdutoForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nome do piso *
+            Fabricante *
           </label>
           <input
             type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
+            value={fabricante}
+            onChange={(e) => setFabricante(e.target.value)}
             required
-            placeholder="Ex: Piso Vinílico Durafloor"
+            placeholder="Ex: Durafloor"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Linha *
+          </label>
+          <input
+            type="text"
+            value={linha}
+            onChange={(e) => setLinha(e.target.value)}
+            required
+            placeholder="Ex: New Way"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -179,9 +196,9 @@ export default function ProdutoForm() {
       </form>
 
       {/* Resumo do produto */}
-      {nome && metragem > 0 && preco > 0 && (
+      {fabricante && linha && metragem > 0 && preco > 0 && (
         <div className="mt-6 bg-green-100 rounded-lg p-4 space-y-1">
-          <p className="text-sm font-semibold text-green-800">{nome}</p>
+          <p className="text-sm font-semibold text-green-800">{fabricante} — {linha}</p>
           <p className="text-sm text-green-800">
             1 caixa cobre {metragem} m² • {formatCurrency(preco)}/m²
           </p>

@@ -85,7 +85,8 @@ create policy "Usuário acessa execuções das próprias obras" on execucoes
 create table produtos (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) not null,
-  nome text not null,
+  fabricante text not null,
+  linha text not null,
   metragem_por_caixa numeric not null,
   preco_por_m2 numeric not null,
   perda_padrao numeric not null default 10,

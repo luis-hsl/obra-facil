@@ -68,7 +68,7 @@ export default function ProdutosList() {
             <div key={p.id} className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-semibold text-gray-900">{p.nome}</p>
+                  <p className="font-semibold text-gray-900">{p.fabricante} — {p.linha}</p>
                   <p className="text-sm text-gray-500 mt-1">
                     1 caixa cobre {p.metragem_por_caixa} m² • {formatCurrency(p.preco_por_m2)}/m²
                   </p>

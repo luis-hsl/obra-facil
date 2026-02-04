@@ -34,7 +34,8 @@ export interface Orcamento {
 export interface Produto {
   id: string;
   user_id: string;
-  nome: string;
+  fabricante: string;
+  linha: string;
   metragem_por_caixa: number;
   preco_por_m2: number;
   perda_padrao: number;

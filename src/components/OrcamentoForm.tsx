@@ -35,7 +35,7 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
     supabase
       .from('produtos')
       .select('*')
-      .order('nome')
+      .order('fabricante')
       .then(({ data }) => {
         const lista = data || [];
         setProdutos(lista);
@@ -152,7 +152,7 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                 {o.area_total && o.quantidade_caixas && (
                   <div className="bg-gray-50 rounded-lg p-3 mb-3 text-sm text-gray-600 space-y-1">
                     <p className="font-semibold text-gray-700">Como calculamos:</p>
-                    {prod && <p className="font-medium text-gray-800">{prod.nome}</p>}
+                    {prod && <p className="font-medium text-gray-800">{prod.fabricante} — {prod.linha}</p>}
                     <p>1. Área medida: {o.area_total} m²</p>
                     <p>2. Perda: {o.perda_percentual}% → {o.area_com_perda?.toFixed(2)} m²</p>
                     <p>3. Caixas necessárias: {o.quantidade_caixas}{prod && ` (cada cobre ${prod.metragem_por_caixa} m²)`}</p>
@@ -232,7 +232,7 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                   <option value="">Escolha um produto...</option>
                   {produtos.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.nome} — {formatCurrency(p.preco_por_m2)}/m²
+                      {p.fabricante} {p.linha} — {formatCurrency(p.preco_por_m2)}/m²
                     </option>
                   ))}
                 </select>
