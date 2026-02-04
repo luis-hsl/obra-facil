@@ -11,7 +11,6 @@ export default function ProdutoForm() {
 
   const [fabricante, setFabricante] = useState('');
   const [linha, setLinha] = useState('');
-  const [metragemPorCaixa, setMetragemPorCaixa] = useState('');
   const [precoPorM2, setPrecoPorM2] = useState('');
   const [perdaPadrao, setPerdaPadrao] = useState('10');
   const [loading, setLoading] = useState(false);
@@ -31,7 +30,6 @@ export default function ProdutoForm() {
           }
           setFabricante(data.fabricante);
           setLinha(data.linha);
-          setMetragemPorCaixa(String(data.metragem_por_caixa));
           setPrecoPorM2(String(data.preco_por_m2));
           setPerdaPadrao(String(data.perda_padrao));
         });
@@ -42,14 +40,9 @@ export default function ProdutoForm() {
     e.preventDefault();
     setErro('');
 
-    const metragem = parseFloat(metragemPorCaixa);
     const preco = parseFloat(precoPorM2);
     const perda = parseFloat(perdaPadrao);
 
-    if (!metragem || metragem <= 0) {
-      setErro('A metragem por caixa precisa ser maior que zero.');
-      return;
-    }
     if (!preco || preco <= 0) {
       setErro('O valor do m² precisa ser maior que zero.');
       return;
@@ -64,7 +57,6 @@ export default function ProdutoForm() {
     const produtoData = {
       fabricante,
       linha,
-      metragem_por_caixa: metragem,
       preco_por_m2: preco,
       perda_padrao: perda,
     };
@@ -85,9 +77,7 @@ export default function ProdutoForm() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-  const metragem = parseFloat(metragemPorCaixa);
   const preco = parseFloat(precoPorM2);
-  const precoCaixa = metragem > 0 && preco > 0 ? preco * metragem : null;
 
   return (
     <div>
@@ -128,33 +118,17 @@ export default function ProdutoForm() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Uma caixa cobre quantos m²? *
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            value={metragemPorCaixa}
-            onChange={(e) => setMetragemPorCaixa(e.target.value)}
-            required
-            placeholder="Ex: 2.30"
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="text-xs text-gray-400 mt-1">Informação vem na caixa do produto</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
             Valor do m² (R$) *
           </label>
           <input
             type="number"
+            inputMode="decimal"
             step="0.01"
             min="0.01"
             value={precoPorM2}
             onChange={(e) => setPrecoPorM2(e.target.value)}
             required
-            placeholder="Ex: 82.17"
+            placeholder="Ex: 120.00"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p className="text-xs text-gray-400 mt-1">Preço por metro quadrado do piso</p>
@@ -166,6 +140,7 @@ export default function ProdutoForm() {
           </label>
           <input
             type="number"
+            inputMode="numeric"
             step="1"
             min="0"
             value={perdaPadrao}
@@ -196,17 +171,11 @@ export default function ProdutoForm() {
       </form>
 
       {/* Resumo do produto */}
-      {fabricante && linha && metragem > 0 && preco > 0 && (
+      {fabricante && linha && preco > 0 && (
         <div className="mt-6 bg-green-100 rounded-lg p-4 space-y-1">
           <p className="text-sm font-semibold text-green-800">{fabricante} — {linha}</p>
-          <p className="text-sm text-green-800">
-            1 caixa cobre {metragem} m² • {formatCurrency(preco)}/m²
-          </p>
-          {precoCaixa && (
-            <p className="text-xs text-green-700">
-              Valor da caixa: {formatCurrency(precoCaixa)}
-            </p>
-          )}
+          <p className="text-sm text-green-800">{formatCurrency(preco)}/m²</p>
+          <p className="text-xs text-green-700">Perda padrão: {perdaPadrao}%</p>
         </div>
       )}
     </div>

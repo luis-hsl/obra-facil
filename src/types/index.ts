@@ -25,7 +25,6 @@ export interface Orcamento {
   area_total: number | null;
   area_com_perda: number | null;
   perda_percentual: number | null;
-  quantidade_caixas: number | null;
   valor_total: number;
   status: 'gerado' | 'enviado' | 'aprovado' | 'perdido';
   created_at: string;
@@ -36,7 +35,6 @@ export interface Produto {
   user_id: string;
   fabricante: string;
   linha: string;
-  metragem_por_caixa: number;
   preco_por_m2: number;
   perda_padrao: number;
   created_at: string;

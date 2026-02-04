@@ -33,7 +33,6 @@ create table orcamentos (
   area_total numeric,
   area_com_perda numeric,
   perda_percentual numeric,
-  quantidade_caixas integer,
   valor_total numeric not null,
   status text not null default 'gerado' check (status in ('gerado', 'enviado', 'aprovado', 'perdido')),
   created_at timestamp with time zone default now()
@@ -87,7 +86,6 @@ create table produtos (
   user_id uuid references auth.users(id) not null,
   fabricante text not null,
   linha text not null,
-  metragem_por_caixa numeric not null,
   preco_por_m2 numeric not null,
   perda_padrao numeric not null default 10,
   created_at timestamp with time zone default now()
