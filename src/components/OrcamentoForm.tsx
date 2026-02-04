@@ -12,8 +12,9 @@ interface Props {
 function calcularOrcamento(area: number, perda: number, produto: Produto) {
   const areaComPerda = area * (1 + perda / 100);
   const caixas = Math.ceil(areaComPerda / produto.metragem_por_caixa);
-  const total = caixas * produto.preco_por_caixa;
-  return { areaComPerda, caixas, total };
+  const precoCaixa = produto.preco_por_m2 * produto.metragem_por_caixa;
+  const total = caixas * precoCaixa;
+  return { areaComPerda, caixas, precoCaixa, total };
 }
 
 export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
@@ -155,7 +156,8 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                     <p>1. Área medida: {o.area_total} m²</p>
                     <p>2. Perda: {o.perda_percentual}% → {o.area_com_perda?.toFixed(2)} m²</p>
                     <p>3. Caixas necessárias: {o.quantidade_caixas}{prod && ` (cada cobre ${prod.metragem_por_caixa} m²)`}</p>
-                    {prod && <p>4. {o.quantidade_caixas} caixas x {formatCurrency(prod.preco_por_caixa)} = {formatCurrency(o.valor_total)}</p>}
+                    {prod && <p>4. Valor da caixa: {formatCurrency(prod.preco_por_m2)}/m² x {prod.metragem_por_caixa} m² = {formatCurrency(prod.preco_por_m2 * prod.metragem_por_caixa)}</p>}
+                    {prod && <p>5. {o.quantidade_caixas} caixas x {formatCurrency(prod.preco_por_m2 * prod.metragem_por_caixa)} = {formatCurrency(o.valor_total)}</p>}
                   </div>
                 )}
 
@@ -230,7 +232,7 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                   <option value="">Escolha um produto...</option>
                   {produtos.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.nome} — {formatCurrency(p.preco_por_caixa)}/caixa
+                      {p.nome} — {formatCurrency(p.preco_por_m2)}/m²
                     </option>
                   ))}
                 </select>
@@ -279,7 +281,8 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                     <p>1. Área medida: <strong>{area} m²</strong></p>
                     <p>2. Perda de {perda}%: {area} x {(1 + perda / 100).toFixed(2)} = <strong>{calculo.areaComPerda.toFixed(2)} m²</strong></p>
                     <p>3. Cada caixa cobre {produtoSelecionado.metragem_por_caixa} m²: {calculo.areaComPerda.toFixed(2)} / {produtoSelecionado.metragem_por_caixa} = <strong>{calculo.caixas} caixas</strong> (arredondado para cima)</p>
-                    <p>4. {calculo.caixas} caixas x {formatCurrency(produtoSelecionado.preco_por_caixa)} = </p>
+                    <p>4. Valor da caixa: {formatCurrency(produtoSelecionado.preco_por_m2)}/m² x {produtoSelecionado.metragem_por_caixa} m² = <strong>{formatCurrency(calculo.precoCaixa)}</strong></p>
+                    <p>5. {calculo.caixas} caixas x {formatCurrency(calculo.precoCaixa)} = </p>
                   </div>
 
                   <p className="text-xl font-bold text-blue-900 pt-1 border-t border-blue-200">

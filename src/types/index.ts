@@ -36,7 +36,7 @@ export interface Produto {
   user_id: string;
   nome: string;
   metragem_por_caixa: number;
-  preco_por_caixa: number;
+  preco_por_m2: number;
   perda_padrao: number;
   created_at: string;
 }

@@ -11,7 +11,7 @@ export default function ProdutoForm() {
 
   const [nome, setNome] = useState('');
   const [metragemPorCaixa, setMetragemPorCaixa] = useState('');
-  const [precoPorCaixa, setPrecoPorCaixa] = useState('');
+  const [precoPorM2, setPrecoPorM2] = useState('');
   const [perdaPadrao, setPerdaPadrao] = useState('10');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
@@ -30,7 +30,7 @@ export default function ProdutoForm() {
           }
           setNome(data.nome);
           setMetragemPorCaixa(String(data.metragem_por_caixa));
-          setPrecoPorCaixa(String(data.preco_por_caixa));
+          setPrecoPorM2(String(data.preco_por_m2));
           setPerdaPadrao(String(data.perda_padrao));
         });
     }
@@ -41,7 +41,7 @@ export default function ProdutoForm() {
     setErro('');
 
     const metragem = parseFloat(metragemPorCaixa);
-    const preco = parseFloat(precoPorCaixa);
+    const preco = parseFloat(precoPorM2);
     const perda = parseFloat(perdaPadrao);
 
     if (!metragem || metragem <= 0) {
@@ -49,7 +49,7 @@ export default function ProdutoForm() {
       return;
     }
     if (!preco || preco <= 0) {
-      setErro('O valor da caixa precisa ser maior que zero.');
+      setErro('O valor do m² precisa ser maior que zero.');
       return;
     }
     if (isNaN(perda) || perda < 0) {
@@ -62,7 +62,7 @@ export default function ProdutoForm() {
     const produtoData = {
       nome,
       metragem_por_caixa: metragem,
-      preco_por_caixa: preco,
+      preco_por_m2: preco,
       perda_padrao: perda,
     };
 
@@ -83,8 +83,8 @@ export default function ProdutoForm() {
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
   const metragem = parseFloat(metragemPorCaixa);
-  const preco = parseFloat(precoPorCaixa);
-  const precoM2 = metragem > 0 && preco > 0 ? preco / metragem : null;
+  const preco = parseFloat(precoPorM2);
+  const precoCaixa = metragem > 0 && preco > 0 ? preco * metragem : null;
 
   return (
     <div>
@@ -128,19 +128,19 @@ export default function ProdutoForm() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Valor de uma caixa (R$) *
+            Valor do m² (R$) *
           </label>
           <input
             type="number"
             step="0.01"
             min="0.01"
-            value={precoPorCaixa}
-            onChange={(e) => setPrecoPorCaixa(e.target.value)}
+            value={precoPorM2}
+            onChange={(e) => setPrecoPorM2(e.target.value)}
             required
-            placeholder="Ex: 189.00"
+            placeholder="Ex: 82.17"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <p className="text-xs text-gray-400 mt-1">Valor pago na distribuidora</p>
+          <p className="text-xs text-gray-400 mt-1">Preço por metro quadrado do piso</p>
         </div>
 
         <div>
@@ -183,11 +183,11 @@ export default function ProdutoForm() {
         <div className="mt-6 bg-green-100 rounded-lg p-4 space-y-1">
           <p className="text-sm font-semibold text-green-800">{nome}</p>
           <p className="text-sm text-green-800">
-            1 caixa cobre {metragem} m² • {formatCurrency(preco)}
+            1 caixa cobre {metragem} m² • {formatCurrency(preco)}/m²
           </p>
-          {precoM2 && (
+          {precoCaixa && (
             <p className="text-xs text-green-700">
-              Preço por m²: {formatCurrency(precoM2)}
+              Valor da caixa: {formatCurrency(precoCaixa)}
             </p>
           )}
         </div>

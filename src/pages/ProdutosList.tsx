@@ -70,7 +70,7 @@ export default function ProdutosList() {
                 <div>
                   <p className="font-semibold text-gray-900">{p.nome}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    1 caixa cobre {p.metragem_por_caixa} m² • {formatCurrency(p.preco_por_caixa)}
+                    1 caixa cobre {p.metragem_por_caixa} m² • {formatCurrency(p.preco_por_m2)}/m²
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
                     Perda padrão: {p.perda_padrao}%
