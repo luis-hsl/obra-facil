@@ -64,8 +64,19 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!calculo || !produtoSelecionado) return;
+    if (!produtoSelecionado) return;
     setErro('');
+
+    if (!area || area <= 0) {
+      setErro('A área precisa ser maior que zero.');
+      return;
+    }
+    if (isNaN(perda) || perda < 0) {
+      setErro('A perda precisa ser zero ou maior.');
+      return;
+    }
+    if (!calculo) return;
+
     setLoading(true);
 
     const { error } = await supabase.from('orcamentos').insert({
@@ -136,14 +147,15 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                   <StatusBadge status={o.status} />
                 </div>
 
-                {/* Breakdown do cálculo */}
+                {/* Como calculamos — breakdown */}
                 {o.area_total && o.quantidade_caixas && (
                   <div className="bg-gray-50 rounded-lg p-3 mb-3 text-sm text-gray-600 space-y-1">
+                    <p className="font-semibold text-gray-700">Como calculamos:</p>
                     {prod && <p className="font-medium text-gray-800">{prod.nome}</p>}
-                    <p>Área medida: {o.area_total} m²</p>
-                    <p>Perda: {o.perda_percentual}% → {o.area_com_perda?.toFixed(1)} m²</p>
-                    <p>Caixas necessárias: {o.quantidade_caixas}</p>
-                    {prod && <p>Valor da caixa: {formatCurrency(prod.preco_por_caixa)}</p>}
+                    <p>1. Área medida: {o.area_total} m²</p>
+                    <p>2. Perda: {o.perda_percentual}% → {o.area_com_perda?.toFixed(2)} m²</p>
+                    <p>3. Caixas necessárias: {o.quantidade_caixas}{prod && ` (cada cobre ${prod.metragem_por_caixa} m²)`}</p>
+                    {prod && <p>4. {o.quantidade_caixas} caixas x {formatCurrency(prod.preco_por_caixa)} = {formatCurrency(o.valor_total)}</p>}
                   </div>
                 )}
 
@@ -231,6 +243,7 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                 <input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={areaTotal}
                   onChange={(e) => setAreaTotal(e.target.value)}
                   required
@@ -247,22 +260,29 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                 <input
                   type="number"
                   step="1"
+                  min="0"
                   value={perdaPercentual}
                   onChange={(e) => setPerdaPercentual(e.target.value)}
                   required
-                  placeholder="10"
+                  placeholder="Ex: 10"
                   className="w-full px-3 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <p className="text-xs text-gray-400 mt-1">Recortes geram perda de material. O padrão é 10%</p>
               </div>
 
-              {/* Cálculo em tempo real */}
+              {/* Como calculamos — passo a passo */}
               {calculo && produtoSelecionado && (
-                <div className="bg-blue-100 rounded-lg p-4 space-y-1">
-                  <p className="text-sm text-blue-800">Área medida: <strong>{area} m²</strong></p>
-                  <p className="text-sm text-blue-800">Perda: {perda}% → <strong>{calculo.areaComPerda.toFixed(1)} m²</strong></p>
-                  <p className="text-sm text-blue-800">Caixas necessárias: <strong>{calculo.caixas}</strong></p>
-                  <p className="text-sm text-blue-800">Valor da caixa: <strong>{formatCurrency(produtoSelecionado.preco_por_caixa)}</strong></p>
-                  <p className="text-lg font-bold text-blue-900 mt-2">
+                <div className="bg-blue-50 rounded-lg p-4 space-y-2 border border-blue-200">
+                  <p className="text-sm font-semibold text-blue-900">Como calculamos:</p>
+
+                  <div className="text-sm text-blue-800 space-y-1">
+                    <p>1. Área medida: <strong>{area} m²</strong></p>
+                    <p>2. Perda de {perda}%: {area} x {(1 + perda / 100).toFixed(2)} = <strong>{calculo.areaComPerda.toFixed(2)} m²</strong></p>
+                    <p>3. Cada caixa cobre {produtoSelecionado.metragem_por_caixa} m²: {calculo.areaComPerda.toFixed(2)} / {produtoSelecionado.metragem_por_caixa} = <strong>{calculo.caixas} caixas</strong> (arredondado para cima)</p>
+                    <p>4. {calculo.caixas} caixas x {formatCurrency(produtoSelecionado.preco_por_caixa)} = </p>
+                  </div>
+
+                  <p className="text-xl font-bold text-blue-900 pt-1 border-t border-blue-200">
                     Total: {formatCurrency(calculo.total)}
                   </p>
                 </div>

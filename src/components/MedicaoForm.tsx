@@ -20,6 +20,13 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
+
+    const valorNum = parseFloat(valor);
+    if (!valorNum || valorNum <= 0) {
+      setErro('O valor da medição precisa ser maior que zero.');
+      return;
+    }
+
     setLoading(true);
 
     const { error } = await supabase.from('medicoes').insert({
@@ -80,6 +87,19 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
               </button>
             </div>
           ))}
+
+          {/* Resumo total */}
+          {(() => {
+            const totalM2 = medicoes.filter((m) => m.tipo_medida === 'm2').reduce((sum, m) => sum + m.valor, 0);
+            const totalMl = medicoes.filter((m) => m.tipo_medida === 'ml').reduce((sum, m) => sum + m.valor, 0);
+            return (
+              <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-800">
+                <p className="font-semibold">Resumo das medições</p>
+                {totalM2 > 0 && <p>Área total: {totalM2.toFixed(2)} m²</p>}
+                {totalMl > 0 && <p>Comprimento total: {totalMl.toFixed(2)} ml</p>}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -98,9 +118,11 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
               <input
                 type="number"
                 step="0.01"
+                min="0.01"
                 value={valor}
                 onChange={(e) => setValor(e.target.value)}
                 required
+                placeholder="Ex: 48.5"
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
