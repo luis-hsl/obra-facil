@@ -12,9 +12,8 @@ interface Props {
 function calcularOrcamento(area: number, perda: number, produto: Produto) {
   const areaComPerda = area * (1 + perda / 100);
   const caixas = Math.ceil(areaComPerda / produto.metragem_por_caixa);
-  const precoCaixa = produto.preco_por_m2 * produto.metragem_por_caixa;
-  const total = caixas * precoCaixa;
-  return { areaComPerda, caixas, precoCaixa, total };
+  const total = areaComPerda * produto.preco_por_m2;
+  return { areaComPerda, caixas, total };
 }
 
 export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
@@ -155,9 +154,8 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                     {prod && <p className="font-medium text-gray-800">{prod.fabricante} — {prod.linha}</p>}
                     <p>1. Área medida: {o.area_total} m²</p>
                     <p>2. Perda: {o.perda_percentual}% → {o.area_com_perda?.toFixed(2)} m²</p>
-                    <p>3. Caixas necessárias: {o.quantidade_caixas}{prod && ` (cada cobre ${prod.metragem_por_caixa} m²)`}</p>
-                    {prod && <p>4. Valor da caixa: {formatCurrency(prod.preco_por_m2)}/m² x {prod.metragem_por_caixa} m² = {formatCurrency(prod.preco_por_m2 * prod.metragem_por_caixa)}</p>}
-                    {prod && <p>5. {o.quantidade_caixas} caixas x {formatCurrency(prod.preco_por_m2 * prod.metragem_por_caixa)} = {formatCurrency(o.valor_total)}</p>}
+                    {prod && <p>3. {o.area_com_perda?.toFixed(2)} m² x {formatCurrency(prod.preco_por_m2)}/m² = {formatCurrency(o.valor_total)}</p>}
+                    <p className="text-xs text-gray-400 mt-1">Comprar: {o.quantidade_caixas} caixas{prod && ` (cada cobre ${prod.metragem_por_caixa} m²)`}</p>
                   </div>
                 )}
 
@@ -280,9 +278,8 @@ export default function OrcamentoForm({ obraId, orcamentos, onSave }: Props) {
                   <div className="text-sm text-blue-800 space-y-1">
                     <p>1. Área medida: <strong>{area} m²</strong></p>
                     <p>2. Perda de {perda}%: {area} x {(1 + perda / 100).toFixed(2)} = <strong>{calculo.areaComPerda.toFixed(2)} m²</strong></p>
-                    <p>3. Cada caixa cobre {produtoSelecionado.metragem_por_caixa} m²: {calculo.areaComPerda.toFixed(2)} / {produtoSelecionado.metragem_por_caixa} = <strong>{calculo.caixas} caixas</strong> (arredondado para cima)</p>
-                    <p>4. Valor da caixa: {formatCurrency(produtoSelecionado.preco_por_m2)}/m² x {produtoSelecionado.metragem_por_caixa} m² = <strong>{formatCurrency(calculo.precoCaixa)}</strong></p>
-                    <p>5. {calculo.caixas} caixas x {formatCurrency(calculo.precoCaixa)} = </p>
+                    <p>3. {calculo.areaComPerda.toFixed(2)} m² x {formatCurrency(produtoSelecionado.preco_por_m2)}/m² = </p>
+                    <p className="text-xs text-blue-600 mt-1">Comprar: {calculo.caixas} caixas (cada cobre {produtoSelecionado.metragem_por_caixa} m²)</p>
                   </div>
 
                   <p className="text-xl font-bold text-blue-900 pt-1 border-t border-blue-200">
