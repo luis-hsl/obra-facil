@@ -77,7 +77,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Conteúdo */}
-      <main className="p-4 max-w-lg mx-auto md:ml-60 md:max-w-3xl md:px-8 md:py-6">
+      <main className="p-4 max-w-lg mx-auto md:ml-60 md:max-w-none md:mx-0 md:px-8 md:py-6">
         {children}
       </main>
     </div>
