@@ -4,6 +4,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   orcado: { label: 'Orçado', color: 'bg-blue-100 text-blue-800' },
   execucao: { label: 'Execução', color: 'bg-orange-100 text-orange-800' },
   finalizado: { label: 'Finalizado', color: 'bg-green-100 text-green-800' },
+  gerado: { label: 'Gerado', color: 'bg-gray-200 text-gray-800' },
   enviado: { label: 'Enviado', color: 'bg-blue-100 text-blue-800' },
   aprovado: { label: 'Aprovado', color: 'bg-green-100 text-green-800' },
   perdido: { label: 'Perdido', color: 'bg-red-100 text-red-800' },

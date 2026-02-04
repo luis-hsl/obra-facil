@@ -29,8 +29,13 @@ create table medicoes (
 create table orcamentos (
   id uuid default gen_random_uuid() primary key,
   obra_id uuid references obras(id) on delete cascade not null,
+  produto_id uuid references produtos(id),
+  area_total numeric,
+  area_com_perda numeric,
+  perda_percentual numeric,
+  quantidade_caixas integer,
   valor_total numeric not null,
-  status text not null default 'enviado' check (status in ('enviado', 'aprovado', 'perdido')),
+  status text not null default 'gerado' check (status in ('gerado', 'enviado', 'aprovado', 'perdido')),
   created_at timestamp with time zone default now()
 );
 
@@ -75,6 +80,22 @@ create policy "Usuário acessa execuções das próprias obras" on execucoes
   for all using (
     obra_id in (select id from obras where user_id = auth.uid())
   );
+
+-- Tabela de Produtos (catálogo de pisos)
+create table produtos (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) not null,
+  nome text not null,
+  metragem_por_caixa numeric not null,
+  preco_por_caixa numeric not null,
+  perda_padrao numeric not null default 10,
+  created_at timestamp with time zone default now()
+);
+
+alter table produtos enable row level security;
+
+create policy "Usuário acessa próprios produtos" on produtos
+  for all using (auth.uid() = user_id);
 
 -- =============================================
 -- Storage bucket para fotos

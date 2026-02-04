@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Obra } from '../types';
+import type { Obra } from '../types';
 import StatusBadge from '../components/StatusBadge';
 
 export default function ObrasList() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState('');
   const [filtro, setFiltro] = useState('');
 
   useEffect(() => {
@@ -14,11 +15,16 @@ export default function ObrasList() {
   }, []);
 
   const loadObras = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('obras')
       .select('*')
       .order('created_at', { ascending: false });
-    setObras(data || []);
+
+    if (error) {
+      setErro('Erro ao carregar obras.');
+    } else {
+      setObras(data || []);
+    }
     setLoading(false);
   };
 
@@ -43,6 +49,8 @@ export default function ObrasList() {
           + Nova Obra
         </Link>
       </div>
+
+      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
 
       <input
         type="text"

@@ -5,6 +5,8 @@ import Login from './pages/Login';
 import ObrasList from './pages/ObrasList';
 import ObraForm from './pages/ObraForm';
 import ObraDetail from './pages/ObraDetail';
+import ProdutosList from './pages/ProdutosList';
+import ProdutoForm from './pages/ProdutoForm';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -71,6 +73,30 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ObraForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/produtos"
+          element={
+            <ProtectedRoute>
+              <ProdutosList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/produtos/novo"
+          element={
+            <ProtectedRoute>
+              <ProdutoForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/produtos/:id/editar"
+          element={
+            <ProtectedRoute>
+              <ProdutoForm />
             </ProtectedRoute>
           }
         />

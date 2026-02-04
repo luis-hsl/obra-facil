@@ -21,8 +21,23 @@ export interface Medicao {
 export interface Orcamento {
   id: string;
   obra_id: string;
+  produto_id: string | null;
+  area_total: number | null;
+  area_com_perda: number | null;
+  perda_percentual: number | null;
+  quantidade_caixas: number | null;
   valor_total: number;
-  status: 'enviado' | 'aprovado' | 'perdido';
+  status: 'gerado' | 'enviado' | 'aprovado' | 'perdido';
+  created_at: string;
+}
+
+export interface Produto {
+  id: string;
+  user_id: string;
+  nome: string;
+  metragem_por_caixa: number;
+  preco_por_caixa: number;
+  perda_padrao: number;
   created_at: string;
 }
 

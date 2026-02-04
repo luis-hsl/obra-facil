@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Medicao } from '../types';
+import type { Medicao } from '../types';
 
 interface Props {
   obraId: string;
@@ -14,17 +14,26 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
   const [observacoes, setObservacoes] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [erro, setErro] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErro('');
     setLoading(true);
 
-    await supabase.from('medicoes').insert({
+    const { error } = await supabase.from('medicoes').insert({
       obra_id: obraId,
       tipo_medida: tipoMedida,
       valor: parseFloat(valor),
       observacoes: observacoes || null,
     });
+
+    if (error) {
+      setErro('Erro ao salvar medição.');
+      setLoading(false);
+      return;
+    }
 
     setValor('');
     setObservacoes('');
@@ -34,14 +43,21 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Excluir esta medição?')) {
-      await supabase.from('medicoes').delete().eq('id', id);
+    if (!confirm('Excluir esta medição?')) return;
+    setDeletingId(id);
+    const { error } = await supabase.from('medicoes').delete().eq('id', id);
+    if (error) {
+      setErro('Erro ao excluir medição.');
+    } else {
       onSave();
     }
+    setDeletingId(null);
   };
 
   return (
     <div>
+      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+
       {/* Lista de medições */}
       {medicoes.length > 0 && (
         <div className="space-y-2 mb-4">
@@ -57,9 +73,10 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
               </div>
               <button
                 onClick={() => handleDelete(m.id)}
-                className="text-red-500 text-sm"
+                disabled={deletingId === m.id}
+                className="text-red-500 text-sm disabled:opacity-50"
               >
-                Excluir
+                {deletingId === m.id ? '...' : 'Excluir'}
               </button>
             </div>
           ))}
@@ -115,7 +132,7 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => setShowForm(false)}
+              onClick={() => { setShowForm(false); setErro(''); }}
               className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium"
             >
               Cancelar

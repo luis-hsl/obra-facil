@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Execucao } from '../types';
+import type { Execucao } from '../types';
 import StatusBadge from './StatusBadge';
 
 interface Props {
@@ -14,15 +14,25 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [erro, setErro] = useState('');
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErro('');
     setLoading(true);
 
-    await supabase.from('execucoes').insert({
+    const { error } = await supabase.from('execucoes').insert({
       obra_id: obraId,
       observacoes: observacoes || null,
     });
+
+    if (error) {
+      setErro('Erro ao criar execução.');
+      setLoading(false);
+      return;
+    }
 
     setObservacoes('');
     setShowForm(false);
@@ -31,13 +41,20 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
   };
 
   const toggleStatus = async (exec: Execucao) => {
+    setTogglingId(exec.id);
     const newStatus = exec.status === 'pendente' ? 'concluido' : 'pendente';
-    await supabase.from('execucoes').update({ status: newStatus }).eq('id', exec.id);
-    onSave();
+    const { error } = await supabase.from('execucoes').update({ status: newStatus }).eq('id', exec.id);
+    if (error) {
+      setErro('Erro ao atualizar status.');
+    } else {
+      onSave();
+    }
+    setTogglingId(null);
   };
 
   const handleUploadFoto = async (execId: string, file: File) => {
     setUploading(execId);
+    setErro('');
     const ext = file.name.split('.').pop();
     const path = `${obraId}/${execId}.${ext}`;
 
@@ -45,12 +62,20 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
       .from('fotos')
       .upload(path, file, { upsert: true });
 
-    if (!uploadError) {
-      const { data } = supabase.storage.from('fotos').getPublicUrl(path);
-      await supabase
-        .from('execucoes')
-        .update({ foto_final_url: data.publicUrl })
-        .eq('id', execId);
+    if (uploadError) {
+      setErro('Erro ao enviar foto.');
+      setUploading(null);
+      return;
+    }
+
+    const { data } = supabase.storage.from('fotos').getPublicUrl(path);
+    const { error: updateError } = await supabase
+      .from('execucoes')
+      .update({ foto_final_url: data.publicUrl })
+      .eq('id', execId);
+
+    if (updateError) {
+      setErro('Foto enviada, mas erro ao salvar referência.');
     }
 
     setUploading(null);
@@ -58,14 +83,21 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Excluir esta execução?')) {
-      await supabase.from('execucoes').delete().eq('id', id);
+    if (!confirm('Excluir esta execução?')) return;
+    setDeletingId(id);
+    const { error } = await supabase.from('execucoes').delete().eq('id', id);
+    if (error) {
+      setErro('Erro ao excluir execução.');
+    } else {
       onSave();
     }
+    setDeletingId(null);
   };
 
   return (
     <div>
+      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+
       {/* Lista de execuções */}
       {execucoes.length > 0 && (
         <div className="space-y-3 mb-4">
@@ -75,9 +107,10 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
                 <StatusBadge status={exec.status} />
                 <button
                   onClick={() => handleDelete(exec.id)}
-                  className="text-sm text-gray-400"
+                  disabled={deletingId === exec.id}
+                  className="text-sm text-gray-400 disabled:opacity-50"
                 >
-                  Excluir
+                  {deletingId === exec.id ? '...' : 'Excluir'}
                 </button>
               </div>
 
@@ -97,13 +130,18 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
               <div className="flex gap-2">
                 <button
                   onClick={() => toggleStatus(exec)}
-                  className={`flex-1 py-2 rounded-lg font-medium text-sm ${
+                  disabled={togglingId === exec.id}
+                  className={`flex-1 py-2 rounded-lg font-medium text-sm disabled:opacity-50 ${
                     exec.status === 'pendente'
                       ? 'bg-green-600 text-white'
                       : 'bg-gray-200 text-gray-700'
                   }`}
                 >
-                  {exec.status === 'pendente' ? 'Marcar Concluído' : 'Voltar p/ Pendente'}
+                  {togglingId === exec.id
+                    ? '...'
+                    : exec.status === 'pendente'
+                      ? 'Marcar Concluído'
+                      : 'Voltar p/ Pendente'}
                 </button>
 
                 <label className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium text-sm text-center cursor-pointer">
@@ -113,6 +151,7 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
                     accept="image/*"
                     capture="environment"
                     className="hidden"
+                    disabled={uploading === exec.id}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleUploadFoto(exec.id, file);
@@ -149,7 +188,7 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => setShowForm(false)}
+              onClick={() => { setShowForm(false); setErro(''); }}
               className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium"
             >
               Cancelar

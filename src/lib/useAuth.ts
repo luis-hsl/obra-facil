@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
 export function useAuth() {
@@ -24,8 +24,17 @@ export function useAuth() {
     return { error };
   };
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+  const signUp = async (email: string, password: string, metadata?: {
+    nome: string;
+    telefone: string;
+    empresa?: string;
+    cpf_cnpj?: string;
+  }) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: metadata ? { data: metadata } : undefined,
+    });
     return { error };
   };
 

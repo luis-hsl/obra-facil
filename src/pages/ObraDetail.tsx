@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Obra, Medicao, Orcamento, Execucao } from '../types';
+import type { Obra, Medicao, Orcamento, Execucao } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import MedicaoForm from '../components/MedicaoForm';
 import OrcamentoForm from '../components/OrcamentoForm';
@@ -9,11 +9,14 @@ import ExecucaoSection from '../components/ExecucaoSection';
 
 export default function ObraDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [obra, setObra] = useState<Obra | null>(null);
   const [medicoes, setMedicoes] = useState<Medicao[]>([]);
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [execucoes, setExecucoes] = useState<Execucao[]>([]);
   const [tab, setTab] = useState<'medicao' | 'orcamento' | 'execucao'>('medicao');
+  const [erro, setErro] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = async () => {
     const [obraRes, medRes, orcRes, execRes] = await Promise.all([
@@ -22,15 +25,39 @@ export default function ObraDetail() {
       supabase.from('orcamentos').select('*').eq('obra_id', id).order('created_at', { ascending: false }),
       supabase.from('execucoes').select('*').eq('obra_id', id).order('created_at', { ascending: false }),
     ]);
+
+    if (obraRes.error) {
+      setErro('Erro ao carregar obra.');
+      return;
+    }
+
     setObra(obraRes.data);
     setMedicoes(medRes.data || []);
     setOrcamentos(orcRes.data || []);
     setExecucoes(execRes.data || []);
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Tem certeza que deseja excluir esta obra? Todas as medições, orçamentos e execuções serão excluídos também.')) {
+      return;
+    }
+    setDeleting(true);
+    const { error } = await supabase.from('obras').delete().eq('id', id);
+    if (error) {
+      setErro('Erro ao excluir obra.');
+      setDeleting(false);
+      return;
+    }
+    navigate('/');
+  };
+
   useEffect(() => {
     loadData();
   }, [id]);
+
+  if (erro && !obra) {
+    return <p className="text-center text-red-500 mt-8">{erro}</p>;
+  }
 
   if (!obra) {
     return <p className="text-center text-gray-500 mt-8">Carregando...</p>;
@@ -38,6 +65,8 @@ export default function ObraDetail() {
 
   return (
     <div>
+      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+
       {/* Cabeçalho da obra */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
         <div className="flex items-start justify-between mb-2">
@@ -47,12 +76,21 @@ export default function ObraDetail() {
         {obra.endereco && <p className="text-sm text-gray-500">{obra.endereco}</p>}
         {obra.tipo_servico && <p className="text-sm text-gray-400">{obra.tipo_servico}</p>}
         {obra.observacoes && <p className="text-sm text-gray-400 mt-2">{obra.observacoes}</p>}
-        <Link
-          to={`/obras/${obra.id}/editar`}
-          className="inline-block mt-3 text-sm text-blue-600 font-medium no-underline"
-        >
-          Editar obra
-        </Link>
+        <div className="flex items-center gap-4 mt-3">
+          <Link
+            to={`/obras/${obra.id}/editar`}
+            className="text-sm text-blue-600 font-medium no-underline"
+          >
+            Editar obra
+          </Link>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="text-sm text-red-500 font-medium disabled:opacity-50"
+          >
+            {deleting ? 'Excluindo...' : 'Excluir obra'}
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
