@@ -5,9 +5,6 @@ import Login from './pages/Login';
 import AtendimentosList from './pages/AtendimentosList';
 import AtendimentoForm from './pages/AtendimentoForm';
 import AtendimentoDetail from './pages/AtendimentoDetail';
-import ClientesList from './pages/ClientesList';
-import ClienteForm from './pages/ClienteForm';
-import ClienteDetail from './pages/ClienteDetail';
 import ProdutosList from './pages/ProdutosList';
 import ProdutoForm from './pages/ProdutoForm';
 
@@ -50,12 +47,6 @@ export default function App() {
         <Route path="/atendimentos/novo" element={<ProtectedRoute><AtendimentoForm /></ProtectedRoute>} />
         <Route path="/atendimentos/:id" element={<ProtectedRoute><AtendimentoDetail /></ProtectedRoute>} />
         <Route path="/atendimentos/:id/editar" element={<ProtectedRoute><AtendimentoForm /></ProtectedRoute>} />
-
-        {/* Clientes */}
-        <Route path="/clientes" element={<ProtectedRoute><ClientesList /></ProtectedRoute>} />
-        <Route path="/clientes/novo" element={<ProtectedRoute><ClienteForm /></ProtectedRoute>} />
-        <Route path="/clientes/:id" element={<ProtectedRoute><ClienteDetail /></ProtectedRoute>} />
-        <Route path="/clientes/:id/editar" element={<ProtectedRoute><ClienteForm /></ProtectedRoute>} />
 
         {/* Produtos */}
         <Route path="/produtos" element={<ProtectedRoute><ProdutosList /></ProtectedRoute>} />

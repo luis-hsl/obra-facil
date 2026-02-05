@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { AtendimentoComCliente } from '../types';
+import type { Atendimento } from '../types';
 import StatusBadge from '../components/StatusBadge';
 
 export default function AtendimentosList() {
-  const [atendimentos, setAtendimentos] = useState<AtendimentoComCliente[]>([]);
+  const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [filtro, setFiltro] = useState('');
@@ -17,13 +17,13 @@ export default function AtendimentosList() {
   const loadAtendimentos = async () => {
     const { data, error } = await supabase
       .from('atendimentos')
-      .select('*, cliente:clientes(id, nome, telefone), imovel:imoveis(id, apelido, endereco)')
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
       setErro('Erro ao carregar atendimentos.');
     } else {
-      setAtendimentos((data as AtendimentoComCliente[]) || []);
+      setAtendimentos(data || []);
     }
     setLoading(false);
   };
@@ -31,9 +31,9 @@ export default function AtendimentosList() {
   const filtrados = atendimentos.filter((a) => {
     const q = filtro.toLowerCase();
     return (
-      a.cliente?.nome?.toLowerCase().includes(q) ||
-      (a.imovel?.endereco || '').toLowerCase().includes(q) ||
-      (a.tipo_servico || '').toLowerCase().includes(q)
+      a.cliente_nome.toLowerCase().includes(q) ||
+      a.endereco.toLowerCase().includes(q) ||
+      a.tipo_servico.toLowerCase().includes(q)
     );
   });
 
@@ -77,15 +77,11 @@ export default function AtendimentosList() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900">{a.cliente?.nome}</p>
-                  {a.imovel?.endereco && (
-                    <p className="text-sm text-gray-500 mt-1">
-                      {a.imovel.apelido ? `${a.imovel.apelido} — ${a.imovel.endereco}` : a.imovel.endereco}
-                    </p>
-                  )}
-                  {a.tipo_servico && (
-                    <p className="text-sm text-gray-400 mt-1">{a.tipo_servico}</p>
-                  )}
+                  <p className="font-semibold text-gray-900">{a.cliente_nome}</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {[a.endereco, a.numero, a.bairro, a.cidade].filter(Boolean).join(', ')}
+                  </p>
+                  <p className="text-sm text-gray-400 mt-1">{a.tipo_servico}</p>
                 </div>
                 <StatusBadge status={a.status} />
               </div>

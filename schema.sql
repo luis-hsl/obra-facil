@@ -1,34 +1,12 @@
 -- =============================================
--- OBRA FÁCIL v2 - Schema Centrado no Atendimento
--- Execute este SQL no SQL Editor do Supabase
+-- OBRA FÁCIL v3 - Modelo Snapshot
+-- Dados do cliente direto no Atendimento
 -- =============================================
 
 -- ===================
--- ENTIDADES FIXAS (Cadastros)
+-- CADASTROS
 -- ===================
 
-CREATE TABLE clientes (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES auth.users(id) NOT NULL,
-  nome text NOT NULL,
-  telefone text,
-  email text,
-  cpf_cnpj text,
-  observacoes text,
-  created_at timestamptz DEFAULT now()
-);
-
-CREATE TABLE imoveis (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  cliente_id uuid REFERENCES clientes(id) ON DELETE CASCADE NOT NULL,
-  apelido text,
-  endereco text NOT NULL,
-  tipo text DEFAULT 'residencial' CHECK (tipo IN ('residencial','comercial','outro')),
-  observacoes text,
-  created_at timestamptz DEFAULT now()
-);
-
--- Produtos (mantido da v1)
 CREATE TABLE produtos (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES auth.users(id) NOT NULL,
@@ -45,12 +23,20 @@ CREATE TABLE produtos (
 CREATE TABLE atendimentos (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES auth.users(id) NOT NULL,
-  cliente_id uuid REFERENCES clientes(id) NOT NULL,
-  imovel_id uuid REFERENCES imoveis(id),
-  tipo_servico text,
+  -- Snapshot do cliente
+  cliente_nome text NOT NULL,
+  cliente_telefone text NOT NULL,
+  -- Snapshot do endereço
+  endereco text NOT NULL,
+  numero text,
+  complemento text,
+  bairro text,
+  cidade text,
+  -- Serviço
+  tipo_servico text NOT NULL,
   status text NOT NULL DEFAULT 'iniciado' CHECK (
     status IN ('iniciado','visita_tecnica','medicao','orcamento',
-               'aprovado','reprovado','execucao','pos_atendimento')
+               'aprovado','reprovado','execucao')
   ),
   observacoes text,
   created_at timestamptz DEFAULT now()
@@ -97,21 +83,11 @@ CREATE TABLE execucoes (
 -- RLS (Row Level Security)
 -- =============================================
 
-ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE imoveis ENABLE ROW LEVEL SECURITY;
 ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE atendimentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE medicoes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orcamentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE execucoes ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "user_clientes" ON clientes
-  FOR ALL USING (auth.uid() = user_id);
-
-CREATE POLICY "user_imoveis" ON imoveis
-  FOR ALL USING (
-    cliente_id IN (SELECT id FROM clientes WHERE user_id = auth.uid())
-  );
 
 CREATE POLICY "user_produtos" ON produtos
   FOR ALL USING (auth.uid() = user_id);

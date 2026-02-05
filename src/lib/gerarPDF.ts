@@ -1,18 +1,16 @@
 import { jsPDF } from 'jspdf';
-import type { Orcamento, Produto, Atendimento, Cliente, Imovel } from '../types';
+import type { Orcamento, Produto, Atendimento } from '../types';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 interface GerarPDFParams {
-  cliente: Pick<Cliente, 'nome' | 'telefone' | 'email'>;
-  imovel: Pick<Imovel, 'endereco'> | null;
-  atendimento: Pick<Atendimento, 'tipo_servico'>;
+  atendimento: Pick<Atendimento, 'cliente_nome' | 'cliente_telefone' | 'endereco' | 'numero' | 'complemento' | 'bairro' | 'cidade' | 'tipo_servico'>;
   orcamento: Orcamento;
   produto: Produto | null;
 }
 
-export function gerarPDF({ cliente, imovel, atendimento, orcamento, produto }: GerarPDFParams) {
+export function gerarPDF({ atendimento, orcamento, produto }: GerarPDFParams) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = 20;
@@ -32,40 +30,38 @@ export function gerarPDF({ cliente, imovel, atendimento, orcamento, produto }: G
   doc.setFont('helvetica', 'bold');
   doc.text('Cliente:', 20, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(cliente.nome, 55, y);
+  doc.text(atendimento.cliente_nome, 55, y);
   y += 8;
 
-  if (cliente.telefone) {
+  if (atendimento.cliente_telefone) {
     doc.setFont('helvetica', 'bold');
     doc.text('Telefone:', 20, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(cliente.telefone, 55, y);
+    doc.text(atendimento.cliente_telefone, 55, y);
     y += 8;
   }
 
-  if (cliente.email) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('E-mail:', 20, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(cliente.email, 55, y);
-    y += 8;
-  }
+  const enderecoCompleto = [
+    atendimento.endereco,
+    atendimento.numero,
+    atendimento.complemento,
+    atendimento.bairro,
+    atendimento.cidade,
+  ].filter(Boolean).join(', ');
 
-  if (imovel) {
+  if (enderecoCompleto) {
     doc.setFont('helvetica', 'bold');
     doc.text('Endereço:', 20, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(imovel.endereco, 55, y);
+    doc.text(enderecoCompleto, 55, y);
     y += 8;
   }
 
-  if (atendimento.tipo_servico) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Serviço:', 20, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(atendimento.tipo_servico, 55, y);
-    y += 8;
-  }
+  doc.setFont('helvetica', 'bold');
+  doc.text('Serviço:', 20, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(atendimento.tipo_servico, 55, y);
+  y += 8;
 
   y += 6;
 
@@ -132,6 +128,6 @@ export function gerarPDF({ cliente, imovel, atendimento, orcamento, produto }: G
   doc.setTextColor(128, 128, 128);
   doc.text('Cálculo estimado. Medidas devem ser confirmadas no local.', 20, y);
 
-  const nomeArquivo = `orcamento-${cliente.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+  const nomeArquivo = `orcamento-${atendimento.cliente_nome.replace(/\s+/g, '-').toLowerCase()}.pdf`;
   doc.save(nomeArquivo);
 }

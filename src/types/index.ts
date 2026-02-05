@@ -1,27 +1,6 @@
 // =============================================
-// Entidades fixas (Cadastros)
+// Cadastros
 // =============================================
-
-export interface Cliente {
-  id: string;
-  user_id: string;
-  nome: string;
-  telefone: string | null;
-  email: string | null;
-  cpf_cnpj: string | null;
-  observacoes: string | null;
-  created_at: string;
-}
-
-export interface Imovel {
-  id: string;
-  cliente_id: string;
-  apelido: string | null;
-  endereco: string;
-  tipo: 'residencial' | 'comercial' | 'outro';
-  observacoes: string | null;
-  created_at: string;
-}
 
 export interface Produto {
   id: string;
@@ -43,23 +22,25 @@ export type AtendimentoStatus =
   | 'orcamento'
   | 'aprovado'
   | 'reprovado'
-  | 'execucao'
-  | 'pos_atendimento';
+  | 'execucao';
 
 export interface Atendimento {
   id: string;
   user_id: string;
-  cliente_id: string;
-  imovel_id: string | null;
-  tipo_servico: string | null;
+  // Snapshot do cliente
+  cliente_nome: string;
+  cliente_telefone: string;
+  // Snapshot do endereço
+  endereco: string;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  // Serviço
+  tipo_servico: string;
   status: AtendimentoStatus;
   observacoes: string | null;
   created_at: string;
-}
-
-export interface AtendimentoComCliente extends Atendimento {
-  cliente: Pick<Cliente, 'id' | 'nome' | 'telefone'>;
-  imovel: Pick<Imovel, 'id' | 'apelido' | 'endereco'> | null;
 }
 
 export interface Medicao {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { Atendimento, Cliente, Imovel, Medicao, Orcamento, Execucao, AtendimentoStatus } from '../types';
+import type { Atendimento, Medicao, Orcamento, Execucao, AtendimentoStatus } from '../types';
 import { STATUS_CONFIG, getNextStatuses } from '../lib/statusConfig';
 import StatusBadge from '../components/StatusBadge';
 import MedicaoForm from '../components/MedicaoForm';
@@ -14,8 +14,6 @@ export default function AtendimentoDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [atendimento, setAtendimento] = useState<Atendimento | null>(null);
-  const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [imovel, setImovel] = useState<Imovel | null>(null);
   const [medicoes, setMedicoes] = useState<Medicao[]>([]);
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [execucoes, setExecucoes] = useState<Execucao[]>([]);
@@ -38,18 +36,12 @@ export default function AtendimentoDetail() {
 
     setAtendimento(atd);
 
-    const [clienteRes, imovelRes, medRes, orcRes, execRes] = await Promise.all([
-      supabase.from('clientes').select('*').eq('id', atd.cliente_id).single(),
-      atd.imovel_id
-        ? supabase.from('imoveis').select('*').eq('id', atd.imovel_id).single()
-        : Promise.resolve({ data: null }),
+    const [medRes, orcRes, execRes] = await Promise.all([
       supabase.from('medicoes').select('*').eq('atendimento_id', id).order('created_at', { ascending: false }),
       supabase.from('orcamentos').select('*').eq('atendimento_id', id).order('created_at', { ascending: false }),
       supabase.from('execucoes').select('*').eq('atendimento_id', id).order('created_at', { ascending: false }),
     ]);
 
-    setCliente(clienteRes.data);
-    setImovel(imovelRes.data);
     setMedicoes(medRes.data || []);
     setOrcamentos(orcRes.data || []);
     setExecucoes(execRes.data || []);
@@ -100,10 +92,13 @@ export default function AtendimentoDetail() {
 
   const areaMedicao = medicoes[0]?.area_total || 0;
 
+  const formatEndereco = (atd: Atendimento) =>
+    [atd.endereco, atd.numero, atd.complemento, atd.bairro, atd.cidade].filter(Boolean).join(', ');
+
   if (erro && !atendimento) {
     return <p className="text-center text-red-500 mt-8">{erro}</p>;
   }
-  if (!atendimento || !cliente) {
+  if (!atendimento) {
     return <p className="text-center text-gray-500 mt-8">Carregando...</p>;
   }
 
@@ -123,17 +118,10 @@ export default function AtendimentoDetail() {
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
-            <Link to={`/clientes/${cliente.id}`} className="text-xl font-bold text-gray-900 no-underline hover:text-blue-600">
-              {cliente.nome}
-            </Link>
-            {imovel && (
-              <p className="text-sm text-gray-500 mt-1">
-                {imovel.apelido ? `${imovel.apelido} — ${imovel.endereco}` : imovel.endereco}
-              </p>
-            )}
-            {atendimento.tipo_servico && (
-              <p className="text-sm text-gray-400 mt-1">{atendimento.tipo_servico}</p>
-            )}
+            <p className="text-xl font-bold text-gray-900">{atendimento.cliente_nome}</p>
+            <p className="text-sm text-gray-500 mt-1">{atendimento.cliente_telefone}</p>
+            <p className="text-sm text-gray-500 mt-1">{formatEndereco(atendimento)}</p>
+            <p className="text-sm text-gray-400 mt-1">{atendimento.tipo_servico}</p>
           </div>
           <StatusBadge status={atendimento.status} />
         </div>
@@ -176,7 +164,7 @@ export default function AtendimentoDetail() {
         )}
       </div>
 
-      {/* Seções colapsáveis — TODAS acessíveis */}
+      {/* Seções colapsáveis */}
       <div className="space-y-3">
         {sections.map((section) => {
           const isExpanded = expandedSections.has(section.id);
@@ -204,8 +192,6 @@ export default function AtendimentoDetail() {
                     <OrcamentoForm
                       atendimentoId={atendimento.id}
                       atendimento={atendimento}
-                      cliente={cliente}
-                      imovel={imovel}
                       orcamentos={orcamentos}
                       areaMedicao={areaMedicao}
                       onSave={loadData}

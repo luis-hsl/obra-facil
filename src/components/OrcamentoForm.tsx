@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Orcamento, Produto, Atendimento, Cliente, Imovel } from '../types';
+import type { Orcamento, Produto, Atendimento } from '../types';
 import StatusBadge from './StatusBadge';
 import { gerarPDF } from '../lib/gerarPDF';
 
 interface Props {
   atendimentoId: string;
   atendimento: Atendimento;
-  cliente: Cliente;
-  imovel: Imovel | null;
   orcamentos: Orcamento[];
   areaMedicao: number;
   onSave: () => void;
@@ -20,7 +18,7 @@ function calcularOrcamento(area: number, perda: number, precoPorM2: number) {
   return { areaComPerda, total };
 }
 
-export default function OrcamentoForm({ atendimentoId, atendimento, cliente, imovel, orcamentos, areaMedicao, onSave }: Props) {
+export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, areaMedicao, onSave }: Props) {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [produtoId, setProdutoId] = useState('');
   const [areaTotal, setAreaTotal] = useState('');
@@ -133,7 +131,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, cliente, imo
 
   const handleGerarPDF = (orcamento: Orcamento) => {
     const produto = orcamento.produto_id ? produtosMap[orcamento.produto_id] : null;
-    gerarPDF({ cliente, imovel, atendimento, orcamento, produto });
+    gerarPDF({ atendimento, orcamento, produto });
   };
 
   const formatCurrency = (value: number) =>

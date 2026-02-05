@@ -14,7 +14,6 @@ export const STATUS_CONFIG: Record<string, StatusInfo> = {
   aprovado: { label: 'Aprovado', color: 'bg-green-100 text-green-800' },
   reprovado: { label: 'Reprovado', color: 'bg-red-100 text-red-800' },
   execucao: { label: 'Execução', color: 'bg-orange-100 text-orange-800' },
-  pos_atendimento: { label: 'Pós-atendimento', color: 'bg-green-200 text-green-900' },
   // Orçamento
   rascunho: { label: 'Rascunho', color: 'bg-gray-200 text-gray-800' },
   enviado: { label: 'Enviado', color: 'bg-blue-100 text-blue-800' },
@@ -31,12 +30,11 @@ export const STATUS_ORDER: AtendimentoStatus[] = [
   'orcamento',
   'aprovado',
   'execucao',
-  'pos_atendimento',
 ];
 
 export function getNextStatuses(current: AtendimentoStatus): AtendimentoStatus[] {
   if (current === 'reprovado') return ['iniciado'];
-  if (current === 'pos_atendimento') return [];
+  if (current === 'execucao') return [];
 
   const idx = STATUS_ORDER.indexOf(current);
   if (idx === -1) return [];
