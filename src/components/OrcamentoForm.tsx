@@ -100,6 +100,11 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     }
   }, [orcamentos]);
 
+  // Área já com perda inclusa da medição
+  const areaComPerdaInicial = areaMedicao > 0
+    ? Math.round(areaMedicao * (1 + (perdaMedicao || 10) / 100) * 100) / 100
+    : 0;
+
   const adicionarProduto = () => {
     if (!produtoSelecionado) return;
     const produto = produtos.find(p => p.id === produtoSelecionado);
@@ -111,17 +116,17 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
       return;
     }
 
-    const area = areaMedicao || 0;
-    const perda = perdaMedicao || 10;
-    const calc = calcularItem(area, perda, produto.preco_por_m2);
+    // Área já vem com perda inclusa da medição
+    const area = areaComPerdaInicial;
+    const valorTotal = area * produto.preco_por_m2;
 
     setItens([...itens, {
       produtoId: produto.id,
       produto,
       areaTotal: area,
-      perda,
-      areaComPerda: calc.areaComPerda,
-      valorTotal: calc.total,
+      perda: perdaMedicao || 10, // Guardamos para referência
+      areaComPerda: area, // Já é a área final
+      valorTotal: Math.round(valorTotal * 100) / 100,
     }]);
 
     setProdutoSelecionado('');
@@ -135,13 +140,14 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
   const atualizarItemArea = (index: number, novaArea: number) => {
     const item = itens[index];
     if (!item.produto) return;
-    const calc = calcularItem(novaArea, item.perda, item.produto.preco_por_m2);
+    // Área já é a final (com perda inclusa)
+    const valorTotal = novaArea * item.produto.preco_por_m2;
     const novosItens = [...itens];
     novosItens[index] = {
       ...item,
       areaTotal: novaArea,
-      areaComPerda: calc.areaComPerda,
-      valorTotal: calc.total,
+      areaComPerda: novaArea, // Já é a área final
+      valorTotal: Math.round(valorTotal * 100) / 100,
     };
     setItens(novosItens);
   };
@@ -295,8 +301,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                           <p className="font-medium text-gray-800">
                             {idx + 1}. {prod ? `${prod.fabricante} — ${prod.linha}` : 'Produto removido'}
                           </p>
-                          <p>Área: {item.area_total} m² → {item.area_com_perda.toFixed(2)} m² (c/ {item.perda_percentual}% perda)</p>
-                          <p>Preço: {formatCurrency(item.preco_por_m2)}/m² = <strong>{formatCurrency(item.valor_total)}</strong></p>
+                          <p>{item.area_total} m² x {formatCurrency(item.preco_por_m2)}/m² = <strong>{formatCurrency(item.valor_total)}</strong></p>
                         </div>
                       );
                     })}
@@ -393,7 +398,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                     +
                   </button>
                 </div>
-                {areaMedicao > 0 && <p className="text-xs text-gray-400 mt-1">Área da medição: {areaMedicao} m² | Perda: {perdaMedicao}%</p>}
+                {areaMedicao > 0 && <p className="text-xs text-gray-400 mt-1">Área c/ {perdaMedicao}% perda: {areaComPerdaInicial} m²</p>}
               </div>
 
               {/* Lista de itens adicionados */}
@@ -431,10 +436,10 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                       </div>
 
                       <div className="text-sm text-gray-600">
-                        <p>Área c/ perda ({item.perda}%): <strong>{item.areaComPerda.toFixed(2)} m²</strong></p>
-                        <p className="text-base font-semibold text-gray-800 mt-1">
+                        <p className="text-base font-semibold text-gray-800">
                           Subtotal: {formatCurrency(item.valorTotal)}
                         </p>
+                        <p className="text-xs text-gray-500">{item.areaTotal} m² x {formatCurrency(item.produto?.preco_por_m2 || 0)}/m²</p>
                       </div>
                     </div>
                   ))}
