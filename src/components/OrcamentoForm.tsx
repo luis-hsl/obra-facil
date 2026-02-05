@@ -105,14 +105,15 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     ? Math.round(areaMedicao * (1 + (perdaMedicao || 10) / 100) * 100) / 100
     : 0;
 
-  const adicionarProduto = () => {
-    if (!produtoSelecionado) return;
-    const produto = produtos.find(p => p.id === produtoSelecionado);
+  const adicionarProduto = (produtoId: string) => {
+    if (!produtoId) return;
+    const produto = produtos.find(p => p.id === produtoId);
     if (!produto) return;
 
     // Verificar se já foi adicionado
-    if (itens.some(i => i.produtoId === produtoSelecionado)) {
+    if (itens.some(i => i.produtoId === produtoId)) {
       setErro('Este produto já foi adicionado.');
+      setProdutoSelecionado('');
       return;
     }
 
@@ -131,6 +132,14 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
 
     setProdutoSelecionado('');
     setErro('');
+  };
+
+  // Auto-adiciona ao selecionar um produto
+  const handleProdutoSelect = (produtoId: string) => {
+    setProdutoSelecionado(produtoId);
+    if (produtoId) {
+      adicionarProduto(produtoId);
+    }
   };
 
   const removerItem = (index: number) => {
@@ -376,41 +385,33 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
               {/* Adicionar produtos */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Adicionar produto</label>
-                <div className="flex gap-2">
-                  <select
-                    value={produtoSelecionado}
-                    onChange={(e) => setProdutoSelecionado(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Escolha um produto...</option>
-                    {produtosDisponiveis.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.fabricante} {p.linha} — {formatCurrency(p.preco_por_m2)}/m²
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={adicionarProduto}
-                    disabled={!produtoSelecionado}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50"
-                  >
-                    +
-                  </button>
-                </div>
+                <select
+                  value={produtoSelecionado}
+                  onChange={(e) => handleProdutoSelect(e.target.value)}
+                  className="w-full px-3 py-3 rounded-lg border border-gray-300 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">{itens.length > 0 ? '+ Adicionar outro produto...' : 'Escolha um produto...'}</option>
+                  {produtosDisponiveis.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.fabricante} {p.linha} — {formatCurrency(p.preco_por_m2)}/m²
+                    </option>
+                  ))}
+                </select>
                 {areaMedicao > 0 && <p className="text-xs text-gray-400 mt-1">Área c/ {perdaMedicao}% perda: {areaComPerdaInicial} m²</p>}
               </div>
 
-              {/* Lista de itens adicionados */}
+              {/* Lista de opções de produtos */}
               {itens.length > 0 && (
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-700">Produtos no orçamento:</p>
+                  <p className="text-sm font-medium text-gray-700">
+                    {itens.length === 1 ? 'Opção de produto:' : `${itens.length} opções de produtos:`}
+                  </p>
                   {itens.map((item, index) => (
-                    <div key={item.produtoId} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div key={item.produtoId} className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <p className="font-medium text-gray-800">{item.produto?.fabricante} — {item.produto?.linha}</p>
-                          <p className="text-xs text-gray-500">{formatCurrency(item.produto?.preco_por_m2 || 0)}/m²</p>
+                          <p className="text-xs text-blue-600 font-medium mb-1">Opção {index + 1}</p>
+                          <p className="font-semibold text-gray-900">{item.produto?.fabricante} — {item.produto?.linha}</p>
                         </div>
                         <button
                           type="button"
@@ -421,7 +422,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-3">
                         <label className="text-sm text-gray-600">Área:</label>
                         <input
                           type="number"
@@ -433,121 +434,16 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                           className="w-24 px-2 py-1 rounded border border-gray-300 text-sm"
                         />
                         <span className="text-sm text-gray-500">m²</span>
+                        <span className="text-sm text-gray-400">x</span>
+                        <span className="text-sm text-gray-600">{formatCurrency(item.produto?.preco_por_m2 || 0)}/m²</span>
                       </div>
 
-                      <div className="text-sm text-gray-600">
-                        <p className="text-base font-semibold text-gray-800">
-                          Subtotal: {formatCurrency(item.valorTotal)}
-                        </p>
-                        <p className="text-xs text-gray-500">{item.areaTotal} m² x {formatCurrency(item.produto?.preco_por_m2 || 0)}/m²</p>
-                      </div>
+                      <p className="text-xl font-bold text-blue-900">
+                        Total: {formatCurrency(item.valorTotal)}
+                      </p>
                     </div>
                   ))}
 
-                  {/* Total */}
-                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <p className="text-xl font-bold text-blue-900">
-                      Total à vista: {formatCurrency(totalGeral)}
-                    </p>
-
-                    {/* Forma de Pagamento */}
-                    <div className="pt-3 mt-3 border-t border-blue-200">
-                      <p className="text-sm font-semibold text-blue-900 mb-2">Forma de Pagamento:</p>
-                      <div className="flex gap-3">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="formaPagamento"
-                            checked={formaPagamento === 'a_vista'}
-                            onChange={() => setFormaPagamento('a_vista')}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span className="text-sm text-blue-800">À vista</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="formaPagamento"
-                            checked={formaPagamento === 'parcelado'}
-                            onChange={() => setFormaPagamento('parcelado')}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span className="text-sm text-blue-800">Parcelado</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {formaPagamento === 'parcelado' && (
-                      <div className="space-y-3 pt-3">
-                        <div>
-                          <label className="block text-sm font-medium text-blue-800 mb-1">Parcelas:</label>
-                          <select
-                            value={numeroParcelas}
-                            onChange={(e) => setNumeroParcelas(parseInt(e.target.value))}
-                            className="w-full px-3 py-2 rounded-lg border border-blue-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {OPCOES_PARCELAS.map((n) => (
-                              <option key={n} value={n}>{n}x</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-blue-800 mb-1">Taxa de juros:</label>
-                          <select
-                            value={usarTaxaCustom ? 'custom' : taxaJuros}
-                            onChange={(e) => {
-                              if (e.target.value === 'custom') {
-                                setUsarTaxaCustom(true);
-                              } else {
-                                setUsarTaxaCustom(false);
-                                setTaxaJuros(parseFloat(e.target.value));
-                              }
-                            }}
-                            className="w-full px-3 py-2 rounded-lg border border-blue-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {OPCOES_JUROS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                            <option value="custom">Outro...</option>
-                          </select>
-                        </div>
-
-                        {usarTaxaCustom && (
-                          <div>
-                            <label className="block text-sm font-medium text-blue-800 mb-1">Taxa personalizada (% a.m.):</label>
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              step="0.1"
-                              min="0"
-                              value={taxaJurosCustom}
-                              onChange={(e) => setTaxaJurosCustom(e.target.value)}
-                              placeholder="Ex: 1.8"
-                              className="w-full px-3 py-2 rounded-lg border border-blue-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                        )}
-
-                        {valorParcela && valorTotalParcelado && (
-                          <div className="bg-blue-100 rounded-lg p-3 space-y-1">
-                            <p className="text-lg font-bold text-blue-900">
-                              {numeroParcelas}x de {formatCurrency(valorParcela)}
-                              {taxaEfetiva > 0 && <span className="text-sm font-normal"> ({taxaEfetiva}% a.m.)</span>}
-                            </p>
-                            <p className="text-sm text-blue-800">
-                              Total parcelado: <strong>{formatCurrency(valorTotalParcelado)}</strong>
-                            </p>
-                            {jurosTotal > 0 && (
-                              <p className="text-sm text-blue-700">
-                                Juros: {formatCurrency(jurosTotal)} ({((jurosTotal / totalGeral) * 100).toFixed(1)}% sobre o valor à vista)
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
 
