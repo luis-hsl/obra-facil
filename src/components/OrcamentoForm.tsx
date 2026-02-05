@@ -299,22 +299,32 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
             return (
               <div key={o.id} className="bg-white rounded-lg border border-gray-200 p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="font-bold text-gray-900 text-lg">{formatCurrency(o.valor_total)}</p>
+                  <p className="font-semibold text-gray-700">
+                    {temItens ? `${itensDoOrc.length} ${itensDoOrc.length === 1 ? 'opção' : 'opções'}` : 'Orçamento'}
+                  </p>
                   <StatusBadge status={o.status} />
                 </div>
 
-                {/* Itens do orçamento */}
+                {/* Itens do orçamento como opções */}
                 {temItens ? (
-                  <div className="bg-gray-50 rounded-lg p-3 mb-3 space-y-3">
-                    <p className="text-sm font-semibold text-gray-700">Produtos incluídos:</p>
+                  <div className="space-y-3 mb-3">
                     {itensDoOrc.map((item, idx) => {
                       const prod = item.produto_id ? produtosMap[item.produto_id] : null;
+                      const valorComDesconto = item.valor_total * 0.95; // 5% desconto à vista
+                      const { totalComTaxa, parcela } = calcularParcelamento(item.valor_total, o.taxa_juros_mensal || 0, o.numero_parcelas || 12);
+
                       return (
-                        <div key={item.id} className="text-sm text-gray-600 border-b border-gray-200 pb-2 last:border-0 last:pb-0">
-                          <p className="font-medium text-gray-800">
-                            {idx + 1}. {prod ? `${prod.fabricante} — ${prod.linha}` : 'Produto removido'}
+                        <div key={item.id} className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                          <p className="text-xs text-blue-600 font-medium">Opção {idx + 1}</p>
+                          <p className="font-semibold text-gray-900">
+                            {prod ? `${prod.fabricante} — ${prod.linha}` : 'Produto removido'}
                           </p>
-                          <p>{item.area_total} m² x {formatCurrency(item.preco_por_m2)}/m² = <strong>{formatCurrency(item.valor_total)}</strong></p>
+                          <p className="text-sm text-gray-500">{item.area_total} m² x {formatCurrency(item.preco_por_m2)}/m²</p>
+                          <p className="text-lg font-bold text-green-700 mt-1">À vista: {formatCurrency(valorComDesconto)}</p>
+                          <p className="text-sm text-gray-600">
+                            {o.numero_parcelas || 12}x de {formatCurrency(parcela)}
+                            {(o.taxa_juros_mensal || 0) > 0 && ` (${o.taxa_juros_mensal}% taxa)`}
+                          </p>
                         </div>
                       );
                     })}
