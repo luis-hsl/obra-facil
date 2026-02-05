@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { Atendimento, Medicao, Orcamento, Execucao, Fechamento, AtendimentoStatus } from '../types';
+import type { Atendimento, Medicao, Orcamento, Fechamento } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import MedicaoForm from '../components/MedicaoForm';
 import OrcamentoForm from '../components/OrcamentoForm';
-import ExecucaoSection from '../components/ExecucaoSection';
 import FechamentoForm from '../components/FechamentoForm';
 
-type SectionId = 'medicao' | 'orcamento' | 'execucao' | 'fechamento';
+type SectionId = 'medicao' | 'orcamento' | 'fechamento';
 
 export default function AtendimentoDetail() {
   const { id } = useParams();
@@ -16,7 +15,6 @@ export default function AtendimentoDetail() {
   const [atendimento, setAtendimento] = useState<Atendimento | null>(null);
   const [medicoes, setMedicoes] = useState<Medicao[]>([]);
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
-  const [execucoes, setExecucoes] = useState<Execucao[]>([]);
   const [fechamento, setFechamento] = useState<Fechamento | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(new Set(['medicao']));
   const [erro, setErro] = useState('');
@@ -36,16 +34,14 @@ export default function AtendimentoDetail() {
 
     setAtendimento(atd);
 
-    const [medRes, orcRes, execRes, fechRes] = await Promise.all([
+    const [medRes, orcRes, fechRes] = await Promise.all([
       supabase.from('medicoes').select('*').eq('atendimento_id', id).order('created_at', { ascending: false }),
       supabase.from('orcamentos').select('*').eq('atendimento_id', id).order('created_at', { ascending: false }),
-      supabase.from('execucoes').select('*').eq('atendimento_id', id).order('created_at', { ascending: false }),
       supabase.from('fechamentos').select('*').eq('atendimento_id', id).single(),
     ]);
 
     setMedicoes(medRes.data || []);
     setOrcamentos(orcRes.data || []);
-    setExecucoes(execRes.data || []);
     setFechamento(fechRes.data || null);
   };
 
@@ -63,24 +59,6 @@ export default function AtendimentoDetail() {
       return;
     }
     navigate('/');
-  };
-
-  const handleStatusChange = async (newStatus: AtendimentoStatus) => {
-    if (!atendimento) return;
-    const { error } = await supabase
-      .from('atendimentos')
-      .update({ status: newStatus })
-      .eq('id', id);
-    if (error) {
-      setErro('Erro ao atualizar status.');
-    } else {
-      await loadData();
-    }
-  };
-
-  const handleConcluirAtendimento = async () => {
-    if (!confirm('Finalizar este atendimento? Ele será movido para Concluídos.')) return;
-    await handleStatusChange('concluido');
   };
 
   const toggleSection = (section: SectionId) => {
@@ -114,7 +92,6 @@ export default function AtendimentoDetail() {
   const allSections: { id: SectionId; label: string; hasData: boolean; minStatus: string }[] = [
     { id: 'medicao', label: 'Medição', hasData: medicoes.length > 0, minStatus: 'visita_tecnica' },
     { id: 'orcamento', label: 'Orçamento', hasData: orcamentos.length > 0, minStatus: 'medicao' },
-    { id: 'execucao', label: 'Execução', hasData: execucoes.length > 0, minStatus: 'aprovado' },
     { id: 'fechamento', label: 'Fechamento', hasData: !!fechamento, minStatus: 'execucao' },
   ];
 
@@ -192,15 +169,6 @@ export default function AtendimentoDetail() {
                       areaMedicao={areaMedicao}
                       perdaMedicao={medicoes[0]?.perda_percentual || 10}
                       onSave={loadData}
-                    />
-                  )}
-                  {section.id === 'execucao' && (
-                    <ExecucaoSection
-                      atendimentoId={atendimento.id}
-                      execucoes={execucoes}
-                      currentStatus={atendimento.status}
-                      onSave={loadData}
-                      onConcluirAtendimento={atendimento.status === 'execucao' ? handleConcluirAtendimento : undefined}
                     />
                   )}
                   {section.id === 'fechamento' && (

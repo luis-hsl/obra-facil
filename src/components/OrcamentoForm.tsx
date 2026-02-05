@@ -153,9 +153,9 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     if (error) {
       setErro('Erro ao atualizar status.');
     } else {
-      // Auto-avançar atendimento para 'aprovado' quando orçamento é aprovado
-      if (newStatus === 'aprovado' && atendimento.status === 'orcamento') {
-        await supabase.from('atendimentos').update({ status: 'aprovado' }).eq('id', atendimentoId);
+      // Auto-avançar atendimento para 'execucao' quando orçamento é aprovado (vai para Operacional)
+      if (newStatus === 'aprovado') {
+        await supabase.from('atendimentos').update({ status: 'execucao' }).eq('id', atendimentoId);
       }
       onSave();
     }
