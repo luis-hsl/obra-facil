@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { Atendimento, Medicao, Orcamento, Execucao, AtendimentoStatus } from '../types';
-import { STATUS_CONFIG, getNextStatuses } from '../lib/statusConfig';
+import type { Atendimento, Medicao, Orcamento, Execucao, Fechamento, AtendimentoStatus } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import MedicaoForm from '../components/MedicaoForm';
 import OrcamentoForm from '../components/OrcamentoForm';
 import ExecucaoSection from '../components/ExecucaoSection';
+import FechamentoForm from '../components/FechamentoForm';
 
-type SectionId = 'medicao' | 'orcamento' | 'execucao';
+type SectionId = 'medicao' | 'orcamento' | 'execucao' | 'fechamento';
 
 export default function AtendimentoDetail() {
   const { id } = useParams();
@@ -17,10 +17,10 @@ export default function AtendimentoDetail() {
   const [medicoes, setMedicoes] = useState<Medicao[]>([]);
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [execucoes, setExecucoes] = useState<Execucao[]>([]);
+  const [fechamento, setFechamento] = useState<Fechamento | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(new Set(['medicao']));
   const [erro, setErro] = useState('');
   const [deleting, setDeleting] = useState(false);
-  const [changingStatus, setChangingStatus] = useState(false);
 
   const loadData = async () => {
     const { data: atd, error: atdError } = await supabase
@@ -36,15 +36,17 @@ export default function AtendimentoDetail() {
 
     setAtendimento(atd);
 
-    const [medRes, orcRes, execRes] = await Promise.all([
+    const [medRes, orcRes, execRes, fechRes] = await Promise.all([
       supabase.from('medicoes').select('*').eq('atendimento_id', id).order('created_at', { ascending: false }),
       supabase.from('orcamentos').select('*').eq('atendimento_id', id).order('created_at', { ascending: false }),
       supabase.from('execucoes').select('*').eq('atendimento_id', id).order('created_at', { ascending: false }),
+      supabase.from('fechamentos').select('*').eq('atendimento_id', id).single(),
     ]);
 
     setMedicoes(medRes.data || []);
     setOrcamentos(orcRes.data || []);
     setExecucoes(execRes.data || []);
+    setFechamento(fechRes.data || null);
   };
 
   useEffect(() => {
@@ -65,7 +67,6 @@ export default function AtendimentoDetail() {
 
   const handleStatusChange = async (newStatus: AtendimentoStatus) => {
     if (!atendimento) return;
-    setChangingStatus(true);
     const { error } = await supabase
       .from('atendimentos')
       .update({ status: newStatus })
@@ -75,7 +76,11 @@ export default function AtendimentoDetail() {
     } else {
       await loadData();
     }
-    setChangingStatus(false);
+  };
+
+  const handleConcluirAtendimento = async () => {
+    if (!confirm('Finalizar este atendimento? Ele será movido para Concluídos.')) return;
+    await handleStatusChange('concluido');
   };
 
   const toggleSection = (section: SectionId) => {
@@ -102,16 +107,29 @@ export default function AtendimentoDetail() {
     return <p className="text-center text-gray-500 mt-8">Carregando...</p>;
   }
 
-  const nextStatuses = getNextStatuses(atendimento.status);
+  // Seções aparecem progressivamente conforme o status avança
+  const statusOrder = ['iniciado', 'visita_tecnica', 'medicao', 'orcamento', 'aprovado', 'execucao', 'concluido'];
+  const currentIndex = statusOrder.indexOf(atendimento.status);
 
-  const sections: { id: SectionId; label: string; hasData: boolean }[] = [
-    { id: 'medicao', label: 'Medição', hasData: medicoes.length > 0 },
-    { id: 'orcamento', label: 'Orçamento', hasData: orcamentos.length > 0 },
-    { id: 'execucao', label: 'Execução', hasData: execucoes.length > 0 },
+  const allSections: { id: SectionId; label: string; hasData: boolean; minStatus: string }[] = [
+    { id: 'medicao', label: 'Medição', hasData: medicoes.length > 0, minStatus: 'visita_tecnica' },
+    { id: 'orcamento', label: 'Orçamento', hasData: orcamentos.length > 0, minStatus: 'medicao' },
+    { id: 'execucao', label: 'Execução', hasData: execucoes.length > 0, minStatus: 'aprovado' },
+    { id: 'fechamento', label: 'Fechamento', hasData: !!fechamento, minStatus: 'execucao' },
   ];
+
+  const sections = allSections.filter((s) => currentIndex >= statusOrder.indexOf(s.minStatus));
 
   return (
     <div>
+      {/* Voltar */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-1 text-gray-500 hover:text-gray-700 mb-4 text-sm font-medium"
+      >
+        <span className="text-lg">←</span> Voltar
+      </button>
+
       {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
 
       {/* Cabeçalho */}
@@ -140,29 +158,7 @@ export default function AtendimentoDetail() {
           </button>
         </div>
 
-        {/* Avançar status */}
-        {nextStatuses.length > 0 && (
-          <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t border-gray-100">
-            {nextStatuses.map((ns) => {
-              const config = STATUS_CONFIG[ns];
-              return (
-                <button
-                  key={ns}
-                  onClick={() => handleStatusChange(ns)}
-                  disabled={changingStatus}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50 ${
-                    ns === 'reprovado'
-                      ? 'border border-red-300 text-red-600'
-                      : 'bg-blue-50 text-blue-700 border border-blue-200'
-                  }`}
-                >
-                  {ns === 'reprovado' ? 'Reprovar' : `Avançar p/ ${config?.label || ns}`}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              </div>
 
       {/* Seções colapsáveis */}
       <div className="space-y-3">
@@ -186,7 +182,7 @@ export default function AtendimentoDetail() {
               {isExpanded && (
                 <div className="px-4 pb-4 border-t border-gray-100 pt-3">
                   {section.id === 'medicao' && (
-                    <MedicaoForm atendimentoId={atendimento.id} medicoes={medicoes} onSave={loadData} />
+                    <MedicaoForm atendimentoId={atendimento.id} medicoes={medicoes} currentStatus={atendimento.status} onSave={loadData} />
                   )}
                   {section.id === 'orcamento' && (
                     <OrcamentoForm
@@ -194,11 +190,26 @@ export default function AtendimentoDetail() {
                       atendimento={atendimento}
                       orcamentos={orcamentos}
                       areaMedicao={areaMedicao}
+                      perdaMedicao={medicoes[0]?.perda_percentual || 10}
                       onSave={loadData}
                     />
                   )}
                   {section.id === 'execucao' && (
-                    <ExecucaoSection atendimentoId={atendimento.id} execucoes={execucoes} onSave={loadData} />
+                    <ExecucaoSection
+                      atendimentoId={atendimento.id}
+                      execucoes={execucoes}
+                      currentStatus={atendimento.status}
+                      onSave={loadData}
+                      onConcluirAtendimento={atendimento.status === 'execucao' ? handleConcluirAtendimento : undefined}
+                    />
+                  )}
+                  {section.id === 'fechamento' && (
+                    <FechamentoForm
+                      atendimentoId={atendimento.id}
+                      orcamentos={orcamentos}
+                      fechamento={fechamento}
+                      onSave={loadData}
+                    />
                   )}
                 </div>
               )}

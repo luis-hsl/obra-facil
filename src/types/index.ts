@@ -22,7 +22,8 @@ export type AtendimentoStatus =
   | 'orcamento'
   | 'aprovado'
   | 'reprovado'
-  | 'execucao';
+  | 'execucao'
+  | 'concluido';
 
 export interface Atendimento {
   id: string;
@@ -47,6 +48,7 @@ export interface Medicao {
   id: string;
   atendimento_id: string;
   area_total: number;
+  perda_percentual: number;
   observacoes: string | null;
   created_at: string;
 }
@@ -61,6 +63,11 @@ export interface Orcamento {
   valor_total: number;
   status: 'rascunho' | 'enviado' | 'aprovado' | 'reprovado';
   observacoes: string | null;
+  forma_pagamento: 'a_vista' | 'parcelado';
+  numero_parcelas: number;
+  taxa_juros_mensal: number;
+  valor_parcela: number | null;
+  valor_total_parcelado: number | null;
   created_at: string;
 }
 
@@ -70,5 +77,17 @@ export interface Execucao {
   status: 'pendente' | 'em_andamento' | 'concluido';
   foto_final_url: string | null;
   observacoes: string | null;
+  created_at: string;
+}
+
+export interface Fechamento {
+  id: string;
+  atendimento_id: string;
+  valor_recebido: number;
+  custo_distribuidor: number;
+  custo_instalador: number;
+  custo_extras: number;
+  observacoes_extras: string | null;
+  lucro_final: number;
   created_at: string;
 }
