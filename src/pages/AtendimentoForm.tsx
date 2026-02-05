@@ -204,17 +204,13 @@ export default function AtendimentoForm() {
           <legend className="text-sm font-semibold text-gray-700 mb-1">Serviço</legend>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Serviço *</label>
-            <select
+            <input
+              type="text"
               value={tipoServico}
               onChange={(e) => setTipoServico(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Selecione...</option>
-              <option value="Piso">Piso</option>
-              <option value="Gesso">Gesso</option>
-              <option value="Vidro">Vidro</option>
-              <option value="Outro">Outro</option>
-            </select>
+              placeholder="Ex: Piso laminado, Gesso, Vidro temperado"
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
