@@ -56,7 +56,7 @@ export interface Medicao {
 export interface Orcamento {
   id: string;
   atendimento_id: string;
-  produto_id: string | null;
+  produto_id: string | null; // Legado - agora usa orcamento_itens
   area_total: number | null;
   area_com_perda: number | null;
   perda_percentual: number | null;
@@ -68,6 +68,18 @@ export interface Orcamento {
   taxa_juros_mensal: number;
   valor_parcela: number | null;
   valor_total_parcelado: number | null;
+  created_at: string;
+}
+
+export interface OrcamentoItem {
+  id: string;
+  orcamento_id: string;
+  produto_id: string | null;
+  area_total: number;
+  area_com_perda: number;
+  perda_percentual: number;
+  preco_por_m2: number;
+  valor_total: number;
   created_at: string;
 }
 
