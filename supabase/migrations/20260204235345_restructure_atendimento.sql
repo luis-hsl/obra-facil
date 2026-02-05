@@ -1,13 +1,23 @@
 -- =============================================
--- OBRA FÁCIL v2 - Schema Centrado no Atendimento
--- Execute este SQL no SQL Editor do Supabase
+-- REESTRUTURAÇÃO: Modelo centrado no Atendimento
+-- Drop tabelas antigas, criar novas do zero
 -- =============================================
 
--- ===================
--- ENTIDADES FIXAS (Cadastros)
--- ===================
+-- Dropar tabelas filhas primeiro (dependências)
+DROP TABLE IF EXISTS execucoes CASCADE;
+DROP TABLE IF EXISTS orcamentos CASCADE;
+DROP TABLE IF EXISTS medicoes CASCADE;
+DROP TABLE IF EXISTS obras CASCADE;
 
-CREATE TABLE clientes (
+-- Dropar policies de storage se existirem com nomes antigos
+DROP POLICY IF EXISTS "Usuário autenticado faz upload" ON storage.objects;
+DROP POLICY IF EXISTS "Fotos são públicas" ON storage.objects;
+
+-- =============================================
+-- ENTIDADES FIXAS
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS clientes (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES auth.users(id) NOT NULL,
   nome text NOT NULL,
@@ -18,7 +28,7 @@ CREATE TABLE clientes (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE TABLE imoveis (
+CREATE TABLE IF NOT EXISTS imoveis (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   cliente_id uuid REFERENCES clientes(id) ON DELETE CASCADE NOT NULL,
   apelido text,
@@ -28,19 +38,9 @@ CREATE TABLE imoveis (
   created_at timestamptz DEFAULT now()
 );
 
--- Produtos (mantido da v1)
-CREATE TABLE produtos (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES auth.users(id) NOT NULL,
-  fabricante text NOT NULL,
-  linha text NOT NULL,
-  preco_por_m2 numeric NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
-
--- ===================
--- PROCESSO (Atendimento)
--- ===================
+-- =============================================
+-- PROCESSO (Atendimento substitui Obra)
+-- =============================================
 
 CREATE TABLE atendimentos (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -56,7 +56,6 @@ CREATE TABLE atendimentos (
   created_at timestamptz DEFAULT now()
 );
 
--- Medições
 CREATE TABLE medicoes (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   atendimento_id uuid REFERENCES atendimentos(id) ON DELETE CASCADE NOT NULL,
@@ -65,7 +64,6 @@ CREATE TABLE medicoes (
   created_at timestamptz DEFAULT now()
 );
 
--- Orçamentos
 CREATE TABLE orcamentos (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   atendimento_id uuid REFERENCES atendimentos(id) ON DELETE CASCADE NOT NULL,
@@ -81,7 +79,6 @@ CREATE TABLE orcamentos (
   created_at timestamptz DEFAULT now()
 );
 
--- Execuções
 CREATE TABLE execucoes (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   atendimento_id uuid REFERENCES atendimentos(id) ON DELETE CASCADE NOT NULL,
@@ -94,12 +91,11 @@ CREATE TABLE execucoes (
 );
 
 -- =============================================
--- RLS (Row Level Security)
+-- RLS
 -- =============================================
 
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE imoveis ENABLE ROW LEVEL SECURITY;
-ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE atendimentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE medicoes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orcamentos ENABLE ROW LEVEL SECURITY;
@@ -112,9 +108,6 @@ CREATE POLICY "user_imoveis" ON imoveis
   FOR ALL USING (
     cliente_id IN (SELECT id FROM clientes WHERE user_id = auth.uid())
   );
-
-CREATE POLICY "user_produtos" ON produtos
-  FOR ALL USING (auth.uid() = user_id);
 
 CREATE POLICY "user_atendimentos" ON atendimentos
   FOR ALL USING (auth.uid() = user_id);
@@ -134,13 +127,7 @@ CREATE POLICY "user_execucoes" ON execucoes
     atendimento_id IN (SELECT id FROM atendimentos WHERE user_id = auth.uid())
   );
 
--- =============================================
--- Storage bucket para fotos
--- =============================================
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('fotos', 'fotos', true)
-ON CONFLICT (id) DO NOTHING;
-
+-- Storage policies (recreate with consistent names)
 CREATE POLICY "upload_fotos" ON storage.objects
   FOR INSERT WITH CHECK (bucket_id = 'fotos' AND auth.role() = 'authenticated');
 

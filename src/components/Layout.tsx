@@ -2,7 +2,8 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
 
 const navItems = [
-  { href: '/', label: 'Visitas', match: (p: string) => p === '/' || p.startsWith('/obras') },
+  { href: '/', label: 'Atendimentos', match: (p: string) => p === '/' || p.startsWith('/atendimentos') },
+  { href: '/clientes', label: 'Clientes', match: (p: string) => p.startsWith('/clientes') },
   { href: '/produtos', label: 'Produtos', match: (p: string) => p.startsWith('/produtos') },
 ];
 

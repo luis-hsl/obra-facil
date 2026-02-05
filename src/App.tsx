@@ -2,9 +2,12 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/useAuth';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import ObrasList from './pages/ObrasList';
-import ObraForm from './pages/ObraForm';
-import ObraDetail from './pages/ObraDetail';
+import AtendimentosList from './pages/AtendimentosList';
+import AtendimentoForm from './pages/AtendimentoForm';
+import AtendimentoDetail from './pages/AtendimentoDetail';
+import ClientesList from './pages/ClientesList';
+import ClienteForm from './pages/ClienteForm';
+import ClienteDetail from './pages/ClienteDetail';
 import ProdutosList from './pages/ProdutosList';
 import ProdutoForm from './pages/ProdutoForm';
 
@@ -40,66 +43,25 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/login"
-          element={user ? <Navigate to="/" /> : <Login />}
-        />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <ObrasList />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/obras/nova"
-          element={
-            <ProtectedRoute>
-              <ObraForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/obras/:id"
-          element={
-            <ProtectedRoute>
-              <ObraDetail />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/obras/:id/editar"
-          element={
-            <ProtectedRoute>
-              <ObraForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/produtos"
-          element={
-            <ProtectedRoute>
-              <ProdutosList />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/produtos/novo"
-          element={
-            <ProtectedRoute>
-              <ProdutoForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/produtos/:id/editar"
-          element={
-            <ProtectedRoute>
-              <ProdutoForm />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+
+        {/* Atendimentos */}
+        <Route path="/" element={<ProtectedRoute><AtendimentosList /></ProtectedRoute>} />
+        <Route path="/atendimentos/novo" element={<ProtectedRoute><AtendimentoForm /></ProtectedRoute>} />
+        <Route path="/atendimentos/:id" element={<ProtectedRoute><AtendimentoDetail /></ProtectedRoute>} />
+        <Route path="/atendimentos/:id/editar" element={<ProtectedRoute><AtendimentoForm /></ProtectedRoute>} />
+
+        {/* Clientes */}
+        <Route path="/clientes" element={<ProtectedRoute><ClientesList /></ProtectedRoute>} />
+        <Route path="/clientes/novo" element={<ProtectedRoute><ClienteForm /></ProtectedRoute>} />
+        <Route path="/clientes/:id" element={<ProtectedRoute><ClienteDetail /></ProtectedRoute>} />
+        <Route path="/clientes/:id/editar" element={<ProtectedRoute><ClienteForm /></ProtectedRoute>} />
+
+        {/* Produtos */}
+        <Route path="/produtos" element={<ProtectedRoute><ProdutosList /></ProtectedRoute>} />
+        <Route path="/produtos/novo" element={<ProtectedRoute><ProdutoForm /></ProtectedRoute>} />
+        <Route path="/produtos/:id/editar" element={<ProtectedRoute><ProdutoForm /></ProtectedRoute>} />
+
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

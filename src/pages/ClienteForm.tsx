@@ -3,16 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/useAuth';
 
-export default function ObraForm() {
+export default function ClienteForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const isEditing = Boolean(id);
 
-  const [clienteNome, setClienteNome] = useState('');
-  const [endereco, setEndereco] = useState('');
-  const [tipoServico, setTipoServico] = useState('');
-  const [status, setStatus] = useState('lead');
+  const [nome, setNome] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [email, setEmail] = useState('');
+  const [cpfCnpj, setCpfCnpj] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
@@ -20,19 +20,19 @@ export default function ObraForm() {
   useEffect(() => {
     if (isEditing) {
       supabase
-        .from('obras')
+        .from('clientes')
         .select('*')
         .eq('id', id)
         .single()
         .then(({ data, error }) => {
           if (error || !data) {
-            setErro('Erro ao carregar visita.');
+            setErro('Erro ao carregar cliente.');
             return;
           }
-          setClienteNome(data.cliente_nome);
-          setEndereco(data.endereco || '');
-          setTipoServico(data.tipo_servico || '');
-          setStatus(data.status);
+          setNome(data.nome);
+          setTelefone(data.telefone || '');
+          setEmail(data.email || '');
+          setCpfCnpj(data.cpf_cnpj || '');
           setObservacoes(data.observacoes || '');
         });
     }
@@ -43,55 +43,53 @@ export default function ObraForm() {
     setErro('');
     setLoading(true);
 
-    const obraData = {
-      cliente_nome: clienteNome,
-      endereco: endereco || null,
-      tipo_servico: tipoServico || null,
-      status,
-      observacoes: observacoes || null,
+    const clienteData = {
+      nome: nome.trim(),
+      telefone: telefone.trim() || null,
+      email: email.trim() || null,
+      cpf_cnpj: cpfCnpj.trim() || null,
+      observacoes: observacoes.trim() || null,
     };
 
     if (isEditing) {
-      const { error } = await supabase.from('obras').update(obraData).eq('id', id);
+      const { error } = await supabase.from('clientes').update(clienteData).eq('id', id);
       if (error) {
-        setErro('Erro ao salvar visita. Tente novamente.');
+        setErro('Erro ao salvar cliente.');
         setLoading(false);
         return;
       }
-      navigate(`/obras/${id}`);
+      navigate(`/clientes/${id}`);
     } else {
       const { data, error } = await supabase
-        .from('obras')
-        .insert({ ...obraData, user_id: user!.id })
+        .from('clientes')
+        .insert({ ...clienteData, user_id: user!.id })
         .select()
         .single();
 
       if (error || !data) {
-        setErro('Erro ao salvar visita. Tente novamente.');
+        setErro('Erro ao salvar cliente.');
         setLoading(false);
         return;
       }
-      navigate(`/obras/${data.id}`);
+      navigate(`/clientes/${data.id}`);
     }
   };
 
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-4">
-        {isEditing ? 'Editar Visita' : 'Nova Visita'}
+        {isEditing ? 'Editar Cliente' : 'Novo Cliente'}
       </h2>
 
       {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nome do Cliente *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
           <input
             type="text"
-            value={clienteNome}
-            onChange={(e) => setClienteNome(e.target.value)}
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
             required
             placeholder="Ex: João da Silva"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -99,61 +97,46 @@ export default function ObraForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Endereço *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
           <input
-            type="text"
-            value={endereco}
-            onChange={(e) => setEndereco(e.target.value)}
-            required
-            placeholder="Ex: Rua das Flores, 123"
+            type="tel"
+            inputMode="tel"
+            value={telefone}
+            onChange={(e) => setTelefone(e.target.value)}
+            placeholder="(11) 99999-9999"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tipo de Serviço *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
           <input
-            type="text"
-            value={tipoServico}
-            onChange={(e) => setTipoServico(e.target.value)}
-            required
-            placeholder="Ex: Piso laminado, Vidro temperado, Gesso"
+            type="email"
+            inputMode="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="joao@email.com"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        {isEditing && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="lead">Lead</option>
-              <option value="medicao">Medição</option>
-              <option value="orcado">Orçado</option>
-              <option value="execucao">Execução</option>
-              <option value="finalizado">Finalizado</option>
-            </select>
-          </div>
-        )}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ</label>
+          <input
+            type="text"
+            value={cpfCnpj}
+            onChange={(e) => setCpfCnpj(e.target.value)}
+            placeholder="000.000.000-00"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Observações
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
           <textarea
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             rows={3}
-            placeholder="Ex: Cliente prefere horário pela manhã"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>

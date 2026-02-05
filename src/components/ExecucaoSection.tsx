@@ -3,12 +3,12 @@ import { supabase } from '../lib/supabase';
 import type { Execucao } from '../types';
 
 interface Props {
-  obraId: string;
+  atendimentoId: string;
   execucoes: Execucao[];
   onSave: () => void;
 }
 
-export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
+export default function ExecucaoSection({ atendimentoId, execucoes, onSave }: Props) {
   const exec = execucoes[0] || null;
   const [observacoes, setObservacoes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
     setLoading(true);
 
     const { error } = await supabase.from('execucoes').insert({
-      obra_id: obraId,
+      atendimento_id: atendimentoId,
       observacoes: observacoes || null,
     });
 
@@ -39,8 +39,11 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
   const toggleStatus = async () => {
     if (!exec) return;
     setToggling(true);
-    const newStatus = exec.status === 'pendente' ? 'concluido' : 'pendente';
-    const { error } = await supabase.from('execucoes').update({ status: newStatus }).eq('id', exec.id);
+    const nextStatus =
+      exec.status === 'pendente' ? 'em_andamento'
+      : exec.status === 'em_andamento' ? 'concluido'
+      : 'pendente';
+    const { error } = await supabase.from('execucoes').update({ status: nextStatus }).eq('id', exec.id);
     if (error) {
       setErro('Erro ao atualizar status.');
     } else {
@@ -54,7 +57,7 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
     setUploading(true);
     setErro('');
     const ext = file.name.split('.').pop();
-    const path = `${obraId}/${exec.id}.${ext}`;
+    const path = `${atendimentoId}/${exec.id}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from('fotos')
@@ -80,6 +83,20 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
     onSave();
   };
 
+  const getStatusLabel = () => {
+    if (!exec) return '';
+    if (exec.status === 'pendente') return 'Iniciar';
+    if (exec.status === 'em_andamento') return 'Concluir';
+    return 'Reabrir';
+  };
+
+  const getStatusColor = () => {
+    if (!exec) return '';
+    if (exec.status === 'pendente') return 'bg-blue-600 text-white';
+    if (exec.status === 'em_andamento') return 'bg-green-600 text-white';
+    return 'bg-gray-200 text-gray-700';
+  };
+
   return (
     <div>
       {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
@@ -87,9 +104,7 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
       {!exec ? (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Observações (opcional)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Observações (opcional)</label>
             <input
               type="text"
               value={observacoes}
@@ -98,67 +113,42 @@ export default function ExecucaoSection({ obraId, execucoes, onSave }: Props) {
               className="w-full px-3 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <button
-            onClick={handleIniciar}
-            disabled={loading}
-            className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50"
-          >
+          <button onClick={handleIniciar} disabled={loading} className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50">
             {loading ? 'Iniciando...' : 'Iniciar Execução'}
           </button>
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Status atual */}
-          <div className={`rounded-lg p-4 ${exec.status === 'concluido' ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
-            <p className={`text-sm font-semibold ${exec.status === 'concluido' ? 'text-green-800' : 'text-yellow-800'}`}>
-              {exec.status === 'concluido' ? 'Execução concluída' : 'Execução em andamento'}
+          <div className={`rounded-lg p-4 ${
+            exec.status === 'concluido' ? 'bg-green-50 border border-green-200'
+            : exec.status === 'em_andamento' ? 'bg-orange-50 border border-orange-200'
+            : 'bg-yellow-50 border border-yellow-200'
+          }`}>
+            <p className={`text-sm font-semibold ${
+              exec.status === 'concluido' ? 'text-green-800'
+              : exec.status === 'em_andamento' ? 'text-orange-800'
+              : 'text-yellow-800'
+            }`}>
+              {exec.status === 'concluido' ? 'Execução concluída'
+              : exec.status === 'em_andamento' ? 'Execução em andamento'
+              : 'Execução pendente'}
             </p>
             {exec.observacoes && (
-              <p className={`text-sm mt-1 ${exec.status === 'concluido' ? 'text-green-700' : 'text-yellow-700'}`}>
-                {exec.observacoes}
-              </p>
+              <p className="text-sm mt-1 text-gray-600">{exec.observacoes}</p>
             )}
           </div>
 
-          {/* Foto */}
           {exec.foto_final_url && (
-            <img
-              src={exec.foto_final_url}
-              alt="Foto final"
-              className="w-full rounded-lg max-h-64 object-cover"
-            />
+            <img src={exec.foto_final_url} alt="Foto final" className="w-full rounded-lg max-h-64 object-cover" />
           )}
 
           <div className="flex gap-3">
-            <button
-              onClick={toggleStatus}
-              disabled={toggling}
-              className={`flex-1 py-3 rounded-lg font-semibold disabled:opacity-50 ${
-                exec.status === 'pendente'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-200 text-gray-700'
-              }`}
-            >
-              {toggling
-                ? '...'
-                : exec.status === 'pendente'
-                  ? 'Marcar Concluído'
-                  : 'Reabrir'}
+            <button onClick={toggleStatus} disabled={toggling} className={`flex-1 py-3 rounded-lg font-semibold disabled:opacity-50 ${getStatusColor()}`}>
+              {toggling ? '...' : getStatusLabel()}
             </button>
-
             <label className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold text-center cursor-pointer flex items-center justify-center">
               {uploading ? 'Enviando...' : 'Enviar Foto'}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                disabled={uploading}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleUploadFoto(file);
-                }}
-              />
+              <input type="file" accept="image/*" capture="environment" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleUploadFoto(file); }} />
             </label>
           </div>
         </div>

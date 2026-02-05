@@ -3,12 +3,12 @@ import { supabase } from '../lib/supabase';
 import type { Medicao } from '../types';
 
 interface Props {
-  obraId: string;
+  atendimentoId: string;
   medicoes: Medicao[];
   onSave: () => void;
 }
 
-export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
+export default function MedicaoForm({ atendimentoId, medicoes, onSave }: Props) {
   const medicao = medicoes[0] || null;
   const [editing, setEditing] = useState(false);
   const [areaTotal, setAreaTotal] = useState('');
@@ -20,7 +20,7 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
 
   const startEdit = () => {
     if (medicao) {
-      setAreaTotal(String(medicao.valor));
+      setAreaTotal(String(medicao.area_total));
       setObservacoes(medicao.observacoes || '');
     }
     setEditing(true);
@@ -41,7 +41,7 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
     if (medicao) {
       const { error } = await supabase
         .from('medicoes')
-        .update({ valor, observacoes: observacoes || null })
+        .update({ area_total: valor, observacoes: observacoes || null })
         .eq('id', medicao.id);
 
       if (error) {
@@ -51,9 +51,8 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
       }
     } else {
       const { error } = await supabase.from('medicoes').insert({
-        obra_id: obraId,
-        tipo_medida: 'm2',
-        valor,
+        atendimento_id: atendimentoId,
+        area_total: valor,
         observacoes: observacoes || null,
       });
 
@@ -79,14 +78,11 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
         <div className="bg-green-50 rounded-lg border border-green-200 p-4">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-semibold text-green-800">Medição registrada</p>
-            <button
-              onClick={startEdit}
-              className="text-sm text-blue-600 font-medium"
-            >
+            <button onClick={startEdit} className="text-sm text-blue-600 font-medium">
               Editar
             </button>
           </div>
-          <p className="text-2xl font-bold text-green-900">{medicao.valor} m²</p>
+          <p className="text-2xl font-bold text-green-900">{medicao.area_total} m²</p>
           {medicao.observacoes && (
             <p className="text-sm text-green-700 mt-1">{medicao.observacoes}</p>
           )}
@@ -111,9 +107,7 @@ export default function MedicaoForm({ obraId, medicoes, onSave }: Props) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Observações
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
             <input
               type="text"
               value={observacoes}
