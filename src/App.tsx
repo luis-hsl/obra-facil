@@ -2,9 +2,14 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/useAuth';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import AtendimentosList from './pages/AtendimentosList';
+import ClientesList from './pages/ClientesList';
+import AndamentoList from './pages/AndamentoList';
+import OperacionalList from './pages/OperacionalList';
+import ConcluidosList from './pages/ConcluidosList';
+import Financeiro from './pages/Financeiro';
 import AtendimentoForm from './pages/AtendimentoForm';
 import AtendimentoDetail from './pages/AtendimentoDetail';
+import Precificacao from './pages/Precificacao';
 import ProdutosList from './pages/ProdutosList';
 import ProdutoForm from './pages/ProdutoForm';
 
@@ -42,8 +47,24 @@ export default function App() {
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
 
-        {/* Atendimentos */}
-        <Route path="/" element={<ProtectedRoute><AtendimentosList /></ProtectedRoute>} />
+        {/* Clientes (home) */}
+        <Route path="/" element={<ProtectedRoute><ClientesList /></ProtectedRoute>} />
+        <Route path="/clientes" element={<ProtectedRoute><ClientesList /></ProtectedRoute>} />
+
+        {/* Em Andamento */}
+        <Route path="/andamento" element={<ProtectedRoute><AndamentoList /></ProtectedRoute>} />
+
+        {/* Operacional */}
+        <Route path="/operacional" element={<ProtectedRoute><OperacionalList /></ProtectedRoute>} />
+        <Route path="/precificacao/:id" element={<ProtectedRoute><Precificacao /></ProtectedRoute>} />
+
+        {/* Concluídos */}
+        <Route path="/concluidos" element={<ProtectedRoute><ConcluidosList /></ProtectedRoute>} />
+
+        {/* Financeiro */}
+        <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
+
+        {/* Atendimentos (detail/form) */}
         <Route path="/atendimentos/novo" element={<ProtectedRoute><AtendimentoForm /></ProtectedRoute>} />
         <Route path="/atendimentos/:id" element={<ProtectedRoute><AtendimentoDetail /></ProtectedRoute>} />
         <Route path="/atendimentos/:id/editar" element={<ProtectedRoute><AtendimentoForm /></ProtectedRoute>} />

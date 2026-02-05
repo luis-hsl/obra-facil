@@ -90,7 +90,7 @@ export default function OperacionalList() {
             return (
               <Link
                 key={a.id}
-                to={`/atendimentos/${a.id}`}
+                to={`/precificacao/${a.id}`}
                 className="block bg-white rounded-lg border border-gray-200 p-4 no-underline"
               >
                 <div className="flex items-start justify-between">
