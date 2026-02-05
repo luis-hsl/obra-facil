@@ -179,7 +179,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     setErro('');
     setLoading(true);
 
-    // Criar o orçamento principal
+    // Criar o orçamento principal (salva config de parcelamento para o PDF)
     const { data: orcamento, error: orcError } = await supabase.from('orcamentos').insert({
       atendimento_id: atendimentoId,
       produto_id: null, // Agora os produtos ficam nos itens
@@ -187,11 +187,11 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
       area_com_perda: null,
       perda_percentual: null,
       valor_total: Math.round(totalGeral * 100) / 100,
-      forma_pagamento: formaPagamento,
-      numero_parcelas: formaPagamento === 'parcelado' ? numeroParcelas : 1,
-      taxa_juros_mensal: formaPagamento === 'parcelado' ? taxaEfetiva : 0,
-      valor_parcela: formaPagamento === 'parcelado' ? Math.round(valorParcela! * 100) / 100 : null,
-      valor_total_parcelado: formaPagamento === 'parcelado' ? Math.round(valorTotalParcelado! * 100) / 100 : null,
+      forma_pagamento: 'parcelado', // Sempre salva config de parcelamento
+      numero_parcelas: numeroParcelas,
+      taxa_juros_mensal: taxaEfetiva,
+      valor_parcela: null,
+      valor_total_parcelado: null,
     }).select().single();
 
     if (orcError || !orcamento) {
@@ -270,7 +270,15 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     const itensDoOrcamento = orcamentoItens[orcamento.id] || [];
     // Legado: se não tem itens, usa o produto_id do orçamento
     const produto = orcamento.produto_id ? produtosMap[orcamento.produto_id] : null;
-    gerarPDF({ atendimento, orcamento, produto, itens: itensDoOrcamento, produtosMap });
+    gerarPDF({
+      atendimento,
+      orcamento,
+      produto,
+      itens: itensDoOrcamento,
+      produtosMap,
+      numeroParcelas: orcamento.numero_parcelas || 12,
+      taxaJuros: orcamento.taxa_juros_mensal || 2,
+    });
   };
 
   const formatCurrency = (value: number) =>
