@@ -28,20 +28,21 @@ function calcularItem(area: number, perda: number, precoPorM2: number) {
   return { areaComPerda, total };
 }
 
-function calcularParcela(valorTotal: number, taxaMensal: number, numParcelas: number): number {
-  if (taxaMensal === 0) return valorTotal / numParcelas;
-  const i = taxaMensal / 100;
-  const n = numParcelas;
-  return valorTotal * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
+// Taxa da maquininha: percentual simples sobre a venda (não é juros compostos)
+function calcularParcelamento(valorTotal: number, taxaMaquina: number, numParcelas: number) {
+  const totalComTaxa = valorTotal * (1 + taxaMaquina / 100);
+  const parcela = totalComTaxa / numParcelas;
+  return { totalComTaxa, parcela };
 }
 
 const OPCOES_PARCELAS = [2, 3, 4, 5, 6, 10, 12];
-const OPCOES_JUROS = [
-  { label: 'Sem juros', value: 0 },
-  { label: '1,5% a.m.', value: 1.5 },
-  { label: '2% a.m.', value: 2 },
-  { label: '2,5% a.m.', value: 2.5 },
-  { label: '3% a.m.', value: 3 },
+const OPCOES_TAXA_MAQUINA = [
+  { label: 'Sem taxa', value: 0 },
+  { label: '2%', value: 2 },
+  { label: '3%', value: 3 },
+  { label: '4%', value: 4 },
+  { label: '5%', value: 5 },
+  { label: '6%', value: 6 },
 ];
 
 export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, areaMedicao, perdaMedicao, onSave }: Props) {
@@ -60,8 +61,8 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
   // Pagamento
   const [formaPagamento, setFormaPagamento] = useState<'a_vista' | 'parcelado'>('a_vista');
   const [numeroParcelas, setNumeroParcelas] = useState(2);
-  const [taxaJuros, setTaxaJuros] = useState(0);
-  const [taxaJurosCustom, setTaxaJurosCustom] = useState('');
+  const [taxaMaquina, setTaxaJuros] = useState(0);
+  const [taxaMaquinaCustom, setTaxaJurosCustom] = useState('');
   const [usarTaxaCustom, setUsarTaxaCustom] = useState(false);
 
   // Itens dos orçamentos existentes
@@ -163,12 +164,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
 
   const totalGeral = itens.reduce((sum, item) => sum + item.valorTotal, 0);
 
-  const taxaEfetiva = usarTaxaCustom ? parseFloat(taxaJurosCustom) || 0 : taxaJuros;
-  const valorParcela = totalGeral > 0 && formaPagamento === 'parcelado'
-    ? calcularParcela(totalGeral, taxaEfetiva, numeroParcelas)
-    : null;
-  const valorTotalParcelado = valorParcela ? valorParcela * numeroParcelas : null;
-  const jurosTotal = valorTotalParcelado ? valorTotalParcelado - totalGeral : 0;
+  const taxaEfetiva = usarTaxaCustom ? parseFloat(taxaMaquinaCustom) || 0 : taxaMaquina;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,7 +273,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
       itens: itensDoOrcamento,
       produtosMap,
       numeroParcelas: orcamento.numero_parcelas || 12,
-      taxaJuros: orcamento.taxa_juros_mensal || 2,
+      taxaMaquina: orcamento.taxa_juros_mensal || 2,
     });
   };
 
@@ -339,7 +335,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                 {o.forma_pagamento === 'parcelado' && o.valor_parcela && o.valor_total_parcelado && (
                   <div className="bg-blue-50 rounded-lg p-3 mb-3 text-sm">
                     <p className="font-semibold text-blue-700">Condições de Pagamento:</p>
-                    <p className="text-blue-800">{o.numero_parcelas}x de {formatCurrency(o.valor_parcela)} {o.taxa_juros_mensal > 0 && `(${o.taxa_juros_mensal}% a.m.)`}</p>
+                    <p className="text-blue-800">{o.numero_parcelas}x de {formatCurrency(o.valor_parcela)} {o.taxa_juros_mensal > 0 && `(${o.taxa_juros_mensal}% taxa)`}</p>
                     <p className="text-blue-800">Total parcelado: {formatCurrency(o.valor_total_parcelado)}</p>
                     {o.valor_total_parcelado > o.valor_total && (
                       <p className="text-blue-600">Juros: {formatCurrency(o.valor_total_parcelado - o.valor_total)}</p>
@@ -424,7 +420,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                     </select>
                     <span className="text-sm text-gray-500">com</span>
                     <select
-                      value={usarTaxaCustom ? 'custom' : taxaJuros}
+                      value={usarTaxaCustom ? 'custom' : taxaMaquina}
                       onChange={(e) => {
                         if (e.target.value === 'custom') {
                           setUsarTaxaCustom(true);
@@ -435,7 +431,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                       }}
                       className="px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white"
                     >
-                      {OPCOES_JUROS.map((opt) => (
+                      {OPCOES_TAXA_MAQUINA.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                       <option value="custom">Outro...</option>
@@ -446,9 +442,9 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                         inputMode="decimal"
                         step="0.1"
                         min="0"
-                        value={taxaJurosCustom}
+                        value={taxaMaquinaCustom}
                         onChange={(e) => setTaxaJurosCustom(e.target.value)}
-                        placeholder="% a.m."
+                        placeholder="% taxa"
                         className="w-20 px-2 py-2 rounded-lg border border-gray-300 text-sm"
                       />
                     )}
@@ -463,9 +459,8 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                     {itens.length === 1 ? 'Opção de produto:' : `${itens.length} opções de produtos:`}
                   </p>
                   {itens.map((item, index) => {
-                    const parcelaItem = calcularParcela(item.valorTotal, taxaEfetiva, numeroParcelas);
-                    const totalParceladoItem = parcelaItem * numeroParcelas;
-                    const jurosItem = totalParceladoItem - item.valorTotal;
+                    const { totalComTaxa, parcela } = calcularParcelamento(item.valorTotal, taxaEfetiva, numeroParcelas);
+                    const taxaCobrada = totalComTaxa - item.valorTotal;
 
                     return (
                       <div key={item.produtoId} className="bg-blue-50 rounded-lg p-4 border border-blue-200">
@@ -504,12 +499,12 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                             À vista: {formatCurrency(item.valorTotal)}
                           </p>
                           <p className="text-lg font-semibold text-blue-800">
-                            {numeroParcelas}x de {formatCurrency(parcelaItem)}
-                            {taxaEfetiva > 0 && <span className="text-sm font-normal text-blue-600"> ({taxaEfetiva}% a.m.)</span>}
+                            {numeroParcelas}x de {formatCurrency(parcela)}
+                            {taxaEfetiva > 0 && <span className="text-sm font-normal text-blue-600"> ({taxaEfetiva}% taxa)</span>}
                           </p>
-                          {jurosItem > 0 && (
+                          {taxaCobrada > 0 && (
                             <p className="text-xs text-gray-500">
-                              Total parcelado: {formatCurrency(totalParceladoItem)} (juros: {formatCurrency(jurosItem)})
+                              Total: {formatCurrency(totalComTaxa)} (taxa: {formatCurrency(taxaCobrada)})
                             </p>
                           )}
                         </div>

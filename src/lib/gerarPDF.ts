@@ -4,11 +4,11 @@ import type { Orcamento, OrcamentoItem, Produto, Atendimento } from '../types';
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-function calcularParcela(valorTotal: number, taxaMensal: number, numParcelas: number): number {
-  if (taxaMensal === 0) return valorTotal / numParcelas;
-  const i = taxaMensal / 100;
-  const n = numParcelas;
-  return valorTotal * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
+// Taxa da maquininha: percentual simples sobre a venda
+function calcularParcelamento(valorTotal: number, taxaMaquina: number, numParcelas: number) {
+  const totalComTaxa = valorTotal * (1 + taxaMaquina / 100);
+  const parcela = totalComTaxa / numParcelas;
+  return { totalComTaxa, parcela };
 }
 
 interface GerarPDFParams {
@@ -97,8 +97,7 @@ export function gerarPDF({ atendimento, orcamento, produto, itens = [], produtos
       // Cálculos
       const valorBase = item.valor_total;
       const valorComDesconto = valorBase * (1 - DESCONTO_AVISTA);
-      const parcela = calcularParcela(valorBase, taxaJuros, numeroParcelas);
-      const totalParcelado = parcela * numeroParcelas;
+      const { totalComTaxa, parcela } = calcularParcelamento(valorBase, taxaJuros, numeroParcelas);
 
       // Cabeçalho da opção
       doc.setFillColor(240, 240, 240);
@@ -127,14 +126,14 @@ export function gerarPDF({ atendimento, orcamento, produto, itens = [], produtos
       doc.text(`Parcelado: ${numeroParcelas}x de ${formatCurrency(parcela)}`, 20, y);
       if (taxaJuros > 0) {
         doc.setTextColor(128, 128, 128);
-        doc.text(` (${taxaJuros}% a.m.)`, 20 + doc.getTextWidth(`Parcelado: ${numeroParcelas}x de ${formatCurrency(parcela)}`), y);
+        doc.text(` (${taxaJuros}% taxa)`, 20 + doc.getTextWidth(`Parcelado: ${numeroParcelas}x de ${formatCurrency(parcela)}`), y);
         doc.setTextColor(0, 0, 0);
       }
       y += 6;
 
       doc.setFontSize(9);
       doc.setTextColor(128, 128, 128);
-      doc.text(`Total parcelado: ${formatCurrency(totalParcelado)}`, 20, y);
+      doc.text(`Total: ${formatCurrency(totalComTaxa)}`, 20, y);
       doc.setTextColor(0, 0, 0);
       y += 12;
 
@@ -149,8 +148,7 @@ export function gerarPDF({ atendimento, orcamento, produto, itens = [], produtos
     // Formato legado (produto único no orçamento)
     const valorBase = orcamento.valor_total;
     const valorComDesconto = valorBase * (1 - DESCONTO_AVISTA);
-    const parcela = calcularParcela(valorBase, taxaJuros, numeroParcelas);
-    const totalParcelado = parcela * numeroParcelas;
+    const { totalComTaxa, parcela } = calcularParcelamento(valorBase, taxaJuros, numeroParcelas);
 
     doc.setFont('helvetica', 'bold');
     doc.text('Produto:', 20, y);
@@ -194,13 +192,13 @@ export function gerarPDF({ atendimento, orcamento, produto, itens = [], produtos
     doc.setFont('helvetica', 'normal');
     doc.text(`Parcelado: ${numeroParcelas}x de ${formatCurrency(parcela)}`, 20, y);
     if (taxaJuros > 0) {
-      doc.text(` (${taxaJuros}% a.m.)`, 20 + doc.getTextWidth(`Parcelado: ${numeroParcelas}x de ${formatCurrency(parcela)}`), y);
+      doc.text(` (${taxaJuros}% taxa)`, 20 + doc.getTextWidth(`Parcelado: ${numeroParcelas}x de ${formatCurrency(parcela)}`), y);
     }
     y += 8;
 
     doc.setFontSize(10);
     doc.setTextColor(128, 128, 128);
-    doc.text(`Total parcelado: ${formatCurrency(totalParcelado)}`, 20, y);
+    doc.text(`Total: ${formatCurrency(totalComTaxa)}`, 20, y);
     doc.setTextColor(0, 0, 0);
     y += 12;
   }
