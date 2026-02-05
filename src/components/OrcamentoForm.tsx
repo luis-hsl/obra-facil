@@ -162,8 +162,6 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     setItens(novosItens);
   };
 
-  const totalGeral = itens.reduce((sum, item) => sum + item.valorTotal, 0);
-
   const taxaEfetiva = usarTaxaCustom ? parseFloat(taxaMaquinaCustom) || 0 : taxaMaquina;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -176,13 +174,14 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     setLoading(true);
 
     // Criar o orçamento principal (salva config de parcelamento para o PDF)
+    // valor_total fica 0 pois cada item tem seu próprio total
     const { data: orcamento, error: orcError } = await supabase.from('orcamentos').insert({
       atendimento_id: atendimentoId,
       produto_id: null, // Agora os produtos ficam nos itens
       area_total: null,
       area_com_perda: null,
       perda_percentual: null,
-      valor_total: Math.round(totalGeral * 100) / 100,
+      valor_total: 0, // Valores individuais estão nos itens
       forma_pagamento: 'parcelado', // Sempre salva config de parcelamento
       numero_parcelas: numeroParcelas,
       taxa_juros_mensal: taxaEfetiva,
@@ -325,6 +324,9 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                             {o.numero_parcelas || 12}x de {formatCurrency(parcela)}
                             {(o.taxa_juros_mensal || 0) > 0 && ` (${o.taxa_juros_mensal}% taxa)`}
                           </p>
+                          {(o.taxa_juros_mensal || 0) > 0 && (
+                            <p className="text-xs text-gray-500">Total: {formatCurrency(totalComTaxa)}</p>
+                          )}
                         </div>
                       );
                     })}

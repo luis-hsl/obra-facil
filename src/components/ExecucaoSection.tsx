@@ -5,10 +5,12 @@ import type { Execucao } from '../types';
 interface Props {
   atendimentoId: string;
   execucoes: Execucao[];
+  currentStatus: string;
   onSave: () => void;
+  onConcluirAtendimento?: () => void;
 }
 
-export default function ExecucaoSection({ atendimentoId, execucoes, onSave }: Props) {
+export default function ExecucaoSection({ atendimentoId, execucoes, currentStatus, onSave, onConcluirAtendimento }: Props) {
   const exec = execucoes[0] || null;
   const [observacoes, setObservacoes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,11 @@ export default function ExecucaoSection({ atendimentoId, execucoes, onSave }: Pr
       setErro('Erro ao iniciar execução.');
       setLoading(false);
       return;
+    }
+
+    // Auto-avançar status para 'execucao' se ainda estiver em aprovado
+    if (currentStatus === 'aprovado') {
+      await supabase.from('atendimentos').update({ status: 'execucao' }).eq('id', atendimentoId);
     }
 
     setObservacoes('');
@@ -151,6 +158,15 @@ export default function ExecucaoSection({ atendimentoId, execucoes, onSave }: Pr
               <input type="file" accept="image/*" capture="environment" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleUploadFoto(file); }} />
             </label>
           </div>
+
+          {exec.status === 'concluido' && onConcluirAtendimento && (
+            <button
+              onClick={onConcluirAtendimento}
+              className="w-full py-3 bg-emerald-600 text-white rounded-lg font-semibold mt-3"
+            >
+              Finalizar Atendimento
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/useAuth';
 
 export default function AtendimentoForm() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const isEditing = Boolean(id);
 
-  const [clienteNome, setClienteNome] = useState('');
-  const [clienteTelefone, setClienteTelefone] = useState('');
+  // Preencher com dados do cliente se vindo da aba Clientes
+  const clienteParam = searchParams.get('cliente') || '';
+  const telefoneParam = searchParams.get('telefone') || '';
+
+  const [clienteNome, setClienteNome] = useState(clienteParam);
+  const [clienteTelefone, setClienteTelefone] = useState(telefoneParam);
   const [endereco, setEndereco] = useState('');
   const [numero, setNumero] = useState('');
   const [complemento, setComplemento] = useState('');
@@ -91,9 +96,10 @@ export default function AtendimentoForm() {
       }
       navigate(`/atendimentos/${id}`);
     } else {
+      // Criar com status 'visita_tecnica' - vai para aba Em Andamento
       const { data, error } = await supabase
         .from('atendimentos')
-        .insert({ ...atendimentoData, user_id: user!.id })
+        .insert({ ...atendimentoData, status: 'visita_tecnica', user_id: user!.id })
         .select()
         .single();
 
@@ -102,7 +108,8 @@ export default function AtendimentoForm() {
         setLoading(false);
         return;
       }
-      navigate(`/atendimentos/${data.id}`);
+      // Redirecionar para Em Andamento
+      navigate('/andamento');
     }
   };
 
@@ -239,6 +246,7 @@ export default function AtendimentoForm() {
               <option value="aprovado">Aprovado</option>
               <option value="reprovado">Reprovado</option>
               <option value="execucao">Execução</option>
+              <option value="concluido">Concluído</option>
             </select>
           </div>
         )}

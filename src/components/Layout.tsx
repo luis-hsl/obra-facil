@@ -2,7 +2,11 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
 
 const navItems = [
-  { href: '/', label: 'Atendimentos', match: (p: string) => p === '/' || p.startsWith('/atendimentos') },
+  { href: '/', label: 'Clientes', match: (p: string) => p === '/' || p === '/clientes' },
+  { href: '/andamento', label: 'Em Andamento', match: (p: string) => p === '/andamento' },
+  { href: '/operacional', label: 'Operacional', match: (p: string) => p === '/operacional' },
+  { href: '/concluidos', label: 'Concluídos', match: (p: string) => p === '/concluidos' },
+  { href: '/financeiro', label: 'Financeiro', match: (p: string) => p === '/financeiro' },
   { href: '/produtos', label: 'Produtos', match: (p: string) => p.startsWith('/produtos') },
 ];
 
