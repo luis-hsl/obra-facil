@@ -3,7 +3,6 @@ import { useAuth } from '../lib/useAuth';
 
 const navItems = [
   { href: '/', label: 'Atendimentos', match: (p: string) => p === '/' || p.startsWith('/atendimentos') },
-  { href: '/clientes', label: 'Clientes', match: (p: string) => p.startsWith('/clientes') },
   { href: '/produtos', label: 'Produtos', match: (p: string) => p.startsWith('/produtos') },
 ];
 
