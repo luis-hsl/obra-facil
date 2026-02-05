@@ -22,12 +22,6 @@ interface ItemForm {
   valorTotal: number;
 }
 
-function calcularItem(area: number, perda: number, precoPorM2: number) {
-  const areaComPerda = area * (1 + perda / 100);
-  const total = areaComPerda * precoPorM2;
-  return { areaComPerda, total };
-}
-
 // Taxa da maquininha: percentual simples sobre a venda (não é juros compostos)
 function calcularParcelamento(valorTotal: number, taxaMaquina: number, numParcelas: number) {
   const totalComTaxa = valorTotal * (1 + taxaMaquina / 100);
@@ -59,7 +53,6 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
   const [produtoSelecionado, setProdutoSelecionado] = useState('');
 
   // Pagamento
-  const [formaPagamento, setFormaPagamento] = useState<'a_vista' | 'parcelado'>('a_vista');
   const [numeroParcelas, setNumeroParcelas] = useState(2);
   const [taxaMaquina, setTaxaJuros] = useState(0);
   const [taxaMaquinaCustom, setTaxaJurosCustom] = useState('');
@@ -224,7 +217,6 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     // Reset form
     setItens([]);
     setProdutoSelecionado('');
-    setFormaPagamento('a_vista');
     setNumeroParcelas(2);
     setTaxaJuros(0);
     setTaxaJurosCustom('');
@@ -272,7 +264,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
       itens: itensDoOrcamento,
       produtosMap,
       numeroParcelas: orcamento.numero_parcelas || 12,
-      taxaMaquina: orcamento.taxa_juros_mensal || 2,
+      taxaJuros: orcamento.taxa_juros_mensal || 2,
     });
   };
 
