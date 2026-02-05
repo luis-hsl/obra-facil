@@ -400,49 +400,114 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                 {areaMedicao > 0 && <p className="text-xs text-gray-400 mt-1">Área c/ {perdaMedicao}% perda: {areaComPerdaInicial} m²</p>}
               </div>
 
+              {/* Taxa da máquina */}
+              {itens.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Taxa da máquina (parcelamento):</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={numeroParcelas}
+                      onChange={(e) => setNumeroParcelas(parseInt(e.target.value))}
+                      className="px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white"
+                    >
+                      {OPCOES_PARCELAS.map((n) => (
+                        <option key={n} value={n}>{n}x</option>
+                      ))}
+                    </select>
+                    <span className="text-sm text-gray-500">com</span>
+                    <select
+                      value={usarTaxaCustom ? 'custom' : taxaJuros}
+                      onChange={(e) => {
+                        if (e.target.value === 'custom') {
+                          setUsarTaxaCustom(true);
+                        } else {
+                          setUsarTaxaCustom(false);
+                          setTaxaJuros(parseFloat(e.target.value));
+                        }
+                      }}
+                      className="px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white"
+                    >
+                      {OPCOES_JUROS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                      <option value="custom">Outro...</option>
+                    </select>
+                    {usarTaxaCustom && (
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.1"
+                        min="0"
+                        value={taxaJurosCustom}
+                        onChange={(e) => setTaxaJurosCustom(e.target.value)}
+                        placeholder="% a.m."
+                        className="w-20 px-2 py-2 rounded-lg border border-gray-300 text-sm"
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Lista de opções de produtos */}
               {itens.length > 0 && (
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-gray-700">
                     {itens.length === 1 ? 'Opção de produto:' : `${itens.length} opções de produtos:`}
                   </p>
-                  {itens.map((item, index) => (
-                    <div key={item.produtoId} className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="text-xs text-blue-600 font-medium mb-1">Opção {index + 1}</p>
-                          <p className="font-semibold text-gray-900">{item.produto?.fabricante} — {item.produto?.linha}</p>
+                  {itens.map((item, index) => {
+                    const parcelaItem = calcularParcela(item.valorTotal, taxaEfetiva, numeroParcelas);
+                    const totalParceladoItem = parcelaItem * numeroParcelas;
+                    const jurosItem = totalParceladoItem - item.valorTotal;
+
+                    return (
+                      <div key={item.produtoId} className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="text-xs text-blue-600 font-medium mb-1">Opção {index + 1}</p>
+                            <p className="font-semibold text-gray-900">{item.produto?.fabricante} — {item.produto?.linha}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removerItem(index)}
+                            className="text-red-500 text-sm font-medium"
+                          >
+                            Remover
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removerItem(index)}
-                          className="text-red-500 text-sm font-medium"
-                        >
-                          Remover
-                        </button>
-                      </div>
 
-                      <div className="flex items-center gap-2 mb-3">
-                        <label className="text-sm text-gray-600">Área:</label>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          step="0.01"
-                          min="0.01"
-                          value={item.areaTotal || ''}
-                          onChange={(e) => atualizarItemArea(index, parseFloat(e.target.value) || 0)}
-                          className="w-24 px-2 py-1 rounded border border-gray-300 text-sm"
-                        />
-                        <span className="text-sm text-gray-500">m²</span>
-                        <span className="text-sm text-gray-400">x</span>
-                        <span className="text-sm text-gray-600">{formatCurrency(item.produto?.preco_por_m2 || 0)}/m²</span>
-                      </div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <label className="text-sm text-gray-600">Área:</label>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step="0.01"
+                            min="0.01"
+                            value={item.areaTotal || ''}
+                            onChange={(e) => atualizarItemArea(index, parseFloat(e.target.value) || 0)}
+                            className="w-24 px-2 py-1 rounded border border-gray-300 text-sm"
+                          />
+                          <span className="text-sm text-gray-500">m²</span>
+                          <span className="text-sm text-gray-400">x</span>
+                          <span className="text-sm text-gray-600">{formatCurrency(item.produto?.preco_por_m2 || 0)}/m²</span>
+                        </div>
 
-                      <p className="text-xl font-bold text-blue-900">
-                        Total: {formatCurrency(item.valorTotal)}
-                      </p>
-                    </div>
-                  ))}
+                        <div className="space-y-1">
+                          <p className="text-xl font-bold text-blue-900">
+                            À vista: {formatCurrency(item.valorTotal)}
+                          </p>
+                          <p className="text-lg font-semibold text-blue-800">
+                            {numeroParcelas}x de {formatCurrency(parcelaItem)}
+                            {taxaEfetiva > 0 && <span className="text-sm font-normal text-blue-600"> ({taxaEfetiva}% a.m.)</span>}
+                          </p>
+                          {jurosItem > 0 && (
+                            <p className="text-xs text-gray-500">
+                              Total parcelado: {formatCurrency(totalParceladoItem)} (juros: {formatCurrency(jurosItem)})
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
 
                 </div>
               )}
