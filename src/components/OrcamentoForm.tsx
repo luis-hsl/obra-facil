@@ -113,15 +113,15 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     const { error } = await supabase.from('orcamentos').insert({
       atendimento_id: atendimentoId,
       produto_id: produtoId,
-      area_total: area,
-      area_com_perda: calculo.areaComPerda,
+      area_total: Math.round(area * 100) / 100,
+      area_com_perda: Math.round(calculo.areaComPerda * 100) / 100,
       perda_percentual: perda,
-      valor_total: calculo.total,
+      valor_total: Math.round(calculo.total * 100) / 100,
       forma_pagamento: formaPagamento,
       numero_parcelas: formaPagamento === 'parcelado' ? numeroParcelas : 1,
       taxa_juros_mensal: formaPagamento === 'parcelado' ? taxaEfetiva : 0,
-      valor_parcela: formaPagamento === 'parcelado' ? valorParcela : null,
-      valor_total_parcelado: formaPagamento === 'parcelado' ? valorTotalParcelado : null,
+      valor_parcela: formaPagamento === 'parcelado' ? Math.round(valorParcela! * 100) / 100 : null,
+      valor_total_parcelado: formaPagamento === 'parcelado' ? Math.round(valorTotalParcelado! * 100) / 100 : null,
     });
 
     if (error) {
