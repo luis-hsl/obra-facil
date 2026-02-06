@@ -2,12 +2,73 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
 
 const navItems = [
-  { href: '/', label: 'Clientes', match: (p: string) => p === '/' || p === '/clientes' },
-  { href: '/andamento', label: 'Em Andamento', match: (p: string) => p === '/andamento' },
-  { href: '/operacional', label: 'Operacional', match: (p: string) => p === '/operacional' },
-  { href: '/concluidos', label: 'Concluídos', match: (p: string) => p === '/concluidos' },
-  { href: '/financeiro', label: 'Financeiro', match: (p: string) => p === '/financeiro' },
-  { href: '/produtos', label: 'Produtos', match: (p: string) => p.startsWith('/produtos') },
+  {
+    href: '/',
+    label: 'Clientes',
+    shortLabel: 'Clientes',
+    match: (p: string) => p === '/' || p === '/clientes',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/andamento',
+    label: 'Em Andamento',
+    shortLabel: 'Andamento',
+    match: (p: string) => p === '/andamento',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/operacional',
+    label: 'Operacional',
+    shortLabel: 'Operacional',
+    match: (p: string) => p === '/operacional',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/concluidos',
+    label: 'Concluídos',
+    shortLabel: 'Concluídos',
+    match: (p: string) => p === '/concluidos',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/financeiro',
+    label: 'Financeiro',
+    shortLabel: 'Financeiro',
+    match: (p: string) => p === '/financeiro',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/produtos',
+    label: 'Produtos',
+    shortLabel: 'Produtos',
+    match: (p: string) => p.startsWith('/produtos'),
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+    ),
+  },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -29,21 +90,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             Sair
           </button>
         </div>
-        <nav className="flex gap-4 mt-2">
-          {navItems.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className={`text-sm font-medium no-underline ${
-                item.match(pathname)
-                  ? 'text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
       </header>
 
       {/* Sidebar desktop */}
@@ -59,12 +105,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <a
               key={item.href}
               href={item.href}
-              className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium no-underline mb-1 ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium no-underline mb-1 ${
                 item.match(pathname)
                   ? 'bg-blue-50 text-blue-700'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
+              {item.icon}
               {item.label}
             </a>
           ))}
@@ -81,9 +128,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Conteúdo */}
-      <main className="p-4 max-w-lg mx-auto md:ml-60 md:max-w-none md:mx-0 md:px-8 md:py-6">
+      <main className="p-4 pb-24 max-w-lg mx-auto md:ml-60 md:max-w-none md:mx-0 md:px-8 md:py-6 md:pb-6">
         {children}
       </main>
+
+      {/* Bottom Navigation Mobile */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-20">
+        <div className="flex justify-around items-center">
+          {navItems.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center py-2 px-1 min-w-0 flex-1 no-underline ${
+                item.match(pathname)
+                  ? 'text-blue-600'
+                  : 'text-gray-500'
+              }`}
+            >
+              {item.icon}
+              <span className="text-[10px] mt-1 truncate">{item.shortLabel}</span>
+            </a>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
