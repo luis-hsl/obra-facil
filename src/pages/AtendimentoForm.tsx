@@ -103,7 +103,7 @@ export default function AtendimentoForm() {
         .eq('user_id', user!.id)
         .eq('cliente_telefone', clienteTelefone.trim())
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (existenteTelefone) {
         setErro(`Já existe um cadastro com este telefone: ${existenteTelefone.cliente_nome} - ${existenteTelefone.endereco}`);
@@ -119,7 +119,7 @@ export default function AtendimentoForm() {
         .eq('endereco', endereco.trim())
         .eq('numero', numero.trim() || null)
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (existenteEndereco) {
         setErro(`Já existe um cadastro neste endereço: ${existenteEndereco.cliente_nome} - ${existenteEndereco.cliente_telefone}`);
