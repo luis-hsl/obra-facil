@@ -127,6 +127,8 @@ export interface BrandConfig {
   font_family: 'helvetica' | 'times' | 'courier';
   template_pdf_url: string | null;
   pdf_template: PdfTemplate | null;
+  html_template: string | null;
+  product_html_template: string | null;
   created_at: string;
   updated_at: string;
 }

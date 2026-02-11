@@ -265,11 +265,11 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     setDeletingId(null);
   };
 
-  const handleGerarPDF = (orcamento: Orcamento) => {
+  const handleGerarPDF = async (orcamento: Orcamento) => {
     const itensDoOrcamento = orcamentoItens[orcamento.id] || [];
     // Legado: se não tem itens, usa o produto_id do orçamento
     const produto = orcamento.produto_id ? produtosMap[orcamento.produto_id] : null;
-    gerarPDF({
+    await gerarPDF({
       atendimento,
       orcamento,
       produto,
