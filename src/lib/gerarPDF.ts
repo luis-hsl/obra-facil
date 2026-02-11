@@ -92,20 +92,32 @@ function renderFromMockup(
 
   const discountPct = tpl.totals.discount_percent / 100;
 
-  // Role → value mapping for client data
+  // Semantic placeholder → value mapping
   const enderecoCompleto = [atendimento.endereco, atendimento.numero, atendimento.complemento, atendimento.bairro, atendimento.cidade].filter(Boolean).join(', ');
+  const validityDays = bc?.validity_days || 15;
   const roleValues: Record<string, string> = {
+    // company_*
     company_name: companyName,
     company_cnpj: companyCnpj,
     company_phone: companyPhone,
     company_email: companyEmail,
     company_address: companyAddress,
     company_contact: [companyPhone, companyEmail].filter(Boolean).join(' | '),
+    // client_*
     client_name: atendimento.cliente_nome,
     client_phone: atendimento.cliente_telefone || '',
     client_address: enderecoCompleto,
+    client_service_type: atendimento.tipo_servico,
+    // budget_*
+    budget_date: new Date().toLocaleDateString('pt-BR'),
+    budget_validity: `Orçamento válido por ${validityDays} dias.`,
+    budget_validity_days: String(validityDays),
+    budget_terms_text: bc?.footer_text || tpl.observations.default_text,
+    // Legacy aliases
     service_type: atendimento.tipo_servico,
     date: new Date().toLocaleDateString('pt-BR'),
+    terms_text: bc?.footer_text || tpl.observations.default_text,
+    validity: `Orçamento válido por ${validityDays} dias.`,
   };
 
   // Iterate mockup blocks in visual order
@@ -266,29 +278,37 @@ function renderMockupBlock(
       const rowStyle = block.row_style || 'cards';
       const columns = block.columns || [];
 
-      // Count text columns (labels) vs placeholder columns (data)
-      const textColIndices: number[] = [];
-      const placeholderColIndices: number[] = [];
-      columns.forEach((col, i) => {
-        if (col === '{{placeholder}}') placeholderColIndices.push(i);
-        else textColIndices.push(i);
-      });
-
-      // Standard data fields to inject in placeholder order
-      const dataFieldsForItem = (item: typeof items[0], _idx: number) => {
+      // Semantic placeholder → item value resolver
+      const isPlaceholder = (col: string) => /^\{\{.+\}\}$/.test(col);
+      const resolveItemPlaceholder = (col: string, item: typeof items[0], idx: number) => {
+        const key = col.replace(/^\{\{|\}\}$/g, '');
         const discountPrice = item.total * (1 - discountPct);
-        const { parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
-        return [
-          `${item.area} m²`,
-          formatCurrency(item.unitPrice),
-          formatCurrency(item.total),
-          formatCurrency(discountPrice),
-          `${numeroParcelas}x ${formatCurrency(parcela)}`,
-        ];
+        const { totalComTaxa, parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
+        const taxaText = taxaJuros > 0 ? ` (${taxaJuros}% taxa)` : '';
+        const map: Record<string, string> = {
+          budget_item_option: String(idx + 1),
+          budget_item_product: item.name,
+          budget_item_area: `${item.area} m²`,
+          budget_item_unit_price: `${formatCurrency(item.unitPrice)}/m²`,
+          budget_item_total: formatCurrency(item.total),
+          payment_cash_price: formatCurrency(discountPrice),
+          payment_installment_price: `${numeroParcelas}x ${formatCurrency(parcela)}${taxaText}`,
+          payment_installment_total: formatCurrency(totalComTaxa),
+          // Legacy/generic fallbacks
+          table_option: String(idx + 1),
+          table_product: item.name,
+          table_area: `${item.area} m²`,
+          table_price: `${formatCurrency(item.unitPrice)}/m²`,
+          table_total: formatCurrency(item.total),
+        };
+        return map[key] || '';
       };
 
+      // Determine which placeholders are "price" fields (for highlighting)
+      const priceKeys = new Set(['budget_item_total', 'payment_cash_price', 'payment_installment_price', 'payment_installment_total', 'table_total']);
+      const isPriceCol = (col: string) => priceKeys.has(col.replace(/^\{\{|\}\}$/g, ''));
+
       if (rowStyle === 'cards') {
-        // CARDS style
         items.forEach((item, idx) => {
           const hasPerItem = tpl.totals.position === 'per_item';
           const cardH = 32 + (hasPerItem ? 14 : 0);
@@ -311,12 +331,18 @@ function renderMockupBlock(
           doc.text(`OPÇÃO ${idx + 1}: ${item.name}`, x0 + 3, y + 2);
           y += 10;
 
-          // Metrics line
+          // Metrics line from semantic columns
           doc.setFontSize(10);
           doc.setFont(font, 'normal');
           doc.setTextColor(...hexToRgb(br.secondary_color));
-          doc.text(`Área: ${item.area} m²  |  Preço: ${formatCurrency(item.unitPrice)}/m²`, x0 + 3, y);
-          y += 6;
+          const metricsValues = columns
+            .filter(c => isPlaceholder(c) && !isPriceCol(c))
+            .map(c => resolveItemPlaceholder(c, item, idx))
+            .filter(Boolean);
+          if (metricsValues.length > 0) {
+            doc.text(metricsValues.join('  |  '), x0 + 3, y);
+            y += 6;
+          }
 
           // Per-item totals
           if (hasPerItem) {
@@ -345,11 +371,10 @@ function renderMockupBlock(
         });
 
       } else if (rowStyle === 'striped' || rowStyle === 'bordered') {
-        // TABLE style
         const colCount = columns.length || 5;
         const colW = contentW / colCount;
 
-        // Header
+        // Header row — show column labels (strip {{}} wrapper to make a readable header)
         y = checkPage(doc, y, 10, margins.top, margins.bottom);
         if (br.table_header_bg) {
           doc.setFillColor(...hexToRgb(br.table_header_bg));
@@ -358,8 +383,18 @@ function renderMockupBlock(
         doc.setFontSize(10);
         doc.setFont(font, 'bold');
         doc.setTextColor(...hexToRgb(br.table_header_text));
+        const headerLabels: Record<string, string> = {
+          budget_item_option: 'Opção',
+          budget_item_product: 'Produto',
+          budget_item_area: 'Área',
+          budget_item_unit_price: 'Valor/m²',
+          budget_item_total: 'Total',
+          payment_cash_price: 'À Vista',
+          payment_installment_price: 'Parcelado',
+        };
         columns.forEach((col, i) => {
-          const label = col === '{{placeholder}}' ? '' : col;
+          const key = col.replace(/^\{\{|\}\}$/g, '');
+          const label = isPlaceholder(col) ? (headerLabels[key] || '') : col;
           doc.text(label, x0 + i * colW + 1, y);
         });
         y += 5;
@@ -368,7 +403,7 @@ function renderMockupBlock(
         doc.line(x0, y, x0 + contentW, y);
         y += 2;
 
-        // Rows
+        // Data rows
         doc.setFontSize(10);
         items.forEach((item, idx) => {
           y = checkPage(doc, y, 10, margins.top, margins.bottom);
@@ -377,26 +412,17 @@ function renderMockupBlock(
             doc.rect(x0, y - 3.5, contentW, 8, 'F');
           }
 
-          const dataFields = dataFieldsForItem(item, idx);
-          let dataIdx = 0;
-
           doc.setFont(font, 'normal');
           doc.setTextColor(...hexToRgb(br.secondary_color));
 
           columns.forEach((col, i) => {
-            let cellValue: string;
-            if (col === '{{placeholder}}') {
-              cellValue = dataFields[dataIdx] || '';
-              dataIdx++;
-              // Highlight price columns (last placeholders)
-              if (dataIdx >= 3) {
-                doc.setFont(font, 'bold');
-                doc.setTextColor(...hexToRgb(br.price_highlight_color));
-              }
-            } else {
-              // Text column: option number or product name
-              if (i === 0 && col.toLowerCase().includes('op')) cellValue = String(idx + 1);
-              else cellValue = item.name;
+            const cellValue = isPlaceholder(col)
+              ? resolveItemPlaceholder(col, item, idx)
+              : col;
+
+            if (isPriceCol(col)) {
+              doc.setFont(font, 'bold');
+              doc.setTextColor(...hexToRgb(br.price_highlight_color));
             }
             doc.text(cellValue, x0 + i * colW + 1, y);
             doc.setFont(font, 'normal');

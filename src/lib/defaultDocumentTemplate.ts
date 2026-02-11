@@ -9,7 +9,10 @@ export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
         elements: [
           { role: 'logo', style: 'image', position: 'left' },
           { role: 'company_name', style: 'bold' },
-          { role: 'company_contact', style: 'small' },
+          { role: 'company_phone', style: 'small' },
+          { role: 'company_email', style: 'small' },
+          { role: 'company_cnpj', style: 'small' },
+          { role: 'company_address', style: 'small' },
         ],
       },
       {
@@ -29,26 +32,33 @@ export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
           { role: 'label', style: 'bold', text: 'Endereço:' },
           { role: 'client_address', style: 'normal' },
           { role: 'label', style: 'bold', text: 'Serviço:' },
-          { role: 'service_type', style: 'normal' },
+          { role: 'client_service_type', style: 'normal' },
           { role: 'label', style: 'bold', text: 'Data:' },
-          { role: 'date', style: 'normal' },
+          { role: 'budget_date', style: 'normal' },
         ],
       },
       {
         type: 'table',
-        columns: ['Opção', 'Produto', '{{placeholder}}', '{{placeholder}}', '{{placeholder}}'],
+        columns: [
+          '{{budget_item_option}}',
+          '{{budget_item_product}}',
+          '{{budget_item_area}}',
+          '{{budget_item_unit_price}}',
+          '{{budget_item_total}}',
+          '{{payment_cash_price}}',
+        ],
         row_style: 'cards',
       },
       {
         type: 'observations',
         elements: [
-          { role: 'terms_text', style: 'italic' },
+          { role: 'budget_terms_text', style: 'italic' },
         ],
       },
       {
         type: 'footer',
         elements: [
-          { role: 'validity', style: 'small', alignment: 'center' },
+          { role: 'budget_validity', style: 'small', alignment: 'center' },
         ],
       },
     ],
