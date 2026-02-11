@@ -112,7 +112,7 @@ export default function MarcaConfig() {
         ...DEFAULT_DOCUMENT_TEMPLATE,
         ...data,
         version: 2,
-        content_blocks: data.content_blocks?.length > 0 ? data.content_blocks : DEFAULT_DOCUMENT_TEMPLATE.content_blocks,
+        mockup: data.mockup?.blocks?.length > 0 ? data.mockup : DEFAULT_DOCUMENT_TEMPLATE.mockup,
         branding: { ...DEFAULT_DOCUMENT_TEMPLATE.branding, ...data.branding },
         budget_table: { ...DEFAULT_DOCUMENT_TEMPLATE.budget_table, ...data.budget_table },
         totals: { ...DEFAULT_DOCUMENT_TEMPLATE.totals, ...data.totals },
@@ -120,10 +120,6 @@ export default function MarcaConfig() {
         layout_metadata: {
           ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata,
           ...data.layout_metadata,
-          // Ensure sections_order uses content_blocks if AI returned it
-          sections_order: data.layout_metadata?.sections_order?.includes('content_blocks')
-            ? data.layout_metadata.sections_order
-            : DEFAULT_DOCUMENT_TEMPLATE.layout_metadata.sections_order,
           margins: { ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata.margins, ...data.layout_metadata?.margins },
           header: { ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata.header, ...data.layout_metadata?.header, title: { ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata.header.title, ...data.layout_metadata?.header?.title } },
           client_section: { ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata.client_section, ...data.layout_metadata?.client_section },
@@ -355,29 +351,28 @@ export default function MarcaConfig() {
               <div className="text-xs text-gray-600 space-y-1">
                 <p>Fonte: <span className="font-medium">{documentTemplate.branding.font_family}</span></p>
 
-                {/* Content blocks info */}
-                {documentTemplate.content_blocks?.length > 0 ? (
+                {/* Mockup blocks info */}
+                {documentTemplate.mockup?.blocks?.length ? (
                   <>
-                    <p>Blocos: <span className="font-medium">{documentTemplate.content_blocks.length} identificado(s)</span></p>
-                    {documentTemplate.content_blocks.map((block, i) => {
+                    <p>Mockup: <span className="font-medium">{documentTemplate.mockup.blocks.length} bloco(s)</span></p>
+                    {documentTemplate.mockup.blocks.map((block, i) => {
                       const typeLabels: Record<string, string> = {
-                        measurement_item: 'Item por m\u00b2',
-                        fixed_price_product: 'Pre\u00e7o fixo',
-                        product_option: 'Op\u00e7\u00e3o comparativa',
-                        informational: 'Informativo',
+                        header: 'Cabeçalho',
+                        title: 'Título',
+                        separator: 'Separador',
+                        client_data: 'Dados do Cliente',
+                        table: 'Tabela',
+                        observations: 'Observações',
+                        footer: 'Rodapé',
                       };
-                      const roleLabels: Record<string, string> = {
-                        calculavel: 'calcul\u00e1vel',
-                        informativo: 'informativo',
-                        comparativo: 'comparativo',
-                      };
+                      const tableInfo = block.type === 'table' && block.columns
+                        ? ` (${block.columns.length} col. | ${block.row_style || 'plain'})`
+                        : '';
+                      const elCount = block.elements?.length || 0;
                       return (
-                        <div key={block.id || i} className="ml-2 pl-2 border-l-2 border-gray-300">
-                          <p className="font-medium">{typeLabels[block.type] || block.type}</p>
-                          <p className="text-gray-500">
-                            {block.fields.filter(f => f.visible).length} campo(s) | {roleLabels[block.role] || block.role}
-                            {block.confidence < 1 && ` | ${Math.round(block.confidence * 100)}% confian\u00e7a`}
-                          </p>
+                        <div key={i} className="ml-2 pl-2 border-l-2 border-gray-300">
+                          <p className="font-medium">{typeLabels[block.type] || block.type}{tableInfo}</p>
+                          {elCount > 0 && <p className="text-gray-500">{elCount} elemento(s)</p>}
                         </div>
                       );
                     })}

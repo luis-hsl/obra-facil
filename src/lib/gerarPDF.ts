@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import type { Orcamento, OrcamentoItem, Produto, Atendimento, BrandConfig, DocumentTemplate, DocumentBlock, OverlayTemplate } from '../types';
+import type { Orcamento, OrcamentoItem, Produto, Atendimento, BrandConfig, DocumentTemplate, MockupBlock, OverlayTemplate } from '../types';
 import { hexToRgb, fetchImageAsBase64 } from './imageUtils';
 // DEFAULT_DOCUMENT_TEMPLATE used in MarcaConfig for merge with partial AI extractions
 
@@ -40,259 +40,445 @@ function checkPage(doc: jsPDF, y: number, needed: number, marginTop: number, mar
 }
 
 // ============================================================
-// Block-based content renderer (heterogeneous blocks)
+// Mockup-based renderer (visual structure only)
 // ============================================================
 
-function renderContentBlocks(
-  doc: jsPDF,
+function renderFromMockup(
+  params: GerarPDFParams,
   tpl: DocumentTemplate,
-  items: Array<{ name: string; area: number; unitPrice: number; total: number }>,
-  startY: number,
-  x0: number,
-  contentW: number,
-  font: string,
-  br: DocumentTemplate['branding'],
-  margins: { top: number; bottom: number },
-  numeroParcelas: number,
-  taxaJuros: number,
-): number {
-  let y = startY;
+  logoBase64: string | null,
+): string | void {
+  const { atendimento, itens = [], produtosMap = {}, numeroParcelas = 12, taxaJuros = 2, preview } = params;
+  const mockup = tpl.mockup!;
+  const br = tpl.branding;
+  const lm = tpl.layout_metadata;
+  const margins = lm.margins;
+  const font = br.font_family;
+  const bc = params.brandConfig;
+
+  const doc = new jsPDF(lm.orientation === 'landscape' ? 'l' : 'p', 'mm', 'a4');
+  const pageW = doc.internal.pageSize.getWidth();
+  const contentW = pageW - margins.left - margins.right;
+  const x0 = margins.left;
+  let y = margins.top;
+
+  // Company data
+  const companyName = bc?.company_name || tpl.company_fields.find(f => f.type === 'text' && f.style === 'bold')?.value || '';
+  const companyCnpj = bc?.company_cnpj || tpl.company_fields.find(f => f.type === 'cnpj')?.value || '';
+  const companyPhone = bc?.company_phone || tpl.company_fields.find(f => f.type === 'phone')?.value || '';
+  const companyEmail = bc?.company_email || tpl.company_fields.find(f => f.type === 'email')?.value || '';
+  const companyAddress = bc?.company_address || tpl.company_fields.find(f => f.type === 'address')?.value || '';
+
+  // Build items
+  let items: Array<{ name: string; area: number; unitPrice: number; total: number }> = [];
+  if (itens.length > 0) {
+    items = itens.map(item => {
+      const prod = item.produto_id ? produtosMap[item.produto_id] : null;
+      return {
+        name: prod ? `${prod.fabricante} — ${prod.linha}` : 'Produto',
+        area: item.area_total,
+        unitPrice: item.preco_por_m2,
+        total: item.valor_total,
+      };
+    });
+  } else if (params.produto && params.orcamento.area_total) {
+    items = [{
+      name: `${params.produto.fabricante} — ${params.produto.linha}`,
+      area: params.orcamento.area_com_perda || params.orcamento.area_total,
+      unitPrice: params.produto.preco_por_m2,
+      total: params.orcamento.valor_total,
+    }];
+  }
+
   const discountPct = tpl.totals.discount_percent / 100;
 
-  // Find the first block template for each type to use as rendering blueprint
-  const blocksByType = new Map<string, DocumentBlock>();
-  for (const block of tpl.content_blocks) {
-    if (!blocksByType.has(block.type)) {
-      blocksByType.set(block.type, block);
-    }
-  }
-
-  // Determine the primary block template for items
-  // Items from orcamento_itens are measurement_item by default
-  const measurementBlock = blocksByType.get('measurement_item');
-  const fixedPriceBlock = blocksByType.get('fixed_price_product');
-  const primaryBlock = measurementBlock || fixedPriceBlock || tpl.content_blocks[0];
-
-  if (!primaryBlock) return y;
-
-  // Render informational blocks that appear before items
-  const infoBlocks = tpl.content_blocks.filter(b => b.type === 'informational');
-
-  items.forEach((item, idx) => {
-    const block = primaryBlock;
-    const st = block.style;
-
-    if (st.display === 'card') {
-      y = renderBlockCard(doc, tpl, block, item, idx, y, x0, contentW, font, br, margins, discountPct, numeroParcelas, taxaJuros);
-    } else if (st.display === 'table_row') {
-      y = renderBlockTableRow(doc, tpl, block, item, idx, y, x0, contentW, font, br, margins, discountPct, numeroParcelas, taxaJuros);
-    } else if (st.display === 'comparison') {
-      // Comparison renders pairs — skip if already rendered as part of pair
-      y = renderBlockCard(doc, tpl, block, item, idx, y, x0, contentW, font, br, margins, discountPct, numeroParcelas, taxaJuros);
-    } else {
-      // text_block fallback
-      y = renderBlockCard(doc, tpl, block, item, idx, y, x0, contentW, font, br, margins, discountPct, numeroParcelas, taxaJuros);
-    }
-  });
-
-  // Render informational blocks after items
-  for (const infoBlock of infoBlocks) {
-    if (infoBlock.title) {
-      y = checkPage(doc, y, 15, margins.top, margins.bottom);
-      doc.setFontSize(infoBlock.style.body_font_size);
-      doc.setFont(font, 'italic');
-      doc.setTextColor(128, 128, 128);
-      const lines = doc.splitTextToSize(infoBlock.title, contentW);
-      doc.text(lines, x0, y);
-      y += 4 * lines.length + 4;
-    }
-  }
-
-  return y;
-}
-
-function renderBlockCard(
-  doc: jsPDF,
-  tpl: DocumentTemplate,
-  block: DocumentBlock,
-  item: { name: string; area: number; unitPrice: number; total: number },
-  idx: number,
-  startY: number,
-  x0: number,
-  contentW: number,
-  font: string,
-  br: DocumentTemplate['branding'],
-  margins: { top: number; bottom: number },
-  discountPct: number,
-  numeroParcelas: number,
-  taxaJuros: number,
-): number {
-  let y = startY;
-  const st = block.style;
-  const hasPerItemTotals = tpl.totals.position === 'per_item';
-  const cardH = 32 + (hasPerItemTotals ? 14 : 0);
-  y = checkPage(doc, y, cardH, margins.top, margins.bottom);
-
-  // Card background
-  if (st.background_color) {
-    doc.setFillColor(...hexToRgb(st.background_color));
-    doc.rect(x0, y - 2, contentW, cardH - 4, 'F');
-  } else if (br.table_row_alt_bg) {
-    doc.setFillColor(...hexToRgb(br.table_row_alt_bg));
-    doc.rect(x0, y - 2, contentW, cardH - 4, 'F');
-  }
-
-  // Title bar
-  if (br.table_header_bg) {
-    doc.setFillColor(...hexToRgb(br.table_header_bg));
-    doc.rect(x0, y - 2, contentW, 7, 'F');
-  }
-  doc.setFontSize(st.title_font_size);
-  doc.setFont(font, 'bold');
-  doc.setTextColor(...hexToRgb(br.table_header_text));
-  doc.text(`OPÇÃO ${idx + 1}: ${item.name}`, x0 + 3, y + 2);
-  y += 10;
-
-  // Render visible fields based on block definition
-  doc.setFontSize(st.body_font_size);
-  doc.setFont(font, 'normal');
-  doc.setTextColor(...hexToRgb(br.secondary_color));
-
-  const visibleFields = block.fields.filter(f => f.visible);
-  const fieldValues = buildFieldValues(item, visibleFields, discountPct, numeroParcelas, taxaJuros);
-
-  // Group field values into a metrics line
-  const metricsLine = fieldValues
-    .filter(fv => fv.key !== 'product_name' && fv.key !== 'total' && fv.key !== 'discount_price' && fv.key !== 'installment_price')
-    .map(fv => `${fv.label}: ${fv.value}`)
-    .join('  |  ');
-
-  if (metricsLine) {
-    doc.text(metricsLine, x0 + 3, y);
-    y += 6;
-  }
-
-  // Per-item totals
-  if (hasPerItemTotals) {
-    const discountPrice = item.total * (1 - discountPct);
-    const { totalComTaxa, parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
-    const taxaText = taxaJuros > 0 ? ` (${taxaJuros}% taxa)` : '';
-
-    doc.setFont(font, 'bold');
-    doc.setTextColor(...hexToRgb(br.price_highlight_color));
-    doc.text(`${tpl.totals.discount_label} ${formatCurrency(discountPrice)}`, x0 + 3, y);
-    y += 5.5;
-
-    doc.setFont(font, 'normal');
-    doc.setTextColor(...hexToRgb(br.secondary_color));
-    doc.text(`${tpl.totals.installment_label} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + 3, y);
-    y += 5;
-
-    doc.setFontSize(st.body_font_size - 1);
-    doc.setTextColor(128, 128, 128);
-    doc.text(`Total: ${formatCurrency(totalComTaxa)}`, x0 + 3, y);
-    doc.setTextColor(0, 0, 0);
-    y += 3;
-  }
-
-  // Border
-  if (st.border) {
-    doc.setDrawColor(...hexToRgb(br.border_color));
-    doc.setLineWidth(0.2);
-    doc.rect(x0, startY - 2, contentW, y - startY + 4, 'S');
-  }
-
-  y += 6;
-  return y;
-}
-
-function renderBlockTableRow(
-  doc: jsPDF,
-  _tpl: DocumentTemplate,
-  block: DocumentBlock,
-  item: { name: string; area: number; unitPrice: number; total: number },
-  idx: number,
-  startY: number,
-  x0: number,
-  contentW: number,
-  font: string,
-  br: DocumentTemplate['branding'],
-  margins: { top: number; bottom: number },
-  discountPct: number,
-  numeroParcelas: number,
-  taxaJuros: number,
-): number {
-  let y = startY;
-  const st = block.style;
-  const rowH = 8;
-  y = checkPage(doc, y, rowH + 4, margins.top, margins.bottom);
-
-  // Alternating background
-  if (idx % 2 === 1 && br.table_row_alt_bg) {
-    doc.setFillColor(...hexToRgb(br.table_row_alt_bg));
-    doc.rect(x0, y - 3.5, contentW, rowH, 'F');
-  }
-
-  // Build visible fields
-  const visibleFields = block.fields.filter(f => f.visible);
-  const fieldValues = buildFieldValues(item, visibleFields, discountPct, numeroParcelas, taxaJuros);
-
-  // Distribute fields across content width
-  const colCount = fieldValues.length;
-  const colW = contentW / Math.max(colCount, 1);
-
-  doc.setFontSize(st.body_font_size);
-  doc.setFont(font, 'normal');
-  doc.setTextColor(...hexToRgb(br.secondary_color));
-
-  fieldValues.forEach((fv, i) => {
-    const cx = x0 + i * colW;
-    if (fv.key === 'discount_price' || fv.key === 'total') {
-      doc.setFont(font, 'bold');
-      doc.setTextColor(...hexToRgb(br.price_highlight_color));
-    }
-    doc.text(fv.value, cx + 1, y);
-    if (fv.key === 'discount_price' || fv.key === 'total') {
-      doc.setFont(font, 'normal');
-      doc.setTextColor(...hexToRgb(br.secondary_color));
-    }
-  });
-
-  y += rowH;
-
-  // Row separator
-  doc.setDrawColor(...hexToRgb(br.border_color));
-  doc.setLineWidth(0.1);
-  doc.line(x0, y - 1, x0 + contentW, y - 1);
-
-  return y;
-}
-
-function buildFieldValues(
-  item: { name: string; area: number; unitPrice: number; total: number },
-  fields: DocumentBlock['fields'],
-  discountPct: number,
-  numeroParcelas: number,
-  taxaJuros: number,
-): Array<{ key: string; label: string; value: string }> {
-  const discountPrice = item.total * (1 - discountPct);
-  const { parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
-
-  const valueMap: Record<string, string> = {
-    product_name: item.name,
-    area: `${item.area} m²`,
-    preco_m2: formatCurrency(item.unitPrice),
-    unit_price: formatCurrency(item.unitPrice),
-    total: formatCurrency(item.total),
-    discount_price: formatCurrency(discountPrice),
-    installment_price: `${numeroParcelas}x ${formatCurrency(parcela)}`,
-    quantidade: '1',
-    descricao: item.name,
+  // Role → value mapping for client data
+  const enderecoCompleto = [atendimento.endereco, atendimento.numero, atendimento.complemento, atendimento.bairro, atendimento.cidade].filter(Boolean).join(', ');
+  const roleValues: Record<string, string> = {
+    company_name: companyName,
+    company_cnpj: companyCnpj,
+    company_phone: companyPhone,
+    company_email: companyEmail,
+    company_address: companyAddress,
+    company_contact: [companyPhone, companyEmail].filter(Boolean).join(' | '),
+    client_name: atendimento.cliente_nome,
+    client_phone: atendimento.cliente_telefone || '',
+    client_address: enderecoCompleto,
+    service_type: atendimento.tipo_servico,
+    date: new Date().toLocaleDateString('pt-BR'),
   };
 
-  return fields
-    .filter(f => f.visible && valueMap[f.key])
-    .map(f => ({ key: f.key, label: f.label, value: valueMap[f.key] }));
+  // Iterate mockup blocks in visual order
+  for (const block of mockup.blocks) {
+    y = renderMockupBlock(doc, block, tpl, y, x0, contentW, pageW, font, br, margins, logoBase64, roleValues, items, discountPct, numeroParcelas, taxaJuros, bc);
+    y += lm.section_spacing;
+  }
+
+  if (preview) return String(doc.output('bloburl'));
+  doc.save(`orcamento-${atendimento.cliente_nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+}
+
+function renderMockupBlock(
+  doc: jsPDF,
+  block: MockupBlock,
+  tpl: DocumentTemplate,
+  startY: number,
+  x0: number,
+  contentW: number,
+  pageW: number,
+  font: string,
+  br: DocumentTemplate['branding'],
+  margins: { top: number; right: number; bottom: number; left: number },
+  logoBase64: string | null,
+  roleValues: Record<string, string>,
+  items: Array<{ name: string; area: number; unitPrice: number; total: number }>,
+  discountPct: number,
+  numeroParcelas: number,
+  taxaJuros: number,
+  bc: BrandConfig | null | undefined,
+): number {
+  let y = startY;
+  const hdr = tpl.layout_metadata.header;
+
+  switch (block.type) {
+    case 'header': {
+      // Background
+      if (hdr.background_color) {
+        doc.setFillColor(...hexToRgb(hdr.background_color));
+        doc.rect(0, 0, pageW, hdr.height, 'F');
+      }
+
+      // Logo
+      if (logoBase64) {
+        const logoH = hdr.logo_max_height;
+        const logoW = logoH * 2.5;
+        let logoX = x0;
+        if (hdr.logo_position === 'center') logoX = (pageW - logoW) / 2;
+        else if (hdr.logo_position === 'right') logoX = pageW - margins.right - logoW;
+        try { doc.addImage(logoBase64, 'PNG', logoX, y, logoW, logoH); } catch { /* skip */ }
+      }
+
+      // Render company info from elements
+      if (block.elements) {
+        let cY = y + 2;
+        const companyInfoPos = hdr.company_info_position;
+        const isRight = companyInfoPos === 'right';
+
+        for (const el of block.elements) {
+          if (el.role === 'logo') continue; // already rendered
+          const value = roleValues[el.role] || el.text || '';
+          if (!value) continue;
+
+          const fontSize = el.style === 'small' ? 8 : el.style === 'bold' ? 10 : 9;
+          doc.setFontSize(fontSize);
+          doc.setFont(font, el.style === 'bold' ? 'bold' : 'normal');
+          doc.setTextColor(...hexToRgb(br.header_text_color));
+
+          if (isRight) {
+            doc.text(value, pageW - margins.right, cY, { align: 'right' });
+          } else {
+            const elX = companyInfoPos === 'left' ? x0 : x0 + (logoBase64 ? hdr.logo_max_height * 2.5 + 5 : 0);
+            doc.text(value, elX, cY);
+          }
+          cY += el.style === 'bold' ? 4.5 : 3.5;
+        }
+      }
+
+      y += hdr.height;
+      break;
+    }
+
+    case 'title': {
+      const titleEl = block.elements?.[0];
+      const titleText = titleEl?.text || hdr.title.text || 'ORÇAMENTO';
+      const titleAlign = titleEl?.alignment || hdr.title.alignment || 'center';
+
+      doc.setFontSize(hdr.title.font_size);
+      doc.setFont(font, 'bold');
+      doc.setTextColor(...hexToRgb(br.header_text_color));
+      const titleX = titleAlign === 'center' ? pageW / 2
+        : titleAlign === 'right' ? pageW - margins.right : x0;
+      doc.text(titleText, titleX, y + 2, { align: titleAlign });
+      y += 10;
+      break;
+    }
+
+    case 'separator': {
+      const sepColor = block.separator_style?.color || hdr.separator_color || br.primary_color;
+      doc.setDrawColor(...hexToRgb(sepColor));
+      doc.setLineWidth(0.5);
+      doc.line(x0, y, pageW - margins.right, y);
+      y += 3;
+      break;
+    }
+
+    case 'client_data': {
+      const cs = tpl.layout_metadata.client_section;
+      const clientFields = tpl.client_fields;
+
+      if (block.elements && block.elements.length > 0) {
+        // Render from mockup elements
+        doc.setFontSize(cs.value_font_size);
+
+        for (const el of block.elements) {
+          if (el.role === 'label' && el.text) {
+            // Label + next value (handled as pair)
+            doc.setTextColor(...hexToRgb(br.secondary_color));
+            if (cs.label_bold) doc.setFont(font, 'bold');
+            doc.text(el.text + ' ', x0, y);
+            // We'll render the value in the next iteration
+          } else {
+            // Value element
+            const value = roleValues[el.role] || '';
+            if (!value) continue;
+            doc.setFont(font, 'normal');
+            doc.setTextColor(...hexToRgb(br.secondary_color));
+            doc.text(value, x0, y);
+            y += 5.5;
+          }
+        }
+      } else {
+        // Fallback: render from client_fields
+        doc.setFontSize(cs.value_font_size);
+        for (const field of clientFields) {
+          let value = '';
+          if (field.type === 'cliente_nome') value = roleValues.client_name;
+          else if (field.type === 'cliente_telefone') value = roleValues.client_phone;
+          else if (field.type === 'endereco_completo') value = roleValues.client_address;
+          else if (field.type === 'tipo_servico') value = roleValues.service_type;
+          else if (field.type === 'data') value = roleValues.date;
+          if (!value && !field.required) continue;
+
+          doc.setTextColor(...hexToRgb(br.secondary_color));
+          if (cs.label_bold) doc.setFont(font, 'bold');
+          doc.text(field.label + ' ', x0, y);
+          const labelW = doc.getTextWidth(field.label + ' ');
+          doc.setFont(font, 'normal');
+          const lines = doc.splitTextToSize(value || '—', contentW - labelW - 4);
+          doc.text(lines, x0 + labelW, y);
+          y += 5.5 * Math.max(lines.length, 1);
+        }
+      }
+      break;
+    }
+
+    case 'table': {
+      const rowStyle = block.row_style || 'cards';
+      const columns = block.columns || [];
+
+      // Count text columns (labels) vs placeholder columns (data)
+      const textColIndices: number[] = [];
+      const placeholderColIndices: number[] = [];
+      columns.forEach((col, i) => {
+        if (col === '{{placeholder}}') placeholderColIndices.push(i);
+        else textColIndices.push(i);
+      });
+
+      // Standard data fields to inject in placeholder order
+      const dataFieldsForItem = (item: typeof items[0], _idx: number) => {
+        const discountPrice = item.total * (1 - discountPct);
+        const { parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
+        return [
+          `${item.area} m²`,
+          formatCurrency(item.unitPrice),
+          formatCurrency(item.total),
+          formatCurrency(discountPrice),
+          `${numeroParcelas}x ${formatCurrency(parcela)}`,
+        ];
+      };
+
+      if (rowStyle === 'cards') {
+        // CARDS style
+        items.forEach((item, idx) => {
+          const hasPerItem = tpl.totals.position === 'per_item';
+          const cardH = 32 + (hasPerItem ? 14 : 0);
+          y = checkPage(doc, y, cardH, margins.top, margins.bottom);
+
+          // Card background
+          if (br.table_row_alt_bg) {
+            doc.setFillColor(...hexToRgb(br.table_row_alt_bg));
+            doc.rect(x0, y - 2, contentW, cardH - 4, 'F');
+          }
+
+          // Title bar
+          if (br.table_header_bg) {
+            doc.setFillColor(...hexToRgb(br.table_header_bg));
+            doc.rect(x0, y - 2, contentW, 7, 'F');
+          }
+          doc.setFontSize(11);
+          doc.setFont(font, 'bold');
+          doc.setTextColor(...hexToRgb(br.table_header_text));
+          doc.text(`OPÇÃO ${idx + 1}: ${item.name}`, x0 + 3, y + 2);
+          y += 10;
+
+          // Metrics line
+          doc.setFontSize(10);
+          doc.setFont(font, 'normal');
+          doc.setTextColor(...hexToRgb(br.secondary_color));
+          doc.text(`Área: ${item.area} m²  |  Preço: ${formatCurrency(item.unitPrice)}/m²`, x0 + 3, y);
+          y += 6;
+
+          // Per-item totals
+          if (hasPerItem) {
+            const discountPrice = item.total * (1 - discountPct);
+            const { totalComTaxa, parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
+            const taxaText = taxaJuros > 0 ? ` (${taxaJuros}% taxa)` : '';
+
+            doc.setFont(font, 'bold');
+            doc.setTextColor(...hexToRgb(br.price_highlight_color));
+            doc.text(`${tpl.totals.discount_label} ${formatCurrency(discountPrice)}`, x0 + 3, y);
+            y += 5.5;
+
+            doc.setFont(font, 'normal');
+            doc.setTextColor(...hexToRgb(br.secondary_color));
+            doc.text(`${tpl.totals.installment_label} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + 3, y);
+            y += 5;
+
+            doc.setFontSize(9);
+            doc.setTextColor(128, 128, 128);
+            doc.text(`Total: ${formatCurrency(totalComTaxa)}`, x0 + 3, y);
+            doc.setTextColor(0, 0, 0);
+            y += 3;
+          }
+
+          y += 6;
+        });
+
+      } else if (rowStyle === 'striped' || rowStyle === 'bordered') {
+        // TABLE style
+        const colCount = columns.length || 5;
+        const colW = contentW / colCount;
+
+        // Header
+        y = checkPage(doc, y, 10, margins.top, margins.bottom);
+        if (br.table_header_bg) {
+          doc.setFillColor(...hexToRgb(br.table_header_bg));
+          doc.rect(x0, y - 4, contentW, 7, 'F');
+        }
+        doc.setFontSize(10);
+        doc.setFont(font, 'bold');
+        doc.setTextColor(...hexToRgb(br.table_header_text));
+        columns.forEach((col, i) => {
+          const label = col === '{{placeholder}}' ? '' : col;
+          doc.text(label, x0 + i * colW + 1, y);
+        });
+        y += 5;
+        doc.setDrawColor(...hexToRgb(br.border_color));
+        doc.setLineWidth(0.2);
+        doc.line(x0, y, x0 + contentW, y);
+        y += 2;
+
+        // Rows
+        doc.setFontSize(10);
+        items.forEach((item, idx) => {
+          y = checkPage(doc, y, 10, margins.top, margins.bottom);
+          if (rowStyle === 'striped' && idx % 2 === 1 && br.table_row_alt_bg) {
+            doc.setFillColor(...hexToRgb(br.table_row_alt_bg));
+            doc.rect(x0, y - 3.5, contentW, 8, 'F');
+          }
+
+          const dataFields = dataFieldsForItem(item, idx);
+          let dataIdx = 0;
+
+          doc.setFont(font, 'normal');
+          doc.setTextColor(...hexToRgb(br.secondary_color));
+
+          columns.forEach((col, i) => {
+            let cellValue: string;
+            if (col === '{{placeholder}}') {
+              cellValue = dataFields[dataIdx] || '';
+              dataIdx++;
+              // Highlight price columns (last placeholders)
+              if (dataIdx >= 3) {
+                doc.setFont(font, 'bold');
+                doc.setTextColor(...hexToRgb(br.price_highlight_color));
+              }
+            } else {
+              // Text column: option number or product name
+              if (i === 0 && col.toLowerCase().includes('op')) cellValue = String(idx + 1);
+              else cellValue = item.name;
+            }
+            doc.text(cellValue, x0 + i * colW + 1, y);
+            doc.setFont(font, 'normal');
+            doc.setTextColor(...hexToRgb(br.secondary_color));
+          });
+
+          y += 8;
+          if (rowStyle === 'bordered') {
+            doc.setDrawColor(...hexToRgb(br.border_color));
+            doc.setLineWidth(0.1);
+            doc.line(x0, y - 1, x0 + contentW, y - 1);
+          }
+        });
+
+      } else {
+        // PLAIN / list style
+        items.forEach((item, idx) => {
+          y = checkPage(doc, y, 20, margins.top, margins.bottom);
+          doc.setFont(font, 'bold');
+          doc.setFontSize(10);
+          doc.setTextColor(...hexToRgb(br.primary_color));
+          doc.text(`${idx + 1}. ${item.name}`, x0, y);
+          y += 5;
+          doc.setFont(font, 'normal');
+          doc.setTextColor(...hexToRgb(br.secondary_color));
+          doc.text(`${item.area} m² × ${formatCurrency(item.unitPrice)} = ${formatCurrency(item.total)}`, x0 + 5, y);
+          y += 5;
+          if (tpl.totals.position === 'per_item') {
+            const discountPrice = item.total * (1 - discountPct);
+            doc.setFont(font, 'bold');
+            doc.setTextColor(...hexToRgb(br.price_highlight_color));
+            doc.text(`${tpl.totals.discount_label} ${formatCurrency(discountPrice)}`, x0 + 5, y);
+            y += 5;
+          }
+          doc.setDrawColor(...hexToRgb(br.border_color));
+          doc.setLineWidth(0.1);
+          doc.line(x0, y, x0 + contentW, y);
+          y += 6;
+        });
+      }
+      break;
+    }
+
+    case 'observations': {
+      const obs = tpl.observations;
+      const obsText = bc?.footer_text || obs.default_text;
+      if (obsText) {
+        y = checkPage(doc, y, 15, margins.top, margins.bottom);
+        doc.setFontSize(obs.font_size);
+        const fontStyle = obs.style === 'italic' ? 'italic' : 'normal';
+        doc.setFont(font, fontStyle);
+        doc.setTextColor(128, 128, 128);
+        const lines = doc.splitTextToSize(obsText, contentW);
+        doc.text(lines, x0, y);
+        y += 4 * lines.length;
+      }
+      break;
+    }
+
+    case 'footer': {
+      const ft = tpl.layout_metadata.footer;
+      if (ft.style === 'line' || ft.style === 'bar') {
+        if (ft.separator_color) {
+          doc.setDrawColor(...hexToRgb(ft.separator_color));
+          doc.setLineWidth(0.3);
+          doc.line(x0, y, pageW - margins.right, y);
+        }
+        y += 4;
+      }
+      const validityDays = bc?.validity_days || 15;
+      doc.setFontSize(ft.font_size);
+      doc.setFont(font, 'normal');
+      doc.setTextColor(...hexToRgb(ft.text_color));
+      const ftX = ft.text_alignment === 'center' ? pageW / 2
+        : ft.text_alignment === 'right' ? pageW - margins.right : x0;
+      doc.text(`Orçamento válido por ${validityDays} dias.`, ftX, y, { align: ft.text_alignment });
+      y += 5;
+      break;
+    }
+  }
+
+  return y;
 }
 
 // ============================================================
@@ -650,14 +836,8 @@ function renderFromTemplate(
       y += lm.section_spacing;
     }
 
-    // ---- CONTENT BLOCKS (block-based rendering) ----
-    if (section === 'content_blocks' && tpl.content_blocks && tpl.content_blocks.length > 0) {
-      y = renderContentBlocks(doc, tpl, items, y, x0, contentW, font, br, margins, numeroParcelas, taxaJuros);
-      y += lm.section_spacing;
-    }
-
-    // ---- BUDGET TABLE (legacy fallback) ----
-    if (section === 'budget_table' && (!tpl.content_blocks || tpl.content_blocks.length === 0)) {
+    // ---- BUDGET TABLE (legacy — used when no mockup) ----
+    if (section === 'budget_table' || section === 'content_blocks') {
       y = renderBudgetTable(doc, tpl, items, y, x0, contentW, font, br, margins, numeroParcelas, taxaJuros);
       y += lm.section_spacing;
     }
@@ -1008,7 +1188,16 @@ function renderBasicLayout(params: GerarPDFParams): string | void {
 export async function gerarPDF(params: GerarPDFParams): Promise<string | void> {
   const bc = params.brandConfig;
 
-  // 1. Document Template v2 (canonical JSON)
+  // 1. Mockup-based rendering (visual structure — highest priority)
+  if (bc?.pdf_template && (bc.pdf_template as DocumentTemplate).version === 2 && (bc.pdf_template as DocumentTemplate).mockup?.blocks?.length) {
+    try {
+      return renderFromMockup(params, bc.pdf_template as DocumentTemplate, params.logoBase64 || null);
+    } catch (err) {
+      console.error('Mockup rendering failed, falling back:', err);
+    }
+  }
+
+  // 2. Document Template v2 (legacy canonical JSON without mockup)
   if (bc?.pdf_template && (bc.pdf_template as DocumentTemplate).version === 2) {
     try {
       return renderFromTemplate(params, bc.pdf_template as DocumentTemplate, params.logoBase64 || null);

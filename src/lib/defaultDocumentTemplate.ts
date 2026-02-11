@@ -2,6 +2,57 @@ import type { DocumentTemplate } from '../types';
 
 export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
   version: 2,
+  mockup: {
+    blocks: [
+      {
+        type: 'header',
+        elements: [
+          { role: 'logo', style: 'image', position: 'left' },
+          { role: 'company_name', style: 'bold' },
+          { role: 'company_contact', style: 'small' },
+        ],
+      },
+      {
+        type: 'title',
+        elements: [
+          { role: 'document_title', style: 'bold', text: 'ORÇAMENTO', alignment: 'center' },
+        ],
+      },
+      { type: 'separator' },
+      {
+        type: 'client_data',
+        elements: [
+          { role: 'label', style: 'bold', text: 'Cliente:' },
+          { role: 'client_name', style: 'normal' },
+          { role: 'label', style: 'bold', text: 'Telefone:' },
+          { role: 'client_phone', style: 'normal' },
+          { role: 'label', style: 'bold', text: 'Endereço:' },
+          { role: 'client_address', style: 'normal' },
+          { role: 'label', style: 'bold', text: 'Serviço:' },
+          { role: 'service_type', style: 'normal' },
+          { role: 'label', style: 'bold', text: 'Data:' },
+          { role: 'date', style: 'normal' },
+        ],
+      },
+      {
+        type: 'table',
+        columns: ['Opção', 'Produto', '{{placeholder}}', '{{placeholder}}', '{{placeholder}}'],
+        row_style: 'cards',
+      },
+      {
+        type: 'observations',
+        elements: [
+          { role: 'terms_text', style: 'italic' },
+        ],
+      },
+      {
+        type: 'footer',
+        elements: [
+          { role: 'validity', style: 'small', alignment: 'center' },
+        ],
+      },
+    ],
+  },
   branding: {
     primary_color: '#1e40af',
     secondary_color: '#374151',
@@ -15,30 +66,6 @@ export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
     border_color: '#e5e7eb',
     price_highlight_color: '#059669',
   },
-  content_blocks: [
-    {
-      id: 'default_measurement',
-      type: 'measurement_item',
-      role: 'calculavel',
-      title: 'Produto',
-      fields: [
-        { key: 'product_name', label: 'Produto', type: 'text', visible: true },
-        { key: 'area', label: 'Área (m²)', type: 'area', visible: true },
-        { key: 'preco_m2', label: 'Valor/m²', type: 'currency', visible: true },
-        { key: 'total', label: 'Total', type: 'currency', visible: true },
-        { key: 'discount_price', label: 'À Vista', type: 'currency', visible: true },
-      ],
-      calculation: { formula: 'area * preco_m2', explicit: true },
-      confidence: 1,
-      style: {
-        display: 'card',
-        background_color: null,
-        border: true,
-        title_font_size: 11,
-        body_font_size: 10,
-      },
-    },
-  ],
   company_fields: [],
   client_fields: [
     { label: 'Cliente:', type: 'cliente_nome', required: true },
@@ -91,7 +118,7 @@ export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
       show_separator: true,
       separator_color: '#1e40af',
     },
-    sections_order: ['header', 'client', 'content_blocks', 'observations', 'footer'],
+    sections_order: ['header', 'client', 'budget_table', 'observations', 'footer'],
     section_spacing: 8,
     client_section: {
       style: 'inline',

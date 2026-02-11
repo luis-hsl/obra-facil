@@ -154,55 +154,48 @@ export interface BrandExtraction {
 }
 
 // =============================================
+// Mockup Visual (estrutura pura — sem dados)
+// =============================================
+
+export type MockupBlockType =
+  | 'header'
+  | 'title'
+  | 'separator'
+  | 'client_data'
+  | 'table'
+  | 'observations'
+  | 'footer';
+
+export interface MockupElement {
+  role: string;               // e.g. 'company_name', 'client_name', 'logo', 'date'
+  style: string;              // e.g. 'bold', 'small', 'italic', 'normal', 'image'
+  text?: string;              // Texto fixo (labels). Ausente = placeholder injetado no render
+  alignment?: 'left' | 'center' | 'right';
+  position?: 'left' | 'center' | 'right';
+}
+
+export interface MockupBlock {
+  type: MockupBlockType;
+  elements?: MockupElement[];
+  // Específico para type === 'table'
+  columns?: string[];         // Labels de coluna — {{placeholder}} para colunas numéricas
+  row_style?: 'striped' | 'bordered' | 'cards' | 'plain';
+  // Específico para type === 'separator'
+  separator_style?: { color: string | null };
+}
+
+export interface MockupTemplate {
+  blocks: MockupBlock[];
+}
+
+// =============================================
 // Document Template v2 (Canônico — extraído pela IA)
 // =============================================
 
-// --- Content Blocks (análise heterogênea do documento) ---
-
-export type DocumentBlockType =
-  | 'measurement_item'      // Item por m² (piso, gesso, pintura)
-  | 'fixed_price_product'   // Produto preço fixo (rodapé, soleira)
-  | 'product_option'        // Opção comparativa (produto A vs B)
-  | 'informational';        // Bloco informativo (obs, condições)
-
-export type DocumentBlockRole =
-  | 'calculavel'    // Tem cálculo explícito (area × preço)
-  | 'informativo'   // Apenas texto/informação
-  | 'comparativo';  // Compara opções lado a lado
-
-export interface DocumentBlockField {
-  key: string;       // e.g. 'area', 'preco_m2', 'total', 'quantidade', 'descricao'
-  label: string;     // Label visível no documento original
-  type: 'text' | 'number' | 'currency' | 'area' | 'percentage';
-  visible: boolean;  // Campo realmente presente no documento
-}
-
-export interface DocumentBlockCalculation {
-  formula: string | null;  // e.g. "area * preco_m2" or null
-  explicit: boolean;       // Cálculo visível no documento?
-}
-
-export interface DocumentBlock {
-  id: string;
-  type: DocumentBlockType;
-  role: DocumentBlockRole;
-  title: string;                          // Título do bloco no documento
-  fields: DocumentBlockField[];           // Apenas campos visíveis
-  calculation: DocumentBlockCalculation | null;
-  confidence: number;                     // 0-1
-  style: {
-    display: 'card' | 'table_row' | 'text_block' | 'comparison';
-    background_color: string | null;
-    border: boolean;
-    title_font_size: number;
-    body_font_size: number;
-  };
-}
-
-// --- Document Template ---
-
 export interface DocumentTemplate {
   version: 2;
+  // Mockup visual (prioridade máxima quando presente)
+  mockup?: MockupTemplate;
   branding: {
     primary_color: string;
     secondary_color: string;
@@ -228,9 +221,8 @@ export interface DocumentTemplate {
     type: 'cliente_nome' | 'cliente_telefone' | 'endereco_completo' | 'tipo_servico' | 'data';
     required: boolean;
   }>;
-  // Block-based content (v2 — heterogeneous blocks)
-  content_blocks: DocumentBlock[];
-  // Legacy single-table (backward compat for saved templates without blocks)
+  // Legacy fields (backward compat for saved templates)
+  content_blocks?: unknown[];
   budget_table: {
     columns: Array<{
       key: 'option_number' | 'product_name' | 'area' | 'unit_price' | 'total' | 'discount_price' | 'installment_price';
