@@ -431,7 +431,7 @@ export default function MarcaConfig() {
       </section>
 
       {/* 5. Cores (readonly, extraídas) */}
-      {template && (
+      {template?.colors && (
         <section className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Cores Extraídas</h2>
           <div className="flex gap-4 flex-wrap">
