@@ -36,6 +36,7 @@ export default function MarcaConfig() {
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [pdfBase64ForExtract, setPdfBase64ForExtract] = useState<string | null>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
 
   const templateInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -221,7 +222,7 @@ export default function MarcaConfig() {
       } catch { /* sem logo no preview */ }
     }
 
-    gerarPDF({
+    const url = gerarPDF({
       atendimento: {
         cliente_nome: 'João da Silva',
         cliente_telefone: '(11) 99999-1234',
@@ -256,7 +257,10 @@ export default function MarcaConfig() {
       produtosMap: {},
       brandConfig: brandForPreview,
       logoBase64: logoB64,
+      preview: true,
     });
+
+    if (url) setPdfPreviewUrl(url);
   };
 
   if (loading) {
@@ -510,6 +514,28 @@ export default function MarcaConfig() {
           </button>
         </div>
       </section>
+
+      {/* Modal Preview PDF */}
+      {pdfPreviewUrl && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setPdfPreviewUrl(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Preview do Orçamento</h3>
+              <button
+                onClick={() => setPdfPreviewUrl(null)}
+                className="p-1 rounded-lg hover:bg-gray-100 text-gray-500"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 p-2">
+              <iframe src={pdfPreviewUrl} className="w-full h-full rounded-lg border border-gray-200" title="Preview PDF" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

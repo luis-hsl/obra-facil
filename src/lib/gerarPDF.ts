@@ -22,6 +22,7 @@ interface GerarPDFParams {
   taxaJuros?: number;
   brandConfig?: BrandConfig | null;
   logoBase64?: string | null;
+  preview?: boolean;
 }
 
 const DESCONTO_AVISTA = 0.05; // 5% de desconto à vista
@@ -515,8 +516,8 @@ function renderMinimal(doc: jsPDF, params: GerarPDFParams, brand: BrandConfig, l
 
 export function gerarPDF({
   atendimento, orcamento, produto, itens = [], produtosMap = {},
-  numeroParcelas = 12, taxaJuros = 2, brandConfig, logoBase64,
-}: GerarPDFParams) {
+  numeroParcelas = 12, taxaJuros = 2, brandConfig, logoBase64, preview,
+}: GerarPDFParams): string | void {
   const doc = new jsPDF();
 
   // Se tem brand config, usar layout personalizado
@@ -534,6 +535,9 @@ export function gerarPDF({
         break;
     }
 
+    if (preview) {
+      return String(doc.output('bloburl'));
+    }
     const nomeArquivo = `orcamento-${atendimento.cliente_nome.replace(/\s+/g, '-').toLowerCase()}.pdf`;
     doc.save(nomeArquivo);
     return;
@@ -584,7 +588,9 @@ export function gerarPDF({
   y += 5;
   doc.text('Valores sujeitos a alteração sem aviso prévio.', 20, y);
 
-  // Salvar
+  if (preview) {
+    return String(doc.output('bloburl'));
+  }
   const nomeArquivo = `orcamento-${atendimento.cliente_nome.replace(/\s+/g, '-').toLowerCase()}.pdf`;
   doc.save(nomeArquivo);
 }
