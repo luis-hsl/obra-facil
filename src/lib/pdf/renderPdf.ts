@@ -25,6 +25,13 @@ function checkPage(doc: jsPDF, y: number, needed: number, marginTop: number, mar
   return y;
 }
 
+type RGB = [number, number, number];
+
+/** Desenha retângulo com cantos arredondados */
+function roundedRect(doc: jsPDF, x: number, y: number, w: number, h: number, r: number, style: 'F' | 'S' | 'FS') {
+  doc.roundedRect(x, y, w, h, r, r, style);
+}
+
 // ============================================================
 // Types
 // ============================================================
@@ -63,13 +70,8 @@ interface BudgetItem {
 
 function extractPdfBrandConfig(bc: BrandConfig | null | undefined): PdfBrandConfig {
   if (!bc) return DEFAULT_PDF_BRAND_CONFIG;
-
   const stored = bc.pdf_template as Record<string, unknown> | null;
-
-  // v3 token config — use directly
   if (stored && stored.version === 3) return stored as unknown as PdfBrandConfig;
-
-  // v2 DocumentTemplate or missing — synthesize from flat BrandConfig fields
   return {
     version: 3,
     templateId: (bc.layout_style as PdfBrandConfig['templateId']) || 'modern',
@@ -80,21 +82,9 @@ function extractPdfBrandConfig(bc: BrandConfig | null | undefined): PdfBrandConf
       muted: '#9ca3af',
       border: '#e5e7eb',
     },
-    typography: {
-      fontFamily: bc.font_family || 'helvetica',
-      headingWeight: 'bold',
-      bodyWeight: 'normal',
-    },
-    logo: {
-      url: bc.logo_url || null,
-      alignment: bc.logo_position || 'left',
-      size: 'medium',
-    },
-    layout: {
-      density: 'normal',
-      showNotes: true,
-      showFooter: true,
-    },
+    typography: { fontFamily: bc.font_family || 'helvetica', headingWeight: 'bold', bodyWeight: 'normal' },
+    logo: { url: bc.logo_url || null, alignment: bc.logo_position || 'left', size: 'medium' },
+    layout: { density: 'normal', showNotes: true, showFooter: true },
   };
 }
 
@@ -127,14 +117,14 @@ function buildItems(params: GerarPDFParams): BudgetItem[] {
 // ============================================================
 
 function renderHeader(
-  doc: jsPDF, s: ResolvedPdfStyle, company: CompanyData, y: number, pageW: number, x0: number,
+  doc: jsPDF, s: ResolvedPdfStyle, company: CompanyData, y: number, pageW: number, x0: number, contentW: number,
 ): number {
   const { preset, colors, fontFamily, headingWeight, fontSizes } = s;
 
-  // Background
+  // Background — full width
   if (colors.headerBg) {
     doc.setFillColor(...colors.headerBg);
-    doc.rect(0, 0, pageW, s.headerHeight, 'F');
+    doc.rect(0, 0, pageW, s.headerHeight + 4, 'F');
   }
 
   // Logo
@@ -150,7 +140,7 @@ function renderHeader(
   // Company info
   const companyLines = [company.name, company.cnpj, company.phone, company.email, company.address].filter(Boolean);
   if (companyLines.length > 0) {
-    let cY = y + 2;
+    let cY = y + 1;
     doc.setFontSize(8);
     doc.setTextColor(...colors.headerText);
 
@@ -165,8 +155,7 @@ function renderHeader(
         cY += 3.5;
       }
     } else {
-      // below-logo
-      const cYStart = y + (s.logoBase64 ? s.logoMaxHeight + 3 : 0);
+      const cYStart = y + (s.logoBase64 ? s.logoMaxHeight + 4 : 0);
       cY = cYStart;
       doc.setFont(fontFamily, headingWeight);
       doc.text(companyLines[0], x0, cY);
@@ -188,14 +177,13 @@ function renderHeader(
     : titleAlign === 'right' ? pageW - s.margins.right : x0;
   doc.text('ORÇAMENTO', titleX, y + s.headerHeight - 8, { align: titleAlign });
 
-  // Separator
+  // Separator — thicker accent line
   if (preset.header.showSeparator) {
-    doc.setDrawColor(...colors.separatorColor);
-    doc.setLineWidth(0.5);
-    doc.line(x0, y + s.headerHeight - 2, pageW - s.margins.right, y + s.headerHeight - 2);
+    doc.setFillColor(...colors.separatorColor);
+    doc.rect(x0, y + s.headerHeight, contentW, 0.8, 'F');
   }
 
-  return y + s.headerHeight + s.sectionSpacing;
+  return y + s.headerHeight + s.sectionSpacing + 2;
 }
 
 // ============================================================
@@ -219,32 +207,43 @@ function renderClientInfo(
     { label: 'Data:', value: new Date().toLocaleDateString('pt-BR') },
   ].filter(f => f.value);
 
+  const lineH = 5.5;
+  const totalLines = clientData.length;
+
   if (cs.style === 'card') {
-    const cardH = clientData.length * 6 + 6;
+    const cardH = totalLines * lineH + 8;
     y = checkPage(doc, y, cardH, margins.top, margins.bottom);
+    // Card background com cantos arredondados
     if (colors.clientSectionBg) {
       doc.setFillColor(...colors.clientSectionBg);
-      doc.rect(x0, y - 2, contentW, cardH, 'F');
+      roundedRect(doc, x0, y - 3, contentW, cardH, 2, 'F');
     }
     if (colors.clientSectionBorder) {
       doc.setDrawColor(...colors.clientSectionBorder);
       doc.setLineWidth(0.3);
-      doc.rect(x0, y - 2, contentW, cardH, 'S');
+      roundedRect(doc, x0, y - 3, contentW, cardH, 2, 'S');
     }
   }
 
   doc.setFontSize(fontSizes.body);
+  const inset = cs.style === 'card' ? 5 : 0;
+
   for (const { label, value } of clientData) {
-    doc.setTextColor(...colors.text);
-    if (cs.labelBold) doc.setFont(fontFamily, headingWeight);
-    else doc.setFont(fontFamily, 'normal');
-    const lx = cs.style === 'card' ? x0 + 4 : x0;
+    if (cs.labelBold) {
+      doc.setFont(fontFamily, headingWeight);
+      doc.setTextColor(...colors.muted);
+    } else {
+      doc.setFont(fontFamily, 'normal');
+      doc.setTextColor(...colors.muted);
+    }
+    const lx = x0 + inset;
     doc.text(label + ' ', lx, y);
     const labelW = doc.getTextWidth(label + ' ');
     doc.setFont(fontFamily, 'normal');
-    const lines = doc.splitTextToSize(value, contentW - labelW - 8);
+    doc.setTextColor(...colors.text);
+    const lines = doc.splitTextToSize(value, contentW - labelW - inset * 2 - 2);
     doc.text(lines, lx + labelW, y);
-    y += 5.5 * Math.max(lines.length, 1);
+    y += lineH * Math.max(lines.length, 1);
   }
 
   return y + s.sectionSpacing;
@@ -271,9 +270,10 @@ function renderBudgetTable(
     const colWidths = cols.map(c => (c.widthPercent / 100) * contentW);
 
     if (bt.showHeader) {
-      y = checkPage(doc, y, 10, margins.top, margins.bottom);
+      y = checkPage(doc, y, 12, margins.top, margins.bottom);
+      // Header com cantos arredondados no topo
       doc.setFillColor(...colors.tableHeaderBg);
-      doc.rect(x0, y - 4, contentW, 7, 'F');
+      roundedRect(doc, x0, y - 4.5, contentW, 8, 1.5, 'F');
       doc.setFontSize(fontSizes.body);
       doc.setFont(fontFamily, headingWeight);
       doc.setTextColor(...colors.tableHeaderText);
@@ -281,25 +281,20 @@ function renderBudgetTable(
       for (let i = 0; i < cols.length; i++) {
         const col = cols[i];
         const tx = col.align === 'center' ? cx + colWidths[i] / 2
-          : col.align === 'right' ? cx + colWidths[i] - 1 : cx + 1;
+          : col.align === 'right' ? cx + colWidths[i] - 2 : cx + 2;
         doc.text(col.label, tx, y, { align: col.align as 'left' | 'center' | 'right' });
         cx += colWidths[i];
       }
-      y += 5;
-      if (bt.showBorders) {
-        doc.setDrawColor(...colors.border);
-        doc.setLineWidth(0.2);
-        doc.line(x0, y, x0 + contentW, y);
-      }
-      y += 2;
+      y += 6;
     }
 
     doc.setFontSize(fontSizes.body);
     items.forEach((item, idx) => {
-      y = checkPage(doc, y, rowPadding + 6, margins.top, margins.bottom);
-      if (idx % 2 === 1 && colors.tableRowAltBg) {
+      y = checkPage(doc, y, rowPadding + 8, margins.top, margins.bottom);
+      // Alternating row
+      if (idx % 2 === 0 && colors.tableRowAltBg) {
         doc.setFillColor(...colors.tableRowAltBg);
-        doc.rect(x0, y - 3.5, contentW, rowPadding + 2, 'F');
+        doc.rect(x0, y - 3.5, contentW, rowPadding + 3, 'F');
       }
       const discountPrice = item.total * (1 - discountPct);
       const { parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
@@ -323,7 +318,7 @@ function renderBudgetTable(
           doc.setTextColor(...colors.priceHighlight);
         }
         const tx = col.align === 'center' ? cx + colWidths[i] / 2
-          : col.align === 'right' ? cx + colWidths[i] - 1 : cx + 1;
+          : col.align === 'right' ? cx + colWidths[i] - 2 : cx + 2;
         doc.text(val, tx, y, { align: col.align as 'left' | 'center' | 'right' });
         if (col.key === 'discount_price') {
           doc.setFont(fontFamily, 'normal');
@@ -331,81 +326,126 @@ function renderBudgetTable(
         }
         cx += colWidths[i];
       }
-      y += rowPadding;
-      if (bt.showBorders) {
+      y += rowPadding + 1;
+      if (bt.showBorders && idx < items.length - 1) {
         doc.setDrawColor(...colors.border);
         doc.setLineWidth(0.1);
-        doc.line(x0, y - 1, x0 + contentW, y - 1);
+        doc.line(x0 + 2, y - 1, x0 + contentW - 2, y - 1);
       }
     });
 
   // ---- CARDS STYLE ----
   } else if (bt.style === 'cards') {
-    doc.setFontSize(fontSizes.body);
     items.forEach((item, idx) => {
-      const cardH = 32 + (totals.position === 'per_item' ? 14 : 0);
-      y = checkPage(doc, y, cardH, margins.top, margins.bottom);
-      if (colors.tableRowAltBg) {
-        doc.setFillColor(...colors.tableRowAltBg);
-        doc.rect(x0, y - 2, contentW, cardH - 4, 'F');
-      }
+      const hasPerItem = totals.position === 'per_item';
+      const cardBodyH = hasPerItem ? 28 : 12;
+      const cardH = 10 + cardBodyH + 4;
+      y = checkPage(doc, y, cardH + 4, margins.top, margins.bottom);
+
+      // Card background com cantos arredondados
+      doc.setFillColor(...(colors.tableRowAltBg || [248, 249, 250] as RGB));
+      roundedRect(doc, x0, y - 2, contentW, cardH, 2.5, 'F');
+
+      // Card header bar com cantos arredondados no topo
       doc.setFillColor(...colors.tableHeaderBg);
-      doc.rect(x0, y - 2, contentW, 7, 'F');
+      // Top portion — header strip
+      roundedRect(doc, x0, y - 2, contentW, 9, 2.5, 'F');
+      // Fix bottom corners by overlapping a rect
+      doc.rect(x0, y + 2, contentW, 5, 'F');
+
+      // Header text
       doc.setFontSize(fontSizes.body);
       doc.setFont(fontFamily, headingWeight);
       doc.setTextColor(...colors.tableHeaderText);
-      doc.text(`OPÇÃO ${idx + 1}: ${item.name}`, x0 + 3, y + 2);
-      y += 10;
+      doc.text(`OPÇÃO ${idx + 1}: ${item.name}`, x0 + 4, y + 3.5);
+
+      y += 12;
+
+      // Body
       doc.setFontSize(fontSizes.body);
       doc.setFont(fontFamily, 'normal');
       doc.setTextColor(...colors.text);
-      doc.text(`Área: ${item.area} m²  |  Preço: ${formatCurrency(item.unitPrice)}/m²`, x0 + 3, y);
+      doc.text(`Área: ${item.area} m²`, x0 + 4, y);
+      doc.text(`Preço: ${formatCurrency(item.unitPrice)}/m²`, x0 + contentW / 2, y);
       y += 6;
-      if (totals.position === 'per_item') {
+
+      if (hasPerItem) {
         const discountPrice = item.total * (1 - discountPct);
         const { totalComTaxa, parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
         const taxaText = taxaJuros > 0 ? ` (${taxaJuros}% taxa)` : '';
+
+        // Linha separadora sutil
+        doc.setDrawColor(...colors.border);
+        doc.setLineWidth(0.15);
+        doc.line(x0 + 4, y - 1.5, x0 + contentW - 4, y - 1.5);
+
+        // Preço à vista — destaque
+        doc.setFontSize(fontSizes.heading);
         doc.setFont(fontFamily, headingWeight);
         doc.setTextColor(...colors.priceHighlight);
-        doc.text(`${totals.discountLabel} ${formatCurrency(discountPrice)}`, x0 + 3, y);
-        y += 5.5;
+        doc.text(`${totals.discountLabel} ${formatCurrency(discountPrice)}`, x0 + 4, y + 2);
+        y += 6;
+
+        // Parcelado
+        doc.setFontSize(fontSizes.body);
         doc.setFont(fontFamily, 'normal');
         doc.setTextColor(...colors.text);
-        doc.text(`${totals.installmentLabel} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + 3, y);
+        doc.text(`${totals.installmentLabel} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + 4, y);
         y += 5;
-        doc.setFontSize(fontSizes.body - 1);
+
+        // Total com taxa
+        doc.setFontSize(fontSizes.small);
         doc.setTextColor(...colors.muted);
-        doc.text(`Total: ${formatCurrency(totalComTaxa)}`, x0 + 3, y);
-        y += 3;
+        doc.text(`Total parcelado: ${formatCurrency(totalComTaxa)}`, x0 + 4, y);
+        y += 2;
       }
-      y += rowPadding;
+
+      y += rowPadding + 2;
     });
 
   // ---- LIST STYLE ----
   } else {
-    doc.setFontSize(fontSizes.body);
     items.forEach((item, idx) => {
-      y = checkPage(doc, y, 20, margins.top, margins.bottom);
+      const hasPerItem = totals.position === 'per_item';
+      y = checkPage(doc, y, hasPerItem ? 28 : 18, margins.top, margins.bottom);
+
+      // Número do item como badge
+      doc.setFontSize(fontSizes.body + 1);
       doc.setFont(fontFamily, headingWeight);
       doc.setTextColor(...colors.primary);
-      doc.text(`${idx + 1}. ${item.name}`, x0, y);
-      y += 5;
+      doc.text(`${idx + 1}.`, x0, y);
+
+      // Nome do produto
+      doc.setFontSize(fontSizes.body + 1);
+      doc.text(item.name, x0 + 8, y);
+      y += 5.5;
+
+      // Detalhes em linha
+      doc.setFontSize(fontSizes.body);
       doc.setFont(fontFamily, 'normal');
+      doc.setTextColor(...colors.muted);
+      doc.text(`${item.area} m²  ×  ${formatCurrency(item.unitPrice)}/m²`, x0 + 8, y);
+
+      // Total alinhado à direita na mesma linha
+      doc.setFont(fontFamily, headingWeight);
       doc.setTextColor(...colors.text);
-      doc.text(`${item.area} m² × ${formatCurrency(item.unitPrice)} = ${formatCurrency(item.total)}`, x0 + 5, y);
+      doc.text(formatCurrency(item.total), x0 + contentW, y, { align: 'right' });
       y += 5;
-      if (totals.position === 'per_item') {
+
+      if (hasPerItem) {
         const discountPrice = item.total * (1 - discountPct);
         doc.setFont(fontFamily, headingWeight);
         doc.setTextColor(...colors.priceHighlight);
-        doc.text(`${totals.discountLabel} ${formatCurrency(discountPrice)}`, x0 + 5, y);
-        doc.setFont(fontFamily, 'normal');
-        doc.setTextColor(...colors.text);
+        doc.text(`${totals.discountLabel} ${formatCurrency(discountPrice)}`, x0 + 8, y);
         y += 5;
       }
-      doc.setDrawColor(...colors.border);
-      doc.setLineWidth(0.1);
-      doc.line(x0, y, x0 + contentW, y);
+
+      // Divider
+      if (idx < items.length - 1) {
+        doc.setDrawColor(...colors.border);
+        doc.setLineWidth(0.15);
+        doc.line(x0, y, x0 + contentW, y);
+      }
       y += rowPadding;
     });
   }
@@ -428,24 +468,30 @@ function renderTotals(
 
   if (totals.position !== 'summary_bottom' || items.length === 0) return y;
 
-  y = checkPage(doc, y, 30, margins.top, margins.bottom);
+  y = checkPage(doc, y, 35, margins.top, margins.bottom);
   const discountPct = totals.discountPercent / 100;
   const sumTotal = items.reduce((sum, i) => sum + i.total, 0);
   const sumDiscount = sumTotal * (1 - discountPct);
   const { totalComTaxa, parcela } = calcularParcelamento(sumTotal, taxaJuros, numeroParcelas);
 
-  // Separator
-  doc.setDrawColor(...colors.border);
-  doc.setLineWidth(0.3);
-  doc.line(x0, y, x0 + contentW, y);
-  y += 6;
+  // Box de destaque para totais
+  const boxH = 22 + (totals.showInstallments ? 12 : 0);
+  doc.setFillColor(...(colors.tableRowAltBg || [248, 249, 250] as RGB));
+  roundedRect(doc, x0, y - 2, contentW, boxH, 2, 'F');
+
+  // Barra lateral de accent
+  doc.setFillColor(...colors.priceHighlight);
+  roundedRect(doc, x0, y - 2, 3, boxH, 1.5, 'F');
+
+  y += 4;
 
   if (totals.showDiscount) {
-    doc.setFontSize(13);
+    doc.setFontSize(14);
     doc.setFont(fontFamily, headingWeight);
     doc.setTextColor(...colors.priceHighlight);
-    doc.text(`${totals.discountLabel} ${formatCurrency(sumDiscount)}`, x0, y);
-    y += 7;
+    doc.text(totals.discountLabel, x0 + 8, y);
+    doc.text(formatCurrency(sumDiscount), x0 + contentW - 4, y, { align: 'right' });
+    y += 8;
   }
 
   if (totals.showInstallments) {
@@ -453,12 +499,12 @@ function renderTotals(
     doc.setFontSize(fontSizes.heading);
     doc.setFont(fontFamily, 'normal');
     doc.setTextColor(...colors.text);
-    doc.text(`${totals.installmentLabel} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0, y);
+    doc.text(`${totals.installmentLabel} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + 8, y);
     y += 5;
     doc.setFontSize(fontSizes.small);
     doc.setTextColor(...colors.muted);
-    doc.text(`Total: ${formatCurrency(totalComTaxa)}`, x0, y);
-    y += 3;
+    doc.text(`Total parcelado: ${formatCurrency(totalComTaxa)}`, x0 + 8, y);
+    y += 5;
   }
 
   return y + s.sectionSpacing;
@@ -501,16 +547,17 @@ function renderFooter(
   const ft = preset.footer;
 
   if (ft.style === 'bar') {
-    doc.setFillColor(...colors.border);
-    doc.rect(x0, y, contentW, 1.5, 'F');
-    y += 4;
+    doc.setFillColor(...colors.primary);
+    roundedRect(doc, x0, y, contentW, 1.2, 0.6, 'F');
+    y += 5;
   } else if (ft.style === 'line') {
     doc.setDrawColor(...colors.border);
     doc.setLineWidth(0.3);
     doc.line(x0, y, x0 + contentW, y);
-    y += 4;
+    y += 5;
+  } else {
+    y += 3;
   }
-  // 'minimal' — no separator
 
   doc.setFontSize(fontSizes.footer);
   doc.setFont(fontFamily, 'normal');
@@ -552,7 +599,7 @@ export async function gerarPDF(params: GerarPDFParams): Promise<string | void> {
   const validityDays = bc?.validity_days || 15;
 
   const renderers: Record<string, () => void> = {
-    header: () => { y = renderHeader(doc, style, company, y, pageW, x0); },
+    header: () => { y = renderHeader(doc, style, company, y, pageW, x0, contentW); },
     client: () => { y = renderClientInfo(doc, style, params.atendimento, y, contentW, x0); },
     budget_table: () => {
       y = renderBudgetTable(doc, style, items, y, x0, contentW, numeroParcelas, taxaJuros);
