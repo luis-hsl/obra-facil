@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../lib/useAuth';
 import { useBrandConfig } from '../lib/useBrandConfig';
 import { supabase } from '../lib/supabase';
@@ -55,6 +55,33 @@ function ToggleButtons<T extends string>({ options, value, onChange }: {
   );
 }
 
+// Mock data for preview
+const MOCK_ATENDIMENTO = {
+  cliente_nome: 'João da Silva',
+  cliente_telefone: '(11) 99999-1234',
+  endereco: 'Rua Exemplo', numero: '123',
+  complemento: 'Apto 45', bairro: 'Centro',
+  cidade: 'São Paulo', tipo_servico: 'Piso Laminado',
+};
+
+const MOCK_ORCAMENTO = {
+  id: 'test', atendimento_id: '', produto_id: null,
+  area_total: 50, area_com_perda: 55, perda_percentual: 10,
+  valor_total: 5500, status: 'enviado' as const, observacoes: null,
+  forma_pagamento: 'parcelado' as const, numero_parcelas: 10,
+  taxa_juros_mensal: 2, valor_parcela: null, valor_total_parcelado: null,
+  created_at: '',
+};
+
+const MOCK_ITENS = [
+  { id: '1', orcamento_id: 'test', produto_id: null,
+    area_total: 50, area_com_perda: 55, perda_percentual: 10,
+    preco_por_m2: 110, valor_total: 5500, created_at: '' },
+  { id: '2', orcamento_id: 'test', produto_id: null,
+    area_total: 50, area_com_perda: 55, perda_percentual: 10,
+    preco_por_m2: 85, valor_total: 4250, created_at: '' },
+];
+
 // ============================================================
 // Main component
 // ============================================================
@@ -66,7 +93,7 @@ export default function MarcaConfig() {
   // Template state (single source of truth)
   const [template, setTemplate] = useState<DocumentTemplate>(DEFAULT_DOCUMENT_TEMPLATE);
 
-  // Company data (persisted separately in brand_configs columns)
+  // Company data
   const [companyName, setCompanyName] = useState('');
   const [companyCnpj, setCompanyCnpj] = useState('');
   const [companyPhone, setCompanyPhone] = useState('');
@@ -78,6 +105,7 @@ export default function MarcaConfig() {
   // Logo
   const [logoUrl, setLogoUrl] = useState('');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -85,8 +113,11 @@ export default function MarcaConfig() {
   const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(new Set(['empresa']));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  // Live preview
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const prevUrlRef = useRef<string | null>(null);
 
   // Load saved config
   useEffect(() => {
@@ -110,6 +141,73 @@ export default function MarcaConfig() {
       if (meta?.cpf_cnpj) setCompanyCnpj(meta.cpf_cnpj);
     }
   }, [config, user]);
+
+  // Load logo as base64 when URL changes
+  useEffect(() => {
+    if (!logoUrl) { setLogoBase64(null); return; }
+    fetch(logoUrl)
+      .then(r => r.blob())
+      .then(blob => new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }))
+      .then(setLogoBase64)
+      .catch(() => setLogoBase64(null));
+  }, [logoUrl]);
+
+  // Build brand config for PDF generation
+  const buildBrandConfig = useCallback((): BrandConfig => ({
+    id: '', user_id: '', created_at: '', updated_at: '',
+    logo_url: logoUrl || null, logo_position: 'left',
+    primary_color: template.branding.primary_color,
+    secondary_color: template.branding.secondary_color,
+    accent_color: template.branding.accent_color,
+    company_name: companyName || null, company_cnpj: companyCnpj || null,
+    company_phone: companyPhone || null, company_email: companyEmail || null,
+    company_address: companyAddress || null, footer_text: footerText || null,
+    validity_days: validityDays, layout_style: 'classic',
+    font_family: template.branding.font_family,
+    pdf_template: template,
+  }), [template, companyName, companyCnpj, companyPhone, companyEmail, companyAddress, footerText, validityDays, logoUrl]);
+
+  // Live preview: regenerate PDF on any change (debounced)
+  useEffect(() => {
+    if (!previewOpen) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const url = await gerarPDF({
+          atendimento: MOCK_ATENDIMENTO,
+          orcamento: MOCK_ORCAMENTO,
+          produto: null,
+          itens: MOCK_ITENS,
+          produtosMap: {},
+          brandConfig: buildBrandConfig(),
+          logoBase64,
+          preview: true,
+        });
+
+        if (url) {
+          // Revoke previous blob URL
+          if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
+          prevUrlRef.current = url as string;
+          setPreviewUrl(url as string);
+        }
+      } catch {
+        // Silently fail — preview is best-effort
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [previewOpen, buildBrandConfig, logoBase64]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
+    };
+  }, []);
 
   // Template update helpers
   function updateBranding<K extends keyof DocumentTemplate['branding']>(key: K, value: DocumentTemplate['branding'][K]) {
@@ -173,77 +271,6 @@ export default function MarcaConfig() {
     }
   };
 
-  // Test PDF
-  const handleTestPDF = async () => {
-    setGeneratingPdf(true);
-    setMessage(null);
-    try {
-      const brandForTest: BrandConfig = {
-        id: '', user_id: '', created_at: '', updated_at: '',
-        logo_url: logoUrl || null, logo_position: 'left',
-        primary_color: template.branding.primary_color,
-        secondary_color: template.branding.secondary_color,
-        accent_color: template.branding.accent_color,
-        company_name: companyName || null, company_cnpj: companyCnpj || null,
-        company_phone: companyPhone || null, company_email: companyEmail || null,
-        company_address: companyAddress || null, footer_text: footerText || null,
-        validity_days: validityDays, layout_style: 'classic',
-        font_family: template.branding.font_family,
-        pdf_template: template,
-      };
-
-      let logoBase64: string | null = null;
-      if (logoUrl) {
-        try {
-          const resp = await fetch(logoUrl);
-          const blob = await resp.blob();
-          logoBase64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          });
-        } catch { /* logo failed */ }
-      }
-
-      const url = await gerarPDF({
-        atendimento: {
-          cliente_nome: 'João da Silva',
-          cliente_telefone: '(11) 99999-1234',
-          endereco: 'Rua Exemplo', numero: '123',
-          complemento: 'Apto 45', bairro: 'Centro',
-          cidade: 'São Paulo', tipo_servico: 'Piso Laminado',
-        },
-        orcamento: {
-          id: 'test', atendimento_id: '', produto_id: null,
-          area_total: 50, area_com_perda: 55, perda_percentual: 10,
-          valor_total: 5500, status: 'enviado', observacoes: null,
-          forma_pagamento: 'parcelado', numero_parcelas: 10,
-          taxa_juros_mensal: 2, valor_parcela: null, valor_total_parcelado: null,
-          created_at: '',
-        },
-        produto: null,
-        itens: [
-          { id: '1', orcamento_id: 'test', produto_id: null,
-            area_total: 50, area_com_perda: 55, perda_percentual: 10,
-            preco_por_m2: 110, valor_total: 5500, created_at: '' },
-          { id: '2', orcamento_id: 'test', produto_id: null,
-            area_total: 50, area_com_perda: 55, perda_percentual: 10,
-            preco_por_m2: 85, valor_total: 4250, created_at: '' },
-        ],
-        produtosMap: {},
-        brandConfig: brandForTest,
-        logoBase64,
-        preview: true,
-      });
-
-      if (url) setPdfPreviewUrl(url as string);
-    } catch (err) {
-      setMessage({ type: 'error', text: `Erro ao gerar PDF: ${err instanceof Error ? err.message : 'desconhecido'}` });
-    } finally {
-      setGeneratingPdf(false);
-    }
-  };
-
   // Save
   const handleSave = async () => {
     setSaving(true);
@@ -289,7 +316,7 @@ export default function MarcaConfig() {
   }
 
   // ============================================================
-  // Render
+  // Render helpers
   // ============================================================
 
   const renderSection = (id: SectionId, children: React.ReactNode) => {
@@ -311,10 +338,21 @@ export default function MarcaConfig() {
   };
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-gray-900">Minha Marca</h1>
+    <div className={`space-y-4 ${previewOpen ? 'pb-[55vh] md:pb-0 md:pr-[420px]' : ''}`}>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Minha Marca</h1>
+        <button onClick={() => setPreviewOpen(p => !p)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            previewOpen
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          {previewOpen ? 'Fechar Preview' : 'Preview'}
+        </button>
+      </div>
       <p className="text-gray-600 text-sm">
-        Configure a identidade visual do seu orçamento. Use "Testar PDF" para ver o resultado.
+        Configure a identidade visual do seu orçamento.{previewOpen ? ' As alterações aparecem em tempo real.' : ''}
       </p>
 
       {message && (
@@ -588,38 +626,34 @@ export default function MarcaConfig() {
         </div>
       </>)}
 
-      {/* Ações */}
+      {/* Salvar */}
       <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-        <div className="flex gap-3">
-          <button onClick={handleTestPDF} disabled={generatingPdf}
-            className="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-            {generatingPdf ? 'Gerando...' : 'Testar PDF'}
-          </button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-            {saving ? 'Salvando...' : 'Salvar Configuração'}
-          </button>
-        </div>
+        <button onClick={handleSave} disabled={saving}
+          className="w-full px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+          {saving ? 'Salvando...' : 'Salvar Configuração'}
+        </button>
       </div>
 
-      {/* Preview modal */}
-      {pdfPreviewUrl && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null); }}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl h-[85vh] flex flex-col"
-            onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Preview do Orçamento</h3>
-              <button onClick={() => { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null); }}
-                className="p-1 rounded-lg hover:bg-gray-100 text-gray-500">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="flex-1 p-2">
-              <iframe src={pdfPreviewUrl} className="w-full h-full rounded-lg border border-gray-200" title="Preview PDF" />
-            </div>
+      {/* Live Preview Panel */}
+      {previewOpen && (
+        <div className="fixed bottom-0 left-0 right-0 h-[50vh] md:top-0 md:left-auto md:right-0 md:h-full md:w-[400px] bg-white border-t md:border-t-0 md:border-l border-gray-200 shadow-2xl z-40 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-gray-50 shrink-0">
+            <span className="text-sm font-semibold text-gray-700">Preview ao vivo</span>
+            <button onClick={() => setPreviewOpen(false)}
+              className="p-1 rounded hover:bg-gray-200 text-gray-500">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex-1 p-2 overflow-hidden bg-gray-100">
+            {previewUrl ? (
+              <iframe src={previewUrl} className="w-full h-full rounded border border-gray-200 bg-white" title="Preview PDF" />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                Gerando preview...
+              </div>
+            )}
           </div>
         </div>
       )}
