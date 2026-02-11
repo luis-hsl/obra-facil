@@ -108,6 +108,10 @@ export interface Fechamento {
 // Marca / Identidade Visual
 // =============================================
 
+import type { PdfBrandConfig } from './pdfTokens';
+
+export type { PdfBrandConfig } from './pdfTokens';
+
 export interface BrandConfig {
   id: string;
   user_id: string;
@@ -125,15 +129,16 @@ export interface BrandConfig {
   validity_days: number;
   layout_style: 'classic' | 'modern' | 'minimal';
   font_family: 'helvetica' | 'times' | 'courier';
-  pdf_template: DocumentTemplate | null;
+  pdf_template: PdfBrandConfig | DocumentTemplate | null;
   created_at: string;
   updated_at: string;
 }
 
 // =============================================
-// Document Template (configuração visual do PDF)
+// Document Template v2 — @deprecated (mantido para migração runtime)
 // =============================================
 
+/** @deprecated Use PdfBrandConfig (version 3) instead */
 export interface DocumentTemplate {
   version: 2;
   branding: {

@@ -3,24 +3,14 @@ import { useAuth } from '../lib/useAuth';
 import { useBrandConfig } from '../lib/useBrandConfig';
 import { supabase } from '../lib/supabase';
 import { gerarPDF } from '../lib/gerarPDF';
-import { DEFAULT_DOCUMENT_TEMPLATE } from '../lib/defaultDocumentTemplate';
-import type { BrandConfig, DocumentTemplate } from '../types';
+import { DEFAULT_PDF_BRAND_CONFIG } from '../lib/pdf/defaults';
+import { PDF_PRESETS } from '../lib/pdf/presets';
+import type { BrandConfig, PdfBrandConfig } from '../types';
+import type { Orcamento, OrcamentoItem } from '../types';
 
 // ============================================================
 // Helpers
 // ============================================================
-
-type SectionId = 'empresa' | 'logo' | 'cores' | 'cabecalho' | 'produtos' | 'cliente' | 'rodape';
-
-const SECTION_LABELS: Record<SectionId, string> = {
-  empresa: 'Dados da Empresa',
-  logo: 'Logo',
-  cores: 'Cores e Fonte',
-  cabecalho: 'Cabeçalho',
-  produtos: 'Estilo dos Produtos',
-  cliente: 'Dados do Cliente',
-  rodape: 'Rodapé / Observações',
-};
 
 function ColorInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
@@ -47,53 +37,73 @@ function ToggleButtons<T extends string>({ options, value, onChange }: {
               ? 'border-blue-500 bg-blue-50 text-blue-700'
               : 'border-gray-200 text-gray-600 hover:bg-gray-50'
           }`}
-        >
-          {opt.label}
-        </button>
+        >{opt.label}</button>
       ))}
     </div>
   );
 }
 
-// Mock data for preview
+function Section({ title, open, onToggle, children }: {
+  title: string; open: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
+  return (
+    <div className="border border-gray-200 rounded-lg">
+      <button type="button" onClick={onToggle}
+        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors">
+        <span className="font-semibold text-gray-800">{title}</span>
+        <span className="text-gray-400">{open ? '−' : '+'}</span>
+      </button>
+      {open && <div className="px-4 pb-4 space-y-4">{children}</div>}
+    </div>
+  );
+}
+
+// ============================================================
+// Mock data para preview
+// ============================================================
+
 const MOCK_ATENDIMENTO = {
-  cliente_nome: 'João da Silva',
-  cliente_telefone: '(11) 99999-1234',
-  endereco: 'Rua Exemplo', numero: '123',
-  complemento: 'Apto 45', bairro: 'Centro',
-  cidade: 'São Paulo', tipo_servico: 'Piso Laminado',
+  cliente_nome: 'Maria Silva',
+  cliente_telefone: '(41) 99999-1234',
+  endereco: 'Rua das Flores',
+  numero: '123',
+  complemento: 'Apto 4',
+  bairro: 'Centro',
+  cidade: 'Curitiba',
+  tipo_servico: 'Piso Laminado',
 };
 
-const MOCK_ORCAMENTO = {
-  id: 'test', atendimento_id: '', produto_id: null,
+const MOCK_ORCAMENTO: Orcamento = {
+  id: 'mock', atendimento_id: 'mock', produto_id: null,
   area_total: 50, area_com_perda: 55, perda_percentual: 10,
-  valor_total: 5500, status: 'enviado' as const, observacoes: null,
-  forma_pagamento: 'parcelado' as const, numero_parcelas: 10,
+  valor_total: 5500, status: 'rascunho', observacoes: null,
+  forma_pagamento: 'parcelado', numero_parcelas: 10,
   taxa_juros_mensal: 2, valor_parcela: null, valor_total_parcelado: null,
   created_at: '',
 };
 
-const MOCK_ITENS = [
-  { id: '1', orcamento_id: 'test', produto_id: null,
-    area_total: 50, area_com_perda: 55, perda_percentual: 10,
-    preco_por_m2: 110, valor_total: 5500, created_at: '' },
-  { id: '2', orcamento_id: 'test', produto_id: null,
-    area_total: 50, area_com_perda: 55, perda_percentual: 10,
-    preco_por_m2: 85, valor_total: 4250, created_at: '' },
+const MOCK_ITENS: OrcamentoItem[] = [
+  { id: '1', orcamento_id: 'mock', produto_id: 'p1', area_total: 50, area_com_perda: 55, perda_percentual: 10, preco_por_m2: 110, valor_total: 5500, created_at: '' },
+  { id: '2', orcamento_id: 'mock', produto_id: 'p2', area_total: 50, area_com_perda: 55, perda_percentual: 10, preco_por_m2: 85, valor_total: 4250, created_at: '' },
 ];
 
+const MOCK_PRODUTOS_MAP: Record<string, { id: string; user_id: string; fabricante: string; linha: string; preco_por_m2: number; created_at: string }> = {
+  p1: { id: 'p1', user_id: '', fabricante: 'Durafloor', linha: 'Nature', preco_por_m2: 110, created_at: '' },
+  p2: { id: 'p2', user_id: '', fabricante: 'Eucafloor', linha: 'Prime', preco_por_m2: 85, created_at: '' },
+};
+
 // ============================================================
-// Main component
+// Main Component
 // ============================================================
 
 export default function MarcaConfig() {
   const { user } = useAuth();
   const { config, loading, saveConfig } = useBrandConfig();
 
-  // Template state (single source of truth)
-  const [template, setTemplate] = useState<DocumentTemplate>(DEFAULT_DOCUMENT_TEMPLATE);
+  // Token state
+  const [tokenConfig, setTokenConfig] = useState<PdfBrandConfig>(DEFAULT_PDF_BRAND_CONFIG);
 
-  // Company data
+  // Company data (separate from style)
   const [companyName, setCompanyName] = useState('');
   const [companyCnpj, setCompanyCnpj] = useState('');
   const [companyPhone, setCompanyPhone] = useState('');
@@ -103,78 +113,120 @@ export default function MarcaConfig() {
   const [validityDays, setValidityDays] = useState(15);
 
   // Logo
-  const [logoUrl, setLogoUrl] = useState('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // UI state
-  const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(new Set(['empresa']));
+  // UI
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['visual']));
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  // Live preview
+  const [msg, setMsg] = useState('');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const prevUrlRef = useRef<string | null>(null);
 
   // Load saved config
   useEffect(() => {
-    if (config) {
-      setLogoUrl(config.logo_url || '');
-      if (config.logo_url) setLogoPreview(config.logo_url);
-      if (config.pdf_template && (config.pdf_template as DocumentTemplate).version === 2) {
-        setTemplate(config.pdf_template as DocumentTemplate);
+    if (!config) {
+      // Fallback: user metadata
+      if (user?.user_metadata) {
+        const m = user.user_metadata;
+        if (m.empresa) setCompanyName(m.empresa);
+        if (m.telefone) setCompanyPhone(m.telefone);
+        if (m.cpf_cnpj) setCompanyCnpj(m.cpf_cnpj);
       }
-      setCompanyName(config.company_name || '');
-      setCompanyCnpj(config.company_cnpj || '');
-      setCompanyPhone(config.company_phone || '');
-      setCompanyEmail(config.company_email || '');
-      setCompanyAddress(config.company_address || '');
-      setFooterText(config.footer_text || '');
-      setValidityDays(config.validity_days || 15);
-    } else if (user) {
-      const meta = user.user_metadata;
-      if (meta?.empresa) setCompanyName(meta.empresa);
-      if (meta?.telefone) setCompanyPhone(meta.telefone);
-      if (meta?.cpf_cnpj) setCompanyCnpj(meta.cpf_cnpj);
+      return;
+    }
+    // Load company data
+    setCompanyName(config.company_name || '');
+    setCompanyCnpj(config.company_cnpj || '');
+    setCompanyPhone(config.company_phone || '');
+    setCompanyEmail(config.company_email || '');
+    setCompanyAddress(config.company_address || '');
+    setFooterText(config.footer_text || '');
+    setValidityDays(config.validity_days || 15);
+    setLogoUrl(config.logo_url || null);
+    setLogoPreview(config.logo_url || null);
+
+    // Load token config
+    const stored = config.pdf_template as Record<string, unknown> | null;
+    if (stored && stored.version === 3) {
+      setTokenConfig(stored as unknown as PdfBrandConfig);
+    } else {
+      // Synthesize from flat fields
+      setTokenConfig({
+        ...DEFAULT_PDF_BRAND_CONFIG,
+        templateId: (config.layout_style as PdfBrandConfig['templateId']) || 'modern',
+        colors: {
+          primary: config.primary_color || DEFAULT_PDF_BRAND_CONFIG.colors.primary,
+          secondary: config.accent_color || DEFAULT_PDF_BRAND_CONFIG.colors.secondary,
+          text: config.secondary_color || DEFAULT_PDF_BRAND_CONFIG.colors.text,
+          muted: DEFAULT_PDF_BRAND_CONFIG.colors.muted,
+          border: DEFAULT_PDF_BRAND_CONFIG.colors.border,
+        },
+        typography: {
+          fontFamily: config.font_family || 'helvetica',
+          headingWeight: 'bold',
+          bodyWeight: 'normal',
+        },
+        logo: {
+          url: config.logo_url || null,
+          alignment: config.logo_position || 'left',
+          size: 'medium',
+        },
+      });
     }
   }, [config, user]);
 
-  // Load logo as base64 when URL changes
+  // Preload logo as base64
   useEffect(() => {
     if (!logoUrl) { setLogoBase64(null); return; }
     fetch(logoUrl)
       .then(r => r.blob())
-      .then(blob => new Promise<string>((resolve) => {
+      .then(blob => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
+        reader.onloadend = () => setLogoBase64(reader.result as string);
         reader.readAsDataURL(blob);
-      }))
-      .then(setLogoBase64)
+      })
       .catch(() => setLogoBase64(null));
   }, [logoUrl]);
+
+  // Token update helpers
+  const updateColor = (key: keyof PdfBrandConfig['colors'], value: string) =>
+    setTokenConfig(t => ({ ...t, colors: { ...t.colors, [key]: value } }));
+
+  const updateTypo = <K extends keyof PdfBrandConfig['typography']>(key: K, value: PdfBrandConfig['typography'][K]) =>
+    setTokenConfig(t => ({ ...t, typography: { ...t.typography, [key]: value } }));
+
+  const updateLogo = <K extends keyof PdfBrandConfig['logo']>(key: K, value: PdfBrandConfig['logo'][K]) =>
+    setTokenConfig(t => ({ ...t, logo: { ...t.logo, [key]: value } }));
+
+  const updateLayout = <K extends keyof PdfBrandConfig['layout']>(key: K, value: PdfBrandConfig['layout'][K]) =>
+    setTokenConfig(t => ({ ...t, layout: { ...t.layout, [key]: value } }));
 
   // Build brand config for PDF generation
   const buildBrandConfig = useCallback((): BrandConfig => ({
     id: '', user_id: '', created_at: '', updated_at: '',
-    logo_url: logoUrl || null, logo_position: 'left',
-    primary_color: template.branding.primary_color,
-    secondary_color: template.branding.secondary_color,
-    accent_color: template.branding.accent_color,
-    company_name: companyName || null, company_cnpj: companyCnpj || null,
-    company_phone: companyPhone || null, company_email: companyEmail || null,
-    company_address: companyAddress || null, footer_text: footerText || null,
-    validity_days: validityDays, layout_style: 'classic',
-    font_family: template.branding.font_family,
-    pdf_template: template,
-  }), [template, companyName, companyCnpj, companyPhone, companyEmail, companyAddress, footerText, validityDays, logoUrl]);
+    logo_url: logoUrl,
+    logo_position: tokenConfig.logo.alignment,
+    primary_color: tokenConfig.colors.primary,
+    secondary_color: tokenConfig.colors.text,
+    accent_color: tokenConfig.colors.secondary,
+    company_name: companyName || null,
+    company_cnpj: companyCnpj || null,
+    company_phone: companyPhone || null,
+    company_email: companyEmail || null,
+    company_address: companyAddress || null,
+    footer_text: footerText || null,
+    validity_days: validityDays,
+    layout_style: tokenConfig.templateId,
+    font_family: tokenConfig.typography.fontFamily,
+    pdf_template: tokenConfig,
+  }), [tokenConfig, logoUrl, companyName, companyCnpj, companyPhone, companyEmail, companyAddress, footerText, validityDays]);
 
-  // Live preview: regenerate PDF on any change (debounced)
+  // Live preview with debounce
   useEffect(() => {
     if (!previewOpen) return;
-
     const timer = setTimeout(async () => {
       try {
         const url = await gerarPDF({
@@ -182,118 +234,54 @@ export default function MarcaConfig() {
           orcamento: MOCK_ORCAMENTO,
           produto: null,
           itens: MOCK_ITENS,
-          produtosMap: {},
+          produtosMap: MOCK_PRODUTOS_MAP,
+          numeroParcelas: 10,
+          taxaJuros: 2,
           brandConfig: buildBrandConfig(),
           logoBase64,
           preview: true,
         });
-
         if (url) {
-          // Revoke previous blob URL
           if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
           prevUrlRef.current = url as string;
           setPreviewUrl(url as string);
         }
-      } catch {
-        // Silently fail — preview is best-effort
+      } catch (err) {
+        console.error('Preview error:', err);
       }
     }, 400);
-
     return () => clearTimeout(timer);
   }, [previewOpen, buildBrandConfig, logoBase64]);
 
-  // Cleanup blob URL on unmount
-  useEffect(() => {
-    return () => {
-      if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
-    };
-  }, []);
+  // Cleanup on unmount
+  useEffect(() => () => { if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current); }, []);
 
-  // Template update helpers
-  function updateBranding<K extends keyof DocumentTemplate['branding']>(key: K, value: DocumentTemplate['branding'][K]) {
-    setTemplate(t => ({ ...t, branding: { ...t.branding, [key]: value } }));
-  }
-  function updateHeader<K extends keyof DocumentTemplate['layout_metadata']['header']>(key: K, value: DocumentTemplate['layout_metadata']['header'][K]) {
-    setTemplate(t => ({
-      ...t, layout_metadata: { ...t.layout_metadata, header: { ...t.layout_metadata.header, [key]: value } },
-    }));
-  }
-  function updateHeaderTitle<K extends keyof DocumentTemplate['layout_metadata']['header']['title']>(key: K, value: DocumentTemplate['layout_metadata']['header']['title'][K]) {
-    setTemplate(t => ({
-      ...t, layout_metadata: {
-        ...t.layout_metadata, header: {
-          ...t.layout_metadata.header, title: { ...t.layout_metadata.header.title, [key]: value },
-        },
-      },
-    }));
-  }
-  function updateBudgetTable<K extends keyof DocumentTemplate['budget_table']>(key: K, value: DocumentTemplate['budget_table'][K]) {
-    setTemplate(t => ({ ...t, budget_table: { ...t.budget_table, [key]: value } }));
-  }
-  function updateTotals<K extends keyof DocumentTemplate['totals']>(key: K, value: DocumentTemplate['totals'][K]) {
-    setTemplate(t => ({ ...t, totals: { ...t.totals, [key]: value } }));
-  }
-  function updateClientSection<K extends keyof DocumentTemplate['layout_metadata']['client_section']>(key: K, value: DocumentTemplate['layout_metadata']['client_section'][K]) {
-    setTemplate(t => ({
-      ...t, layout_metadata: { ...t.layout_metadata, client_section: { ...t.layout_metadata.client_section, [key]: value } },
-    }));
-  }
-  function updateFooter<K extends keyof DocumentTemplate['layout_metadata']['footer']>(key: K, value: DocumentTemplate['layout_metadata']['footer'][K]) {
-    setTemplate(t => ({
-      ...t, layout_metadata: { ...t.layout_metadata, footer: { ...t.layout_metadata.footer, [key]: value } },
-    }));
-  }
+  // Toggle section
+  const toggle = (id: string) => setOpenSections(s => {
+    const next = new Set(s);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
 
-  const toggleSection = (id: SectionId) => {
-    setExpandedSections(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  // Upload logo
+  // Logo upload
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    setUploadingLogo(true);
-    try {
-      const ext = file.name.split('.').pop() || 'png';
-      const path = `${user.id}/logo.${ext}`;
-      await supabase.storage.from('brand').upload(path, file, { upsert: true });
+    setLogoPreview(URL.createObjectURL(file));
+    const path = `${user.id}/logo-${Date.now()}.${file.name.split('.').pop()}`;
+    const { error } = await supabase.storage.from('brand').upload(path, file, { upsert: true });
+    if (!error) {
       const { data: urlData } = supabase.storage.from('brand').getPublicUrl(path);
       setLogoUrl(urlData.publicUrl);
-      setLogoPreview(URL.createObjectURL(file));
-    } catch {
-      setMessage({ type: 'error', text: 'Erro ao enviar logo.' });
-    } finally {
-      setUploadingLogo(false);
+      updateLogo('url', urlData.publicUrl);
     }
   };
 
   // Save
   const handleSave = async () => {
     setSaving(true);
-    setMessage(null);
-
-    const templateToSave: DocumentTemplate = {
-      ...template,
-      company_fields: [
-        companyName ? { label: companyName, value: companyName, type: 'text' as const, style: 'bold' as const, fontSize: 10 } : null,
-        companyCnpj ? { label: companyCnpj, value: companyCnpj, type: 'cnpj' as const, style: 'normal' as const, fontSize: 8 } : null,
-        companyPhone ? { label: companyPhone, value: companyPhone, type: 'phone' as const, style: 'normal' as const, fontSize: 8 } : null,
-        companyEmail ? { label: companyEmail, value: companyEmail, type: 'email' as const, style: 'normal' as const, fontSize: 8 } : null,
-        companyAddress ? { label: companyAddress, value: companyAddress, type: 'address' as const, style: 'normal' as const, fontSize: 8 } : null,
-      ].filter((f): f is NonNullable<typeof f> => f !== null),
-      observations: {
-        ...template.observations,
-        default_text: footerText || template.observations.default_text,
-      },
-    };
-
-    const { error } = await saveConfig({
-      logo_url: logoUrl || null,
-      pdf_template: templateToSave as any,
+    setMsg('');
+    const updates: Partial<BrandConfig> = {
       company_name: companyName || null,
       company_cnpj: companyCnpj || null,
       company_phone: companyPhone || null,
@@ -301,354 +289,180 @@ export default function MarcaConfig() {
       company_address: companyAddress || null,
       footer_text: footerText || null,
       validity_days: validityDays,
-    });
-
-    if (error) {
-      setMessage({ type: 'error', text: 'Erro ao salvar.' });
-    } else {
-      setMessage({ type: 'success', text: 'Configuração salva!' });
-    }
+      logo_url: logoUrl,
+      logo_position: tokenConfig.logo.alignment,
+      primary_color: tokenConfig.colors.primary,
+      secondary_color: tokenConfig.colors.text,
+      accent_color: tokenConfig.colors.secondary,
+      font_family: tokenConfig.typography.fontFamily,
+      layout_style: tokenConfig.templateId,
+      pdf_template: tokenConfig,
+    };
+    const { error } = await saveConfig(updates);
     setSaving(false);
+    setMsg(error ? 'Erro ao salvar.' : 'Salvo!');
+    setTimeout(() => setMsg(''), 3000);
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center py-12"><p className="text-gray-500">Carregando...</p></div>;
-  }
-
-  // ============================================================
-  // Render helpers
-  // ============================================================
-
-  const renderSection = (id: SectionId, children: React.ReactNode) => {
-    const isOpen = expandedSections.has(id);
-    return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <button onClick={() => toggleSection(id)}
-          className="w-full flex items-center justify-between px-5 py-3.5 text-left">
-          <span className="font-semibold text-gray-900">{SECTION_LABELS[id]}</span>
-          <span className={`text-gray-400 text-lg transition-transform ${isOpen ? 'rotate-90' : ''}`}>›</span>
-        </button>
-        {isOpen && (
-          <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-4">
-            {children}
-          </div>
-        )}
-      </div>
-    );
-  };
+  if (loading) return <p className="text-gray-500 text-center py-10">Carregando...</p>;
 
   return (
-    <div className={`space-y-4 ${previewOpen ? 'pb-[55vh] md:pb-0 md:pr-[420px]' : ''}`}>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Minha Marca</h1>
-        <button onClick={() => setPreviewOpen(p => !p)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            previewOpen
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          {previewOpen ? 'Fechar Preview' : 'Preview'}
-        </button>
+    <div className={`transition-all ${previewOpen ? 'pb-[55vh] md:pb-0 md:pr-[420px]' : ''}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-gray-900">Minha Marca</h2>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setPreviewOpen(p => !p)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              previewOpen ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}>
+            {previewOpen ? 'Fechar Preview' : 'Preview'}
+          </button>
+          <button type="button" onClick={handleSave} disabled={saving}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
       </div>
-      <p className="text-gray-600 text-sm">
-        Configure a identidade visual do seu orçamento.{previewOpen ? ' As alterações aparecem em tempo real.' : ''}
-      </p>
+      {msg && <p className={`text-sm mb-4 ${msg.includes('Erro') ? 'text-red-600' : 'text-green-600'}`}>{msg}</p>}
 
-      {message && (
-        <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-          {message.text}
+      {/* Template Selector */}
+      <div className="mb-6">
+        <label className="block text-sm font-semibold text-gray-700 mb-3">Template</label>
+        <div className="grid grid-cols-3 gap-3">
+          {Object.values(PDF_PRESETS).map(preset => (
+            <button key={preset.id} type="button"
+              onClick={() => setTokenConfig(t => ({ ...t, templateId: preset.id }))}
+              className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                tokenConfig.templateId === preset.id
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}>
+              <div className="font-semibold text-sm text-gray-800">{preset.label}</div>
+              <div className="text-xs text-gray-500 mt-1">{preset.description}</div>
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
-      {/* 1. Dados da Empresa */}
-      {renderSection('empresa', <>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+      {/* Sections */}
+      <div className="space-y-3">
+        {/* 1. Empresa */}
+        <Section title="Dados da Empresa" open={openSections.has('empresa')} onToggle={() => toggle('empresa')}>
           <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">CNPJ</label>
-            <input type="text" value={companyCnpj} onChange={e => setCompanyCnpj(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-            <input type="text" value={companyPhone} onChange={e => setCompanyPhone(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            placeholder="Nome da empresa" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+          <input type="text" value={companyCnpj} onChange={e => setCompanyCnpj(e.target.value)}
+            placeholder="CNPJ" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+          <input type="tel" value={companyPhone} onChange={e => setCompanyPhone(e.target.value)}
+            placeholder="Telefone" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
           <input type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
+            placeholder="Email" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
           <input type="text" value={companyAddress} onChange={e => setCompanyAddress(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-        </div>
-      </>)}
+            placeholder="Endereço" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+        </Section>
 
-      {/* 2. Logo */}
-      {renderSection('logo', <>
-        <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/jpg" onChange={handleLogoUpload} className="hidden" />
-        <div className="flex items-center gap-4">
+        {/* 2. Logo */}
+        <Section title="Logo" open={openSections.has('logo')} onToggle={() => toggle('logo')}>
+          <input type="file" accept="image/png,image/jpeg" onChange={handleLogoUpload}
+            className="text-sm text-gray-600" />
           {logoPreview && (
             <img src={logoPreview} alt="Logo" className="h-16 object-contain rounded border border-gray-200 p-1" />
           )}
-          <button onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-            {uploadingLogo ? 'Enviando...' : logoPreview ? 'Trocar Logo' : 'Enviar Logo'}
-          </button>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Posição do logo</label>
-          <ToggleButtons
-            options={[{ value: 'left', label: 'Esquerda' }, { value: 'center', label: 'Centro' }, { value: 'right', label: 'Direita' }]}
-            value={template.layout_metadata.header.logo_position}
-            onChange={v => updateHeader('logo_position', v)}
-          />
-        </div>
-      </>)}
-
-      {/* 3. Cores e Fonte */}
-      {renderSection('cores', <>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <ColorInput label="Cor principal" value={template.branding.primary_color} onChange={v => updateBranding('primary_color', v)} />
-          <ColorInput label="Cor secundária" value={template.branding.secondary_color} onChange={v => updateBranding('secondary_color', v)} />
-          <ColorInput label="Destaque de preço" value={template.branding.price_highlight_color} onChange={v => updateBranding('price_highlight_color', v)} />
-          <ColorInput label="Texto do cabeçalho" value={template.branding.header_text_color} onChange={v => updateBranding('header_text_color', v)} />
-          <ColorInput label="Bordas" value={template.branding.border_color} onChange={v => updateBranding('border_color', v)} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Fonte</label>
-          <select value={template.branding.font_family}
-            onChange={e => updateBranding('font_family', e.target.value as 'helvetica' | 'times' | 'courier')}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-            <option value="helvetica">Helvetica</option>
-            <option value="times">Times</option>
-            <option value="courier">Courier</option>
-          </select>
-        </div>
-      </>)}
-
-      {/* 4. Cabeçalho */}
-      {renderSection('cabecalho', <>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Título do documento</label>
-          <input type="text" value={template.layout_metadata.header.title.text}
-            onChange={e => updateHeaderTitle('text', e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Alinhamento do título</label>
-          <ToggleButtons
-            options={[{ value: 'left', label: 'Esquerda' }, { value: 'center', label: 'Centro' }, { value: 'right', label: 'Direita' }]}
-            value={template.layout_metadata.header.title.alignment}
-            onChange={v => updateHeaderTitle('alignment', v)}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tamanho da fonte</label>
-          <input type="number" min={12} max={24}
-            value={template.layout_metadata.header.title.font_size}
-            onChange={e => updateHeaderTitle('font_size', Number(e.target.value))}
-            className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <div className="flex items-center gap-3">
-          <input type="checkbox"
-            checked={template.layout_metadata.header.background_color !== null}
-            onChange={e => updateHeader('background_color', e.target.checked ? template.branding.primary_color : null)}
-            className="rounded border-gray-300" />
-          <span className="text-sm text-gray-700">Fundo colorido</span>
-          {template.layout_metadata.header.background_color && (
-            <input type="color" value={template.layout_metadata.header.background_color}
-              onChange={e => updateHeader('background_color', e.target.value)}
-              className="w-8 h-8 rounded border border-gray-300 cursor-pointer" />
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <input type="checkbox"
-            checked={template.layout_metadata.header.show_separator}
-            onChange={e => updateHeader('show_separator', e.target.checked)}
-            className="rounded border-gray-300" />
-          <span className="text-sm text-gray-700">Mostrar separador</span>
-          {template.layout_metadata.header.show_separator && (
-            <input type="color" value={template.layout_metadata.header.separator_color || template.branding.primary_color}
-              onChange={e => updateHeader('separator_color', e.target.value)}
-              className="w-8 h-8 rounded border border-gray-300 cursor-pointer" />
-          )}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Posição das infos da empresa</label>
-          <ToggleButtons
-            options={[
-              { value: 'left', label: 'Esquerda' },
-              { value: 'right', label: 'Direita' },
-              { value: 'below-logo', label: 'Abaixo do logo' },
-            ]}
-            value={template.layout_metadata.header.company_info_position}
-            onChange={v => updateHeader('company_info_position', v)}
-          />
-        </div>
-      </>)}
-
-      {/* 5. Estilo dos Produtos */}
-      {renderSection('produtos', <>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Estilo de exibição</label>
-          <ToggleButtons
-            options={[
-              { value: 'cards', label: 'Cards' },
-              { value: 'table', label: 'Tabela' },
-              { value: 'list', label: 'Lista' },
-            ]}
-            value={template.budget_table.style}
-            onChange={v => updateBudgetTable('style', v)}
-          />
-        </div>
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center gap-3">
-            <input type="checkbox" checked={template.totals.show_discount}
-              onChange={e => updateTotals('show_discount', e.target.checked)}
-              className="rounded border-gray-300" />
-            <span className="text-sm text-gray-700">Mostrar desconto à vista</span>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Posição</label>
+            <ToggleButtons
+              options={[{ value: 'left' as const, label: 'Esquerda' }, { value: 'center' as const, label: 'Centro' }, { value: 'right' as const, label: 'Direita' }]}
+              value={tokenConfig.logo.alignment}
+              onChange={v => updateLogo('alignment', v)}
+            />
           </div>
-          {template.totals.show_discount && (
-            <div className="ml-7 grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Label</label>
-                <input type="text" value={template.totals.discount_label}
-                  onChange={e => updateTotals('discount_label', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Desconto (%)</label>
-                <input type="number" min={0} max={50} value={template.totals.discount_percent}
-                  onChange={e => updateTotals('discount_percent', Number(e.target.value))}
-                  className="w-20 border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
-              </div>
-            </div>
-          )}
-          <div className="flex items-center gap-3">
-            <input type="checkbox" checked={template.totals.show_installments}
-              onChange={e => updateTotals('show_installments', e.target.checked)}
-              className="rounded border-gray-300" />
-            <span className="text-sm text-gray-700">Mostrar parcelamento</span>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Tamanho</label>
+            <ToggleButtons
+              options={[{ value: 'small' as const, label: 'Pequeno' }, { value: 'medium' as const, label: 'Médio' }]}
+              value={tokenConfig.logo.size}
+              onChange={v => updateLogo('size', v)}
+            />
           </div>
-          {template.totals.show_installments && (
-            <div className="ml-7">
-              <label className="block text-xs text-gray-500 mb-1">Label</label>
-              <input type="text" value={template.totals.installment_label}
-                onChange={e => updateTotals('installment_label', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
-            </div>
-          )}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Posição dos totais</label>
-          <ToggleButtons
-            options={[
-              { value: 'per_item', label: 'Por item' },
-              { value: 'summary_bottom', label: 'Resumo no final' },
-            ]}
-            value={template.totals.position}
-            onChange={v => updateTotals('position', v)}
-          />
-        </div>
-      </>)}
+        </Section>
 
-      {/* 6. Dados do Cliente */}
-      {renderSection('cliente', <>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Estilo</label>
-          <ToggleButtons
-            options={[
-              { value: 'inline', label: 'Inline' },
-              { value: 'card', label: 'Card' },
-              { value: 'table', label: 'Tabela' },
-            ]}
-            value={template.layout_metadata.client_section.style}
-            onChange={v => updateClientSection('style', v)}
-          />
-        </div>
-        <div className="flex items-center gap-3">
-          <input type="checkbox" checked={template.layout_metadata.client_section.label_bold}
-            onChange={e => updateClientSection('label_bold', e.target.checked)}
-            className="rounded border-gray-300" />
-          <span className="text-sm text-gray-700">Labels em negrito</span>
-        </div>
-        {template.layout_metadata.client_section.style !== 'inline' && (
-          <div className="flex items-center gap-3">
-            <input type="checkbox" checked={template.layout_metadata.client_section.border}
-              onChange={e => updateClientSection('border', e.target.checked)}
-              className="rounded border-gray-300" />
-            <span className="text-sm text-gray-700">Borda</span>
+        {/* 3. Visual */}
+        <Section title="Visual" open={openSections.has('visual')} onToggle={() => toggle('visual')}>
+          <div className="grid grid-cols-2 gap-3">
+            <ColorInput label="Cor principal" value={tokenConfig.colors.primary} onChange={v => updateColor('primary', v)} />
+            <ColorInput label="Destaque (preços)" value={tokenConfig.colors.secondary} onChange={v => updateColor('secondary', v)} />
+            <ColorInput label="Texto" value={tokenConfig.colors.text} onChange={v => updateColor('text', v)} />
+            <ColorInput label="Texto sutil" value={tokenConfig.colors.muted} onChange={v => updateColor('muted', v)} />
+            <ColorInput label="Bordas" value={tokenConfig.colors.border} onChange={v => updateColor('border', v)} />
           </div>
-        )}
-      </>)}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Fonte</label>
+            <select value={tokenConfig.typography.fontFamily}
+              onChange={e => updateTypo('fontFamily', e.target.value as PdfBrandConfig['typography']['fontFamily'])}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+              <option value="helvetica">Helvetica</option>
+              <option value="times">Times</option>
+              <option value="courier">Courier</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Peso dos títulos</label>
+            <ToggleButtons
+              options={[{ value: 'bold' as const, label: 'Negrito' }, { value: 'normal' as const, label: 'Normal' }]}
+              value={tokenConfig.typography.headingWeight}
+              onChange={v => updateTypo('headingWeight', v)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Densidade</label>
+            <ToggleButtons
+              options={[
+                { value: 'compact' as const, label: 'Compacto' },
+                { value: 'normal' as const, label: 'Normal' },
+                { value: 'spacious' as const, label: 'Espaçoso' },
+              ]}
+              value={tokenConfig.layout.density}
+              onChange={v => updateLayout('density', v)}
+            />
+          </div>
+        </Section>
 
-      {/* 7. Rodapé */}
-      {renderSection('rodape', <>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Texto de observações</label>
-          <textarea value={footerText || template.observations.default_text}
-            onChange={e => setFooterText(e.target.value)} rows={3}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Termos e condições..." />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Validade (dias)</label>
-          <input type="number" value={validityDays} onChange={e => setValidityDays(Number(e.target.value))}
-            min={1} max={90} className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Estilo do rodapé</label>
-          <ToggleButtons
-            options={[
-              { value: 'line', label: 'Linha' },
-              { value: 'bar', label: 'Barra' },
-              { value: 'minimal', label: 'Mínimo' },
-            ]}
-            value={template.layout_metadata.footer.style}
-            onChange={v => updateFooter('style', v)}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Alinhamento</label>
-          <ToggleButtons
-            options={[{ value: 'left', label: 'Esquerda' }, { value: 'center', label: 'Centro' }, { value: 'right', label: 'Direita' }]}
-            value={template.layout_metadata.footer.text_alignment}
-            onChange={v => updateFooter('text_alignment', v)}
-          />
-        </div>
-      </>)}
-
-      {/* Salvar */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-        <button onClick={handleSave} disabled={saving}
-          className="w-full px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-          {saving ? 'Salvando...' : 'Salvar Configuração'}
-        </button>
+        {/* 4. Observações */}
+        <Section title="Observações e Rodapé" open={openSections.has('obs')} onToggle={() => toggle('obs')}>
+          <textarea value={footerText} onChange={e => setFooterText(e.target.value)}
+            rows={3} placeholder="Texto de observações do orçamento"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-gray-700">Validade (dias):</label>
+            <input type="number" value={validityDays} onChange={e => setValidityDays(Math.max(1, Math.min(90, Number(e.target.value))))}
+              min={1} max={90} className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={tokenConfig.layout.showNotes}
+              onChange={e => updateLayout('showNotes', e.target.checked)}
+              className="rounded border-gray-300" />
+            Mostrar observações no PDF
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={tokenConfig.layout.showFooter}
+              onChange={e => updateLayout('showFooter', e.target.checked)}
+              className="rounded border-gray-300" />
+            Mostrar rodapé com validade
+          </label>
+        </Section>
       </div>
 
       {/* Live Preview Panel */}
       {previewOpen && (
-        <div className="fixed bottom-0 left-0 right-0 h-[50vh] md:top-0 md:left-auto md:right-0 md:h-full md:w-[400px] bg-white border-t md:border-t-0 md:border-l border-gray-200 shadow-2xl z-40 flex flex-col">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-gray-50 shrink-0">
-            <span className="text-sm font-semibold text-gray-700">Preview ao vivo</span>
-            <button onClick={() => setPreviewOpen(false)}
-              className="p-1 rounded hover:bg-gray-200 text-gray-500">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div className="fixed bottom-0 left-0 right-0 h-[50vh] bg-white border-t border-gray-300 shadow-lg z-40
+                        md:top-0 md:bottom-0 md:left-auto md:right-0 md:w-[400px] md:h-full md:border-t-0 md:border-l">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+            <span className="text-sm font-semibold text-gray-700">Preview do PDF</span>
+            <button onClick={() => setPreviewOpen(false)} className="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
           </div>
-          <div className="flex-1 p-2 overflow-hidden bg-gray-100">
+          <div className="h-[calc(100%-40px)] bg-gray-100">
             {previewUrl ? (
-              <iframe src={previewUrl} className="w-full h-full rounded border border-gray-200 bg-white" title="Preview PDF" />
+              <iframe src={previewUrl} className="w-full h-full" title="PDF Preview" />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400 text-sm">
                 Gerando preview...
