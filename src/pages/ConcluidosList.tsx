@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Atendimento, Fechamento, Medicao, Orcamento, Execucao } from '../types';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 interface AtendimentoCompleto extends Atendimento {
   fechamento?: Fechamento;
@@ -77,7 +79,7 @@ export default function ConcluidosList() {
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
   if (loading) {
-    return <p className="text-center text-gray-500 mt-8">Carregando...</p>;
+    return <LoadingSkeleton count={4} />;
   }
 
   return (
@@ -98,9 +100,15 @@ export default function ConcluidosList() {
       />
 
       {filtrados.length === 0 ? (
-        <p className="text-center text-gray-400 mt-8">
-          {atendimentos.length === 0 ? 'Nenhum atendimento concluído' : 'Nenhum resultado encontrado'}
-        </p>
+        atendimentos.length === 0 ? (
+          <EmptyState
+            icon="concluidos"
+            titulo="Nenhum atendimento concluído"
+            descricao="Serviços finalizados aparecerão aqui com o resumo financeiro"
+          />
+        ) : (
+          <EmptyState icon="busca" titulo="Nenhum resultado encontrado" />
+        )
       ) : (
         <div className="space-y-3">
           {filtrados.map((a) => {

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Atendimento, Fechamento } from '../types';
 import StatusBadge from '../components/StatusBadge';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 export default function OperacionalList() {
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
@@ -55,7 +57,7 @@ export default function OperacionalList() {
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
   if (loading) {
-    return <p className="text-center text-gray-500 mt-8">Carregando...</p>;
+    return <LoadingSkeleton count={4} />;
   }
 
   return (
@@ -79,9 +81,15 @@ export default function OperacionalList() {
       />
 
       {filtrados.length === 0 ? (
-        <p className="text-center text-gray-400 mt-8">
-          {atendimentos.length === 0 ? 'Nenhum atendimento em execução' : 'Nenhum resultado encontrado'}
-        </p>
+        atendimentos.length === 0 ? (
+          <EmptyState
+            icon="operacional"
+            titulo="Nenhum atendimento em execução"
+            descricao="Quando um orçamento for aprovado, o atendimento aparecerá aqui para controle de custos"
+          />
+        ) : (
+          <EmptyState icon="busca" titulo="Nenhum resultado encontrado" />
+        )
       ) : (
         <div className="space-y-3">
           {filtrados.map((a) => {

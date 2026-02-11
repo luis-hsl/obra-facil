@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
 
@@ -82,9 +83,16 @@ const navItems = [
   },
 ];
 
+// Bottom nav: 4 itens principais + "Mais"
+const BOTTOM_NAV_MAIN = navItems.slice(0, 4);
+const BOTTOM_NAV_MORE = navItems.slice(4);
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { signOut } = useAuth();
   const { pathname } = useLocation();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const isMoreActive = BOTTOM_NAV_MORE.some(item => item.match(pathname));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -143,23 +151,66 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Bottom Navigation Mobile */}
+      {/* Bottom Navigation Mobile — 5 itens: 4 principais + Mais */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-20">
+        {/* Menu "Mais" — popup */}
+        {moreOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setMoreOpen(false)} />
+            <div className="absolute bottom-full right-2 mb-2 bg-white rounded-xl shadow-lg border border-gray-200 py-2 min-w-[180px] z-20">
+              {BOTTOM_NAV_MORE.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMoreOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium no-underline ${
+                    item.match(pathname) ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </a>
+              ))}
+              <div className="border-t border-gray-100 mt-1 pt-1">
+                <button
+                  onClick={() => { setMoreOpen(false); signOut(); }}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 w-full"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Sair
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
         <div className="flex justify-around items-center">
-          {navItems.map((item) => (
+          {BOTTOM_NAV_MAIN.map((item) => (
             <a
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center py-2 px-1 min-w-0 flex-1 no-underline ${
-                item.match(pathname)
-                  ? 'text-blue-600'
-                  : 'text-gray-500'
+                item.match(pathname) ? 'text-blue-600' : 'text-gray-500'
               }`}
             >
               {item.icon}
               <span className="text-[10px] mt-1 truncate">{item.shortLabel}</span>
             </a>
           ))}
+          {/* Botão "Mais" */}
+          <button
+            onClick={() => setMoreOpen(!moreOpen)}
+            className={`flex flex-col items-center py-2 px-1 min-w-0 flex-1 ${
+              isMoreActive ? 'text-blue-600' : 'text-gray-500'
+            }`}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+            </svg>
+            <span className="text-[10px] mt-1">Mais</span>
+          </button>
         </div>
       </nav>
     </div>

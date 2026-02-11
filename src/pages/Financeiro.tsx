@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Atendimento, Fechamento } from '../types';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 interface FechamentoComAtendimento extends Fechamento {
   atendimento?: Atendimento;
@@ -156,7 +158,13 @@ export default function Financeiro() {
   const totalLucro = fechamentosFiltrados.reduce((acc, f) => acc + f.lucro_final, 0);
 
   if (loading) {
-    return <p className="text-center text-gray-500 mt-8">Carregando...</p>;
+    return (
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Financeiro</h2>
+        <LoadingSkeleton type="kpi" />
+        <div className="mt-4"><LoadingSkeleton count={3} /></div>
+      </div>
+    );
   }
 
   return (
@@ -236,12 +244,40 @@ export default function Financeiro() {
         </div>
       </div>
 
+      {/* Gráfico de barras */}
+      {fechamentosFiltrados.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+          <p className="text-sm font-medium text-gray-700 mb-3">Resumo Visual</p>
+          <div className="space-y-3">
+            {[
+              { label: 'Recebido', value: totalRecebido, color: 'bg-blue-500', max: Math.max(totalRecebido, totalCustos, Math.abs(totalLucro)) },
+              { label: 'Custos', value: totalCustos, color: 'bg-red-400', max: Math.max(totalRecebido, totalCustos, Math.abs(totalLucro)) },
+              { label: 'Lucro', value: totalLucro, color: totalLucro >= 0 ? 'bg-green-500' : 'bg-red-500', max: Math.max(totalRecebido, totalCustos, Math.abs(totalLucro)) },
+            ].map((bar) => (
+              <div key={bar.label}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-600">{bar.label}</span>
+                  <span className="font-medium text-gray-900">{formatCurrency(bar.value)}</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-3">
+                  <div
+                    className={`h-3 rounded-full transition-all duration-500 ${bar.color}`}
+                    style={{ width: bar.max > 0 ? `${(Math.abs(bar.value) / bar.max) * 100}%` : '0%' }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Lista detalhada */}
       {fechamentosFiltrados.length === 0 ? (
-        <div className="text-center text-gray-400 mt-8">
-          <p>Nenhum fechamento no período selecionado.</p>
-          <p className="text-sm mt-1">Ajuste o filtro ou registre novos fechamentos.</p>
-        </div>
+        <EmptyState
+          icon="financeiro"
+          titulo="Nenhum fechamento no período"
+          descricao="Ajuste o filtro de período ou registre novos fechamentos nos atendimentos"
+        />
       ) : (
         <div className="space-y-3">
           <p className="text-sm font-medium text-gray-600">

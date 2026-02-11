@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Atendimento } from '../types';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import ConfirmModal from '../components/ConfirmModal';
 
 interface Cliente {
   nome: string;
@@ -18,6 +21,7 @@ export default function ClientesList() {
   const [expandedCliente, setExpandedCliente] = useState<string | null>(null);
   const [menuAberto, setMenuAberto] = useState<string | null>(null);
   const [deletando, setDeletando] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<Cliente | null>(null);
 
   useEffect(() => {
     loadClientes();
@@ -64,16 +68,9 @@ export default function ClientesList() {
   };
 
   const handleDeleteCliente = async (cliente: Cliente) => {
-    const count = cliente.atendimentos.length;
-    if (!confirm(`Apagar ${cliente.nome} e todos os ${count} atendimento(s) relacionados?`)) {
-      setMenuAberto(null);
-      return;
-    }
-
     setDeletando(true);
     setMenuAberto(null);
 
-    // Deletar todos os atendimentos do cliente
     const ids = cliente.atendimentos.map((a) => a.id);
     const { error } = await supabase
       .from('atendimentos')
@@ -86,6 +83,7 @@ export default function ClientesList() {
       await loadClientes();
     }
     setDeletando(false);
+    setConfirmDelete(null);
   };
 
   const filtrados = clientes.filter((c) => {
@@ -125,7 +123,7 @@ export default function ClientesList() {
   };
 
   if (loading) {
-    return <p className="text-center text-gray-500 mt-8">Carregando...</p>;
+    return <LoadingSkeleton count={5} />;
   }
 
   return (
@@ -153,9 +151,17 @@ export default function ClientesList() {
       />
 
       {filtrados.length === 0 ? (
-        <p className="text-center text-gray-400 mt-8">
-          {clientes.length === 0 ? 'Nenhum cliente cadastrado' : 'Nenhum resultado encontrado'}
-        </p>
+        clientes.length === 0 ? (
+          <EmptyState
+            icon="clientes"
+            titulo="Nenhum cliente cadastrado"
+            descricao="Crie seu primeiro atendimento para começar"
+            ctaLabel="+ Novo Atendimento"
+            ctaTo="/atendimentos/novo"
+          />
+        ) : (
+          <EmptyState icon="busca" titulo="Nenhum resultado encontrado" descricao="Tente outro termo de busca" />
+        )
       ) : (
         <div className="space-y-3">
           {filtrados.map((cliente) => {
@@ -204,11 +210,10 @@ export default function ClientesList() {
                     {menuAberto === key && (
                       <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-[120px]">
                         <button
-                          onClick={() => handleDeleteCliente(cliente)}
-                          disabled={deletando}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          onClick={() => { setMenuAberto(null); setConfirmDelete(cliente); }}
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                         >
-                          {deletando ? 'Apagando...' : 'Apagar cliente'}
+                          Apagar cliente
                         </button>
                       </div>
                     )}
@@ -253,6 +258,17 @@ export default function ClientesList() {
           })}
         </div>
       )}
+
+      <ConfirmModal
+        aberto={!!confirmDelete}
+        titulo={`Apagar ${confirmDelete?.nome || ''}?`}
+        descricao={`Isso vai excluir ${confirmDelete?.atendimentos.length || 0} atendimento(s) e todos os dados relacionados.`}
+        confirmLabel="Apagar"
+        variante="danger"
+        loading={deletando}
+        onConfirm={() => confirmDelete && handleDeleteCliente(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

@@ -3,6 +3,9 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Atendimento, Medicao, Orcamento, Fechamento } from '../types';
 import StatusBadge from '../components/StatusBadge';
+import StatusProgress from '../components/StatusProgress';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import ConfirmModal from '../components/ConfirmModal';
 import MedicaoForm from '../components/MedicaoForm';
 import OrcamentoForm from '../components/OrcamentoForm';
 import FechamentoForm from '../components/FechamentoForm';
@@ -19,6 +22,7 @@ export default function AtendimentoDetail() {
   const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(new Set(['medicao']));
   const [erro, setErro] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const loadData = async () => {
     const { data: atd, error: atdError } = await supabase
@@ -50,12 +54,12 @@ export default function AtendimentoDetail() {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!confirm('Excluir este atendimento e todos os dados relacionados?')) return;
     setDeleting(true);
     const { error } = await supabase.from('atendimentos').delete().eq('id', id);
     if (error) {
       setErro('Erro ao excluir atendimento.');
       setDeleting(false);
+      setShowDeleteConfirm(false);
       return;
     }
     navigate('/');
@@ -82,7 +86,7 @@ export default function AtendimentoDetail() {
     return <p className="text-center text-red-500 mt-8">{erro}</p>;
   }
   if (!atendimento) {
-    return <p className="text-center text-gray-500 mt-8">Carregando...</p>;
+    return <LoadingSkeleton count={3} />;
   }
 
   // Seções aparecem progressivamente conforme o status avança
@@ -109,6 +113,9 @@ export default function AtendimentoDetail() {
 
       {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
 
+      {/* Progresso */}
+      <StatusProgress status={atendimento.status} />
+
       {/* Cabeçalho */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
         <div className="flex items-start justify-between mb-2">
@@ -130,8 +137,8 @@ export default function AtendimentoDetail() {
           <Link to={`/atendimentos/${id}/editar`} className="text-sm text-blue-600 font-medium no-underline">
             Editar
           </Link>
-          <button onClick={handleDelete} disabled={deleting} className="text-sm text-red-500 font-medium disabled:opacity-50">
-            {deleting ? 'Excluindo...' : 'Excluir'}
+          <button onClick={() => setShowDeleteConfirm(true)} className="text-sm text-red-500 font-medium">
+            Excluir
           </button>
         </div>
 
@@ -185,6 +192,17 @@ export default function AtendimentoDetail() {
           );
         })}
       </div>
+
+      <ConfirmModal
+        aberto={showDeleteConfirm}
+        titulo="Excluir atendimento?"
+        descricao="Isso vai apagar todas as medições, orçamentos e fechamentos relacionados. Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        variante="danger"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

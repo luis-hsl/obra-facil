@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Atendimento, AtendimentoStatus } from '../types';
 import StatusBadge from '../components/StatusBadge';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 const ANDAMENTO_STATUSES: AtendimentoStatus[] = ['visita_tecnica', 'medicao', 'orcamento'];
 
@@ -43,7 +45,7 @@ export default function AndamentoList() {
   });
 
   if (loading) {
-    return <p className="text-center text-gray-500 mt-8">Carregando...</p>;
+    return <LoadingSkeleton count={4} />;
   }
 
   return (
@@ -85,9 +87,15 @@ export default function AndamentoList() {
       </div>
 
       {filtrados.length === 0 ? (
-        <p className="text-center text-gray-400 mt-8">
-          {atendimentos.length === 0 ? 'Nenhum atendimento em andamento' : 'Nenhum resultado encontrado'}
-        </p>
+        atendimentos.length === 0 ? (
+          <EmptyState
+            icon="andamento"
+            titulo="Nenhum atendimento em andamento"
+            descricao="Quando um atendimento avançar para visita, medição ou orçamento, aparecerá aqui"
+          />
+        ) : (
+          <EmptyState icon="busca" titulo="Nenhum resultado encontrado" />
+        )
       ) : (
         <div className="space-y-3">
           {filtrados.map((a) => (
