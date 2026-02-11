@@ -27,10 +27,11 @@ function checkPage(doc: jsPDF, y: number, needed: number, marginTop: number, mar
 
 type RGB = [number, number, number];
 
-/** Desenha retângulo com cantos arredondados */
-function roundedRect(doc: jsPDF, x: number, y: number, w: number, h: number, r: number, style: 'F' | 'S' | 'FS') {
-  doc.roundedRect(x, y, w, h, r, r, style);
-}
+/**
+ * Padding interno padrão para cards/boxes (em mm).
+ * Usado em todos os componentes para garantir alinhamento consistente.
+ */
+const PAD = 4;
 
 // ============================================================
 // Types
@@ -117,11 +118,12 @@ function buildItems(params: GerarPDFParams): BudgetItem[] {
 // ============================================================
 
 function renderHeader(
-  doc: jsPDF, s: ResolvedPdfStyle, company: CompanyData, y: number, pageW: number, x0: number, contentW: number,
+  doc: jsPDF, s: ResolvedPdfStyle, company: CompanyData,
+  y: number, pageW: number, x0: number, contentW: number,
 ): number {
   const { preset, colors, fontFamily, headingWeight, fontSizes } = s;
 
-  // Background — full width
+  // Background — full bleed
   if (colors.headerBg) {
     doc.setFillColor(...colors.headerBg);
     doc.rect(0, 0, pageW, s.headerHeight + 4, 'F');
@@ -140,11 +142,11 @@ function renderHeader(
   // Company info
   const companyLines = [company.name, company.cnpj, company.phone, company.email, company.address].filter(Boolean);
   if (companyLines.length > 0) {
-    let cY = y + 1;
     doc.setFontSize(8);
     doc.setTextColor(...colors.headerText);
 
     if (preset.header.companyInfoPosition === 'right') {
+      let cY = y + 1;
       const cX = pageW - s.margins.right;
       doc.setFont(fontFamily, headingWeight);
       doc.text(companyLines[0], cX, cY, { align: 'right' });
@@ -155,8 +157,7 @@ function renderHeader(
         cY += 3.5;
       }
     } else {
-      const cYStart = y + (s.logoBase64 ? s.logoMaxHeight + 4 : 0);
-      cY = cYStart;
+      let cY = y + (s.logoBase64 ? s.logoMaxHeight + 4 : 0);
       doc.setFont(fontFamily, headingWeight);
       doc.text(companyLines[0], x0, cY);
       cY += 4;
@@ -177,10 +178,11 @@ function renderHeader(
     : titleAlign === 'right' ? pageW - s.margins.right : x0;
   doc.text('ORÇAMENTO', titleX, y + s.headerHeight - 8, { align: titleAlign });
 
-  // Separator — thicker accent line
+  // Separator — solid accent line (1mm height)
   if (preset.header.showSeparator) {
+    const sepY = y + s.headerHeight;
     doc.setFillColor(...colors.separatorColor);
-    doc.rect(x0, y + s.headerHeight, contentW, 0.8, 'F');
+    doc.rect(x0, sepY, contentW, 1, 'F');
   }
 
   return y + s.headerHeight + s.sectionSpacing + 2;
@@ -208,43 +210,53 @@ function renderClientInfo(
   ].filter(f => f.value);
 
   const lineH = 5.5;
-  const totalLines = clientData.length;
+  const totalH = clientData.length * lineH;
 
+  // Card background
   if (cs.style === 'card') {
-    const cardH = totalLines * lineH + 8;
+    const cardH = totalH + PAD * 2;
     y = checkPage(doc, y, cardH, margins.top, margins.bottom);
-    // Card background com cantos arredondados
     if (colors.clientSectionBg) {
       doc.setFillColor(...colors.clientSectionBg);
-      roundedRect(doc, x0, y - 3, contentW, cardH, 2, 'F');
+      doc.roundedRect(x0, y, contentW, cardH, 2, 2, 'F');
     }
     if (colors.clientSectionBorder) {
       doc.setDrawColor(...colors.clientSectionBorder);
       doc.setLineWidth(0.3);
-      roundedRect(doc, x0, y - 3, contentW, cardH, 2, 'S');
+      doc.roundedRect(x0, y, contentW, cardH, 2, 2, 'S');
     }
+    y += PAD;
   }
 
   doc.setFontSize(fontSizes.body);
-  const inset = cs.style === 'card' ? 5 : 0;
+  const inset = cs.style === 'card' ? PAD : 0;
 
+  // Primeira passada: medir largura máxima de labels para alinhar colunas
+  doc.setFont(fontFamily, cs.labelBold ? headingWeight : 'normal');
+  let maxLabelW = 0;
+  for (const { label } of clientData) {
+    const w = doc.getTextWidth(label + ' ');
+    if (w > maxLabelW) maxLabelW = w;
+  }
+
+  // Renderizar dados alinhados em duas colunas
   for (const { label, value } of clientData) {
-    if (cs.labelBold) {
-      doc.setFont(fontFamily, headingWeight);
-      doc.setTextColor(...colors.muted);
-    } else {
-      doc.setFont(fontFamily, 'normal');
-      doc.setTextColor(...colors.muted);
-    }
     const lx = x0 + inset;
-    doc.text(label + ' ', lx, y);
-    const labelW = doc.getTextWidth(label + ' ');
+    // Label
+    doc.setFont(fontFamily, cs.labelBold ? headingWeight : 'normal');
+    doc.setTextColor(...colors.muted);
+    doc.text(label, lx, y + lineH * 0.7);
+    // Value — alinhado pela largura máxima do label
     doc.setFont(fontFamily, 'normal');
     doc.setTextColor(...colors.text);
-    const lines = doc.splitTextToSize(value, contentW - labelW - inset * 2 - 2);
-    doc.text(lines, lx + labelW, y);
+    const vx = lx + maxLabelW;
+    const maxValueW = contentW - maxLabelW - inset * 2;
+    const lines = doc.splitTextToSize(value, maxValueW);
+    doc.text(lines, vx, y + lineH * 0.7);
     y += lineH * Math.max(lines.length, 1);
   }
+
+  if (cs.style === 'card') y += PAD;
 
   return y + s.sectionSpacing;
 }
@@ -268,12 +280,16 @@ function renderBudgetTable(
   if (bt.style === 'table') {
     const cols = bt.columns;
     const colWidths = cols.map(c => (c.widthPercent / 100) * contentW);
+    const rowH = rowPadding + 4;
+    const headerH = 8;
 
     if (bt.showHeader) {
-      y = checkPage(doc, y, 12, margins.top, margins.bottom);
-      // Header com cantos arredondados no topo
+      y = checkPage(doc, y, headerH + 4, margins.top, margins.bottom);
+      // Header background
       doc.setFillColor(...colors.tableHeaderBg);
-      roundedRect(doc, x0, y - 4.5, contentW, 8, 1.5, 'F');
+      doc.roundedRect(x0, y, contentW, headerH, 1.5, 1.5, 'F');
+      // Header text — vertically centered
+      const textY = y + headerH / 2 + 1;
       doc.setFontSize(fontSizes.body);
       doc.setFont(fontFamily, headingWeight);
       doc.setTextColor(...colors.tableHeaderText);
@@ -281,20 +297,20 @@ function renderBudgetTable(
       for (let i = 0; i < cols.length; i++) {
         const col = cols[i];
         const tx = col.align === 'center' ? cx + colWidths[i] / 2
-          : col.align === 'right' ? cx + colWidths[i] - 2 : cx + 2;
-        doc.text(col.label, tx, y, { align: col.align as 'left' | 'center' | 'right' });
+          : col.align === 'right' ? cx + colWidths[i] - PAD : cx + PAD;
+        doc.text(col.label, tx, textY, { align: col.align as 'left' | 'center' | 'right' });
         cx += colWidths[i];
       }
-      y += 6;
+      y += headerH + 2;
     }
 
     doc.setFontSize(fontSizes.body);
     items.forEach((item, idx) => {
-      y = checkPage(doc, y, rowPadding + 8, margins.top, margins.bottom);
-      // Alternating row
+      y = checkPage(doc, y, rowH, margins.top, margins.bottom);
+      // Alternating row — rect alinhado ao texto
       if (idx % 2 === 0 && colors.tableRowAltBg) {
         doc.setFillColor(...colors.tableRowAltBg);
-        doc.rect(x0, y - 3.5, contentW, rowPadding + 3, 'F');
+        doc.rect(x0, y, contentW, rowH, 'F');
       }
       const discountPrice = item.total * (1 - discountPct);
       const { parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
@@ -307,6 +323,8 @@ function renderBudgetTable(
         discount_price: formatCurrency(discountPrice),
         installment_price: `${numeroParcelas}x ${formatCurrency(parcela)}`,
       };
+      // Text centered in row height
+      const textY = y + rowH / 2 + 1;
       doc.setFont(fontFamily, 'normal');
       doc.setTextColor(...colors.text);
       let cx = x0;
@@ -318,19 +336,20 @@ function renderBudgetTable(
           doc.setTextColor(...colors.priceHighlight);
         }
         const tx = col.align === 'center' ? cx + colWidths[i] / 2
-          : col.align === 'right' ? cx + colWidths[i] - 2 : cx + 2;
-        doc.text(val, tx, y, { align: col.align as 'left' | 'center' | 'right' });
+          : col.align === 'right' ? cx + colWidths[i] - PAD : cx + PAD;
+        doc.text(val, tx, textY, { align: col.align as 'left' | 'center' | 'right' });
         if (col.key === 'discount_price') {
           doc.setFont(fontFamily, 'normal');
           doc.setTextColor(...colors.text);
         }
         cx += colWidths[i];
       }
-      y += rowPadding + 1;
+      y += rowH;
+      // Separator between rows (not after last)
       if (bt.showBorders && idx < items.length - 1) {
         doc.setDrawColor(...colors.border);
-        doc.setLineWidth(0.1);
-        doc.line(x0 + 2, y - 1, x0 + contentW - 2, y - 1);
+        doc.setLineWidth(0.2);
+        doc.line(x0 + PAD, y, x0 + contentW - PAD, y);
       }
     });
 
@@ -338,95 +357,100 @@ function renderBudgetTable(
   } else if (bt.style === 'cards') {
     items.forEach((item, idx) => {
       const hasPerItem = totals.position === 'per_item';
-      const cardBodyH = hasPerItem ? 28 : 12;
-      const cardH = 10 + cardBodyH + 4;
+      // Dimensões calculadas com precisão
+      const headerH = 10;
+      const bodyBase = 14;                        // Área + Preço
+      const priceBlock = hasPerItem ? 24 : 0;     // Desconto + parcelado + total
+      const cardH = headerH + bodyBase + priceBlock + PAD;
       y = checkPage(doc, y, cardH + 4, margins.top, margins.bottom);
 
-      // Card background com cantos arredondados
-      doc.setFillColor(...(colors.tableRowAltBg || [248, 249, 250] as RGB));
-      roundedRect(doc, x0, y - 2, contentW, cardH, 2.5, 'F');
+      const cardTop = y;
+      const cardR = 2;
 
-      // Card header bar com cantos arredondados no topo
+      // 1) Card inteiro na cor do header (dá os cantos arredondados do topo)
       doc.setFillColor(...colors.tableHeaderBg);
-      // Top portion — header strip
-      roundedRect(doc, x0, y - 2, contentW, 9, 2.5, 'F');
-      // Fix bottom corners by overlapping a rect
-      doc.rect(x0, y + 2, contentW, 5, 'F');
+      doc.roundedRect(x0, cardTop, contentW, cardH, cardR, cardR, 'F');
+
+      // 2) Corpo sobre o header — cobre de headerH até o fim, cantos arredondados embaixo
+      const bodyColor: RGB = colors.tableRowAltBg || [248, 249, 250];
+      doc.setFillColor(...bodyColor);
+      doc.roundedRect(x0, cardTop + headerH, contentW, cardH - headerH, cardR, cardR, 'F');
+      // Preencher os cantos superiores do corpo (que ficaram arredondados)
+      doc.rect(x0, cardTop + headerH, contentW, cardR, 'F');
 
       // Header text
+      const headerTextY = cardTop + headerH / 2 + 1;
       doc.setFontSize(fontSizes.body);
       doc.setFont(fontFamily, headingWeight);
       doc.setTextColor(...colors.tableHeaderText);
-      doc.text(`OPÇÃO ${idx + 1}: ${item.name}`, x0 + 4, y + 3.5);
-
-      y += 12;
+      doc.text(`OPÇÃO ${idx + 1}: ${item.name}`, x0 + PAD, headerTextY);
 
       // Body
+      let bY = cardTop + headerH + PAD + 2;
       doc.setFontSize(fontSizes.body);
       doc.setFont(fontFamily, 'normal');
       doc.setTextColor(...colors.text);
-      doc.text(`Área: ${item.area} m²`, x0 + 4, y);
-      doc.text(`Preço: ${formatCurrency(item.unitPrice)}/m²`, x0 + contentW / 2, y);
-      y += 6;
+      doc.text(`Área: ${item.area} m²`, x0 + PAD, bY);
+      doc.text(`Preço: ${formatCurrency(item.unitPrice)}/m²`, x0 + contentW / 2, bY);
+      bY += 8;
 
       if (hasPerItem) {
         const discountPrice = item.total * (1 - discountPct);
         const { totalComTaxa, parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
         const taxaText = taxaJuros > 0 ? ` (${taxaJuros}% taxa)` : '';
 
-        // Linha separadora sutil
+        // Linha separadora
         doc.setDrawColor(...colors.border);
-        doc.setLineWidth(0.15);
-        doc.line(x0 + 4, y - 1.5, x0 + contentW - 4, y - 1.5);
+        doc.setLineWidth(0.2);
+        doc.line(x0 + PAD, bY, x0 + contentW - PAD, bY);
+        bY += 5;
 
         // Preço à vista — destaque
         doc.setFontSize(fontSizes.heading);
         doc.setFont(fontFamily, headingWeight);
         doc.setTextColor(...colors.priceHighlight);
-        doc.text(`${totals.discountLabel} ${formatCurrency(discountPrice)}`, x0 + 4, y + 2);
-        y += 6;
+        doc.text(`${totals.discountLabel} ${formatCurrency(discountPrice)}`, x0 + PAD, bY);
+        bY += 6;
 
         // Parcelado
         doc.setFontSize(fontSizes.body);
         doc.setFont(fontFamily, 'normal');
         doc.setTextColor(...colors.text);
-        doc.text(`${totals.installmentLabel} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + 4, y);
-        y += 5;
+        doc.text(`${totals.installmentLabel} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + PAD, bY);
+        bY += 5;
 
         // Total com taxa
         doc.setFontSize(fontSizes.small);
         doc.setTextColor(...colors.muted);
-        doc.text(`Total parcelado: ${formatCurrency(totalComTaxa)}`, x0 + 4, y);
-        y += 2;
+        doc.text(`Total parcelado: ${formatCurrency(totalComTaxa)}`, x0 + PAD, bY);
       }
 
-      y += rowPadding + 2;
+      y = cardTop + cardH + rowPadding;
     });
 
   // ---- LIST STYLE ----
   } else {
+    const numW = 8;
     items.forEach((item, idx) => {
       const hasPerItem = totals.position === 'per_item';
-      y = checkPage(doc, y, hasPerItem ? 28 : 18, margins.top, margins.bottom);
+      const blockH = hasPerItem ? 24 : 14;
+      y = checkPage(doc, y, blockH, margins.top, margins.bottom);
 
-      // Número do item como badge
+      // Número + nome na mesma linha
       doc.setFontSize(fontSizes.body + 1);
       doc.setFont(fontFamily, headingWeight);
       doc.setTextColor(...colors.primary);
       doc.text(`${idx + 1}.`, x0, y);
+      doc.text(item.name, x0 + numW, y);
+      y += 5;
 
-      // Nome do produto
-      doc.setFontSize(fontSizes.body + 1);
-      doc.text(item.name, x0 + 8, y);
-      y += 5.5;
-
-      // Detalhes em linha
+      // Detalhes
       doc.setFontSize(fontSizes.body);
       doc.setFont(fontFamily, 'normal');
       doc.setTextColor(...colors.muted);
-      doc.text(`${item.area} m²  ×  ${formatCurrency(item.unitPrice)}/m²`, x0 + 8, y);
+      doc.text(`${item.area} m²  ×  ${formatCurrency(item.unitPrice)}/m²`, x0 + numW, y);
 
-      // Total alinhado à direita na mesma linha
+      // Total alinhado à direita
       doc.setFont(fontFamily, headingWeight);
       doc.setTextColor(...colors.text);
       doc.text(formatCurrency(item.total), x0 + contentW, y, { align: 'right' });
@@ -436,14 +460,14 @@ function renderBudgetTable(
         const discountPrice = item.total * (1 - discountPct);
         doc.setFont(fontFamily, headingWeight);
         doc.setTextColor(...colors.priceHighlight);
-        doc.text(`${totals.discountLabel} ${formatCurrency(discountPrice)}`, x0 + 8, y);
+        doc.text(`${totals.discountLabel} ${formatCurrency(discountPrice)}`, x0 + numW, y);
         y += 5;
       }
 
-      // Divider
+      // Divider (not after last)
       if (idx < items.length - 1) {
         doc.setDrawColor(...colors.border);
-        doc.setLineWidth(0.15);
+        doc.setLineWidth(0.2);
         doc.line(x0, y, x0 + contentW, y);
       }
       y += rowPadding;
@@ -468,30 +492,40 @@ function renderTotals(
 
   if (totals.position !== 'summary_bottom' || items.length === 0) return y;
 
-  y = checkPage(doc, y, 35, margins.top, margins.bottom);
+  y = checkPage(doc, y, 40, margins.top, margins.bottom);
   const discountPct = totals.discountPercent / 100;
   const sumTotal = items.reduce((sum, i) => sum + i.total, 0);
   const sumDiscount = sumTotal * (1 - discountPct);
   const { totalComTaxa, parcela } = calcularParcelamento(sumTotal, taxaJuros, numeroParcelas);
 
-  // Box de destaque para totais
-  const boxH = 22 + (totals.showInstallments ? 12 : 0);
-  doc.setFillColor(...(colors.tableRowAltBg || [248, 249, 250] as RGB));
-  roundedRect(doc, x0, y - 2, contentW, boxH, 2, 'F');
+  // Calcular altura do box
+  const boxR = 2;
+  const barW = 3;
+  let lineCount = 0;
+  if (totals.showDiscount) lineCount++;
+  if (totals.showInstallments) lineCount += 2;
+  const boxH = PAD * 2 + lineCount * 8;
 
-  // Barra lateral de accent
+  // Box de fundo
+  const bgColor: RGB = colors.tableRowAltBg || [248, 249, 250];
+  doc.setFillColor(...bgColor);
+  doc.roundedRect(x0, y, contentW, boxH, boxR, boxR, 'F');
+
+  // Barra lateral de accent (mesmo raio que o box)
   doc.setFillColor(...colors.priceHighlight);
-  roundedRect(doc, x0, y - 2, 3, boxH, 1.5, 'F');
+  doc.roundedRect(x0, y, barW, boxH, boxR, boxR, 'F');
+  // Retângulo para cobrir os cantos arredondados da direita da barra
+  doc.rect(x0 + barW - boxR, y, boxR, boxH, 'F');
 
-  y += 4;
+  let ty = y + PAD + 4;
 
   if (totals.showDiscount) {
     doc.setFontSize(14);
     doc.setFont(fontFamily, headingWeight);
     doc.setTextColor(...colors.priceHighlight);
-    doc.text(totals.discountLabel, x0 + 8, y);
-    doc.text(formatCurrency(sumDiscount), x0 + contentW - 4, y, { align: 'right' });
-    y += 8;
+    doc.text(totals.discountLabel, x0 + barW + PAD, ty);
+    doc.text(formatCurrency(sumDiscount), x0 + contentW - PAD, ty, { align: 'right' });
+    ty += 8;
   }
 
   if (totals.showInstallments) {
@@ -499,15 +533,14 @@ function renderTotals(
     doc.setFontSize(fontSizes.heading);
     doc.setFont(fontFamily, 'normal');
     doc.setTextColor(...colors.text);
-    doc.text(`${totals.installmentLabel} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + 8, y);
-    y += 5;
+    doc.text(`${totals.installmentLabel} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + barW + PAD, ty);
+    ty += 6;
     doc.setFontSize(fontSizes.small);
     doc.setTextColor(...colors.muted);
-    doc.text(`Total parcelado: ${formatCurrency(totalComTaxa)}`, x0 + 8, y);
-    y += 5;
+    doc.text(`Total parcelado: ${formatCurrency(totalComTaxa)}`, x0 + barW + PAD, ty);
   }
 
-  return y + s.sectionSpacing;
+  return y + boxH + s.sectionSpacing;
 }
 
 // ============================================================
@@ -548,7 +581,7 @@ function renderFooter(
 
   if (ft.style === 'bar') {
     doc.setFillColor(...colors.primary);
-    roundedRect(doc, x0, y, contentW, 1.2, 0.6, 'F');
+    doc.rect(x0, y, contentW, 1, 'F');
     y += 5;
   } else if (ft.style === 'line') {
     doc.setDrawColor(...colors.border);
