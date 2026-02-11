@@ -126,6 +126,7 @@ export interface BrandConfig {
   layout_style: 'classic' | 'modern' | 'minimal';
   font_family: 'helvetica' | 'times' | 'courier';
   template_pdf_url: string | null;
+  pdf_template: PdfTemplate | null;
   created_at: string;
   updated_at: string;
 }
@@ -146,4 +147,73 @@ export interface BrandExtraction {
   footer_text: string | null;
   layout_suggestion: 'classic' | 'modern' | 'minimal';
   font_suggestion: 'helvetica' | 'times' | 'courier';
+}
+
+// =============================================
+// Template de PDF (extraído pela IA)
+// =============================================
+
+export interface PdfTemplate {
+  header: {
+    height: number;
+    backgroundColor: string | null;
+    logoPosition: 'left' | 'center' | 'right';
+    logoMaxHeight: number;
+    companyInfoPosition: 'left' | 'right' | 'below-logo';
+    showTitle: boolean;
+    titleText: string;
+    titleAlignment: 'left' | 'center' | 'right';
+  };
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    headerText: string;
+    bodyText: string;
+  };
+  fonts: {
+    family: 'helvetica' | 'times' | 'courier';
+    titleSize: number;
+    subtitleSize: number;
+    bodySize: number;
+    smallSize: number;
+  };
+  clientSection: {
+    style: 'inline' | 'card' | 'table';
+    backgroundColor: string | null;
+    borderRadius: boolean;
+    labelBold: boolean;
+  };
+  productsSection: {
+    style: 'list' | 'table' | 'cards';
+    headerBackgroundColor: string | null;
+    headerTextColor: string;
+    showOptionNumber: boolean;
+    showUnitPrice: boolean;
+    priceHighlightColor: string;
+  };
+  paymentSection: {
+    showDiscount: boolean;
+    discountLabel: string;
+    installmentLabel: string;
+  };
+  footer: {
+    style: 'line' | 'bar' | 'minimal';
+    text: string | null;
+    alignment: 'left' | 'center' | 'right';
+    separatorColor: string | null;
+  };
+  spacing: {
+    sectionGap: number;
+    lineHeight: number;
+    margins: { top: number; right: number; bottom: number; left: number };
+  };
+  company: {
+    name: string | null;
+    cnpj: string | null;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+  };
+  validityDays: number;
 }
