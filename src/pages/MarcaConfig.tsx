@@ -115,9 +115,10 @@ export default function MarcaConfig() {
         body: { image_base64: pdfBase64ForExtract },
       });
 
-      if (error) {
-        const errDetail = typeof data === 'object' && data?.details ? JSON.stringify(data.details) : String(error);
-        throw new Error(errDetail);
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       const extraction = data as BrandExtraction;
