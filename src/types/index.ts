@@ -103,3 +103,47 @@ export interface Fechamento {
   lucro_final: number;
   created_at: string;
 }
+
+// =============================================
+// Marca / Identidade Visual
+// =============================================
+
+export interface BrandConfig {
+  id: string;
+  user_id: string;
+  logo_url: string | null;
+  logo_position: 'left' | 'center' | 'right';
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  company_name: string | null;
+  company_cnpj: string | null;
+  company_phone: string | null;
+  company_email: string | null;
+  company_address: string | null;
+  footer_text: string | null;
+  validity_days: number;
+  layout_style: 'classic' | 'modern' | 'minimal';
+  font_family: 'helvetica' | 'times' | 'courier';
+  template_pdf_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BrandExtraction {
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
+  company: {
+    name: string | null;
+    cnpj: string | null;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+  };
+  footer_text: string | null;
+  layout_suggestion: 'classic' | 'modern' | 'minimal';
+  font_suggestion: 'helvetica' | 'times' | 'courier';
+}

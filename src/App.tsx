@@ -12,6 +12,7 @@ import AtendimentoDetail from './pages/AtendimentoDetail';
 import Precificacao from './pages/Precificacao';
 import ProdutosList from './pages/ProdutosList';
 import ProdutoForm from './pages/ProdutoForm';
+import MarcaConfig from './pages/MarcaConfig';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -73,6 +74,9 @@ export default function App() {
         <Route path="/produtos" element={<ProtectedRoute><ProdutosList /></ProtectedRoute>} />
         <Route path="/produtos/novo" element={<ProtectedRoute><ProdutoForm /></ProtectedRoute>} />
         <Route path="/produtos/:id/editar" element={<ProtectedRoute><ProdutoForm /></ProtectedRoute>} />
+
+        {/* Marca */}
+        <Route path="/marca" element={<ProtectedRoute><MarcaConfig /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

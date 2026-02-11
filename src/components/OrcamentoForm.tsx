@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 import type { Orcamento, OrcamentoItem, Produto, Atendimento } from '../types';
 import StatusBadge from './StatusBadge';
 import { gerarPDF } from '../lib/gerarPDF';
+import { useBrandConfig } from '../lib/useBrandConfig';
+import { fetchImageAsBase64 } from '../lib/imageUtils';
 
 interface Props {
   atendimentoId: string;
@@ -47,6 +49,16 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
   const [erro, setErro] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Brand config para PDF personalizado
+  const { config: brandConfig } = useBrandConfig();
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (brandConfig?.logo_url) {
+      fetchImageAsBase64(brandConfig.logo_url).then(setLogoBase64).catch(() => setLogoBase64(null));
+    }
+  }, [brandConfig]);
 
   // Itens do orçamento sendo criado
   const [itens, setItens] = useState<ItemForm[]>([]);
@@ -265,6 +277,8 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
       produtosMap,
       numeroParcelas: orcamento.numero_parcelas || 12,
       taxaJuros: orcamento.taxa_juros_mensal || 2,
+      brandConfig,
+      logoBase64,
     });
   };
 
