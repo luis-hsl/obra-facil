@@ -15,6 +15,30 @@ export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
     border_color: '#e5e7eb',
     price_highlight_color: '#059669',
   },
+  content_blocks: [
+    {
+      id: 'default_measurement',
+      type: 'measurement_item',
+      role: 'calculavel',
+      title: 'Produto',
+      fields: [
+        { key: 'product_name', label: 'Produto', type: 'text', visible: true },
+        { key: 'area', label: 'Área (m²)', type: 'area', visible: true },
+        { key: 'preco_m2', label: 'Valor/m²', type: 'currency', visible: true },
+        { key: 'total', label: 'Total', type: 'currency', visible: true },
+        { key: 'discount_price', label: 'À Vista', type: 'currency', visible: true },
+      ],
+      calculation: { formula: 'area * preco_m2', explicit: true },
+      confidence: 1,
+      style: {
+        display: 'card',
+        background_color: null,
+        border: true,
+        title_font_size: 11,
+        body_font_size: 10,
+      },
+    },
+  ],
   company_fields: [],
   client_fields: [
     { label: 'Cliente:', type: 'cliente_nome', required: true },
@@ -67,7 +91,7 @@ export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
       show_separator: true,
       separator_color: '#1e40af',
     },
-    sections_order: ['header', 'client', 'budget_table', 'observations', 'footer'],
+    sections_order: ['header', 'client', 'content_blocks', 'observations', 'footer'],
     section_spacing: 8,
     client_section: {
       style: 'inline',

@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import type { Orcamento, OrcamentoItem, Produto, Atendimento, BrandConfig, DocumentTemplate, OverlayTemplate } from '../types';
+import type { Orcamento, OrcamentoItem, Produto, Atendimento, BrandConfig, DocumentTemplate, DocumentBlock, OverlayTemplate } from '../types';
 import { hexToRgb, fetchImageAsBase64 } from './imageUtils';
 // DEFAULT_DOCUMENT_TEMPLATE used in MarcaConfig for merge with partial AI extractions
 
@@ -36,6 +36,433 @@ function checkPage(doc: jsPDF, y: number, needed: number, marginTop: number, mar
     doc.addPage();
     return marginTop;
   }
+  return y;
+}
+
+// ============================================================
+// Block-based content renderer (heterogeneous blocks)
+// ============================================================
+
+function renderContentBlocks(
+  doc: jsPDF,
+  tpl: DocumentTemplate,
+  items: Array<{ name: string; area: number; unitPrice: number; total: number }>,
+  startY: number,
+  x0: number,
+  contentW: number,
+  font: string,
+  br: DocumentTemplate['branding'],
+  margins: { top: number; bottom: number },
+  numeroParcelas: number,
+  taxaJuros: number,
+): number {
+  let y = startY;
+  const discountPct = tpl.totals.discount_percent / 100;
+
+  // Find the first block template for each type to use as rendering blueprint
+  const blocksByType = new Map<string, DocumentBlock>();
+  for (const block of tpl.content_blocks) {
+    if (!blocksByType.has(block.type)) {
+      blocksByType.set(block.type, block);
+    }
+  }
+
+  // Determine the primary block template for items
+  // Items from orcamento_itens are measurement_item by default
+  const measurementBlock = blocksByType.get('measurement_item');
+  const fixedPriceBlock = blocksByType.get('fixed_price_product');
+  const primaryBlock = measurementBlock || fixedPriceBlock || tpl.content_blocks[0];
+
+  if (!primaryBlock) return y;
+
+  // Render informational blocks that appear before items
+  const infoBlocks = tpl.content_blocks.filter(b => b.type === 'informational');
+
+  items.forEach((item, idx) => {
+    const block = primaryBlock;
+    const st = block.style;
+
+    if (st.display === 'card') {
+      y = renderBlockCard(doc, tpl, block, item, idx, y, x0, contentW, font, br, margins, discountPct, numeroParcelas, taxaJuros);
+    } else if (st.display === 'table_row') {
+      y = renderBlockTableRow(doc, tpl, block, item, idx, y, x0, contentW, font, br, margins, discountPct, numeroParcelas, taxaJuros);
+    } else if (st.display === 'comparison') {
+      // Comparison renders pairs — skip if already rendered as part of pair
+      y = renderBlockCard(doc, tpl, block, item, idx, y, x0, contentW, font, br, margins, discountPct, numeroParcelas, taxaJuros);
+    } else {
+      // text_block fallback
+      y = renderBlockCard(doc, tpl, block, item, idx, y, x0, contentW, font, br, margins, discountPct, numeroParcelas, taxaJuros);
+    }
+  });
+
+  // Render informational blocks after items
+  for (const infoBlock of infoBlocks) {
+    if (infoBlock.title) {
+      y = checkPage(doc, y, 15, margins.top, margins.bottom);
+      doc.setFontSize(infoBlock.style.body_font_size);
+      doc.setFont(font, 'italic');
+      doc.setTextColor(128, 128, 128);
+      const lines = doc.splitTextToSize(infoBlock.title, contentW);
+      doc.text(lines, x0, y);
+      y += 4 * lines.length + 4;
+    }
+  }
+
+  return y;
+}
+
+function renderBlockCard(
+  doc: jsPDF,
+  tpl: DocumentTemplate,
+  block: DocumentBlock,
+  item: { name: string; area: number; unitPrice: number; total: number },
+  idx: number,
+  startY: number,
+  x0: number,
+  contentW: number,
+  font: string,
+  br: DocumentTemplate['branding'],
+  margins: { top: number; bottom: number },
+  discountPct: number,
+  numeroParcelas: number,
+  taxaJuros: number,
+): number {
+  let y = startY;
+  const st = block.style;
+  const hasPerItemTotals = tpl.totals.position === 'per_item';
+  const cardH = 32 + (hasPerItemTotals ? 14 : 0);
+  y = checkPage(doc, y, cardH, margins.top, margins.bottom);
+
+  // Card background
+  if (st.background_color) {
+    doc.setFillColor(...hexToRgb(st.background_color));
+    doc.rect(x0, y - 2, contentW, cardH - 4, 'F');
+  } else if (br.table_row_alt_bg) {
+    doc.setFillColor(...hexToRgb(br.table_row_alt_bg));
+    doc.rect(x0, y - 2, contentW, cardH - 4, 'F');
+  }
+
+  // Title bar
+  if (br.table_header_bg) {
+    doc.setFillColor(...hexToRgb(br.table_header_bg));
+    doc.rect(x0, y - 2, contentW, 7, 'F');
+  }
+  doc.setFontSize(st.title_font_size);
+  doc.setFont(font, 'bold');
+  doc.setTextColor(...hexToRgb(br.table_header_text));
+  doc.text(`OPÇÃO ${idx + 1}: ${item.name}`, x0 + 3, y + 2);
+  y += 10;
+
+  // Render visible fields based on block definition
+  doc.setFontSize(st.body_font_size);
+  doc.setFont(font, 'normal');
+  doc.setTextColor(...hexToRgb(br.secondary_color));
+
+  const visibleFields = block.fields.filter(f => f.visible);
+  const fieldValues = buildFieldValues(item, visibleFields, discountPct, numeroParcelas, taxaJuros);
+
+  // Group field values into a metrics line
+  const metricsLine = fieldValues
+    .filter(fv => fv.key !== 'product_name' && fv.key !== 'total' && fv.key !== 'discount_price' && fv.key !== 'installment_price')
+    .map(fv => `${fv.label}: ${fv.value}`)
+    .join('  |  ');
+
+  if (metricsLine) {
+    doc.text(metricsLine, x0 + 3, y);
+    y += 6;
+  }
+
+  // Per-item totals
+  if (hasPerItemTotals) {
+    const discountPrice = item.total * (1 - discountPct);
+    const { totalComTaxa, parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
+    const taxaText = taxaJuros > 0 ? ` (${taxaJuros}% taxa)` : '';
+
+    doc.setFont(font, 'bold');
+    doc.setTextColor(...hexToRgb(br.price_highlight_color));
+    doc.text(`${tpl.totals.discount_label} ${formatCurrency(discountPrice)}`, x0 + 3, y);
+    y += 5.5;
+
+    doc.setFont(font, 'normal');
+    doc.setTextColor(...hexToRgb(br.secondary_color));
+    doc.text(`${tpl.totals.installment_label} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + 3, y);
+    y += 5;
+
+    doc.setFontSize(st.body_font_size - 1);
+    doc.setTextColor(128, 128, 128);
+    doc.text(`Total: ${formatCurrency(totalComTaxa)}`, x0 + 3, y);
+    doc.setTextColor(0, 0, 0);
+    y += 3;
+  }
+
+  // Border
+  if (st.border) {
+    doc.setDrawColor(...hexToRgb(br.border_color));
+    doc.setLineWidth(0.2);
+    doc.rect(x0, startY - 2, contentW, y - startY + 4, 'S');
+  }
+
+  y += 6;
+  return y;
+}
+
+function renderBlockTableRow(
+  doc: jsPDF,
+  _tpl: DocumentTemplate,
+  block: DocumentBlock,
+  item: { name: string; area: number; unitPrice: number; total: number },
+  idx: number,
+  startY: number,
+  x0: number,
+  contentW: number,
+  font: string,
+  br: DocumentTemplate['branding'],
+  margins: { top: number; bottom: number },
+  discountPct: number,
+  numeroParcelas: number,
+  taxaJuros: number,
+): number {
+  let y = startY;
+  const st = block.style;
+  const rowH = 8;
+  y = checkPage(doc, y, rowH + 4, margins.top, margins.bottom);
+
+  // Alternating background
+  if (idx % 2 === 1 && br.table_row_alt_bg) {
+    doc.setFillColor(...hexToRgb(br.table_row_alt_bg));
+    doc.rect(x0, y - 3.5, contentW, rowH, 'F');
+  }
+
+  // Build visible fields
+  const visibleFields = block.fields.filter(f => f.visible);
+  const fieldValues = buildFieldValues(item, visibleFields, discountPct, numeroParcelas, taxaJuros);
+
+  // Distribute fields across content width
+  const colCount = fieldValues.length;
+  const colW = contentW / Math.max(colCount, 1);
+
+  doc.setFontSize(st.body_font_size);
+  doc.setFont(font, 'normal');
+  doc.setTextColor(...hexToRgb(br.secondary_color));
+
+  fieldValues.forEach((fv, i) => {
+    const cx = x0 + i * colW;
+    if (fv.key === 'discount_price' || fv.key === 'total') {
+      doc.setFont(font, 'bold');
+      doc.setTextColor(...hexToRgb(br.price_highlight_color));
+    }
+    doc.text(fv.value, cx + 1, y);
+    if (fv.key === 'discount_price' || fv.key === 'total') {
+      doc.setFont(font, 'normal');
+      doc.setTextColor(...hexToRgb(br.secondary_color));
+    }
+  });
+
+  y += rowH;
+
+  // Row separator
+  doc.setDrawColor(...hexToRgb(br.border_color));
+  doc.setLineWidth(0.1);
+  doc.line(x0, y - 1, x0 + contentW, y - 1);
+
+  return y;
+}
+
+function buildFieldValues(
+  item: { name: string; area: number; unitPrice: number; total: number },
+  fields: DocumentBlock['fields'],
+  discountPct: number,
+  numeroParcelas: number,
+  taxaJuros: number,
+): Array<{ key: string; label: string; value: string }> {
+  const discountPrice = item.total * (1 - discountPct);
+  const { parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
+
+  const valueMap: Record<string, string> = {
+    product_name: item.name,
+    area: `${item.area} m²`,
+    preco_m2: formatCurrency(item.unitPrice),
+    unit_price: formatCurrency(item.unitPrice),
+    total: formatCurrency(item.total),
+    discount_price: formatCurrency(discountPrice),
+    installment_price: `${numeroParcelas}x ${formatCurrency(parcela)}`,
+    quantidade: '1',
+    descricao: item.name,
+  };
+
+  return fields
+    .filter(f => f.visible && valueMap[f.key])
+    .map(f => ({ key: f.key, label: f.label, value: valueMap[f.key] }));
+}
+
+// ============================================================
+// Legacy budget_table renderer (backward compat)
+// ============================================================
+
+function renderBudgetTable(
+  doc: jsPDF,
+  tpl: DocumentTemplate,
+  items: Array<{ name: string; area: number; unitPrice: number; total: number }>,
+  startY: number,
+  x0: number,
+  contentW: number,
+  font: string,
+  br: DocumentTemplate['branding'],
+  margins: { top: number; bottom: number },
+  numeroParcelas: number,
+  taxaJuros: number,
+): number {
+  let y = startY;
+  const bt = tpl.budget_table;
+  const discountPct = tpl.totals.discount_percent / 100;
+
+  if (bt.style === 'table') {
+    const cols = bt.columns;
+    const colWidths = cols.map(c => (c.width_percent / 100) * contentW);
+
+    if (bt.show_header) {
+      y = checkPage(doc, y, 10, margins.top, margins.bottom);
+      if (br.table_header_bg) {
+        doc.setFillColor(...hexToRgb(br.table_header_bg));
+        doc.rect(x0, y - 4, contentW, 7, 'F');
+      }
+      doc.setFontSize(bt.header_font_size);
+      doc.setFont(font, 'bold');
+      doc.setTextColor(...hexToRgb(br.table_header_text));
+      let cx = x0;
+      for (let i = 0; i < cols.length; i++) {
+        const col = cols[i];
+        const tx = col.align === 'center' ? cx + colWidths[i] / 2
+          : col.align === 'right' ? cx + colWidths[i] - 1 : cx + 1;
+        doc.text(col.label, tx, y, { align: col.align });
+        cx += colWidths[i];
+      }
+      y += 5;
+      if (bt.show_borders) {
+        doc.setDrawColor(...hexToRgb(br.border_color));
+        doc.setLineWidth(0.2);
+        doc.line(x0, y, x0 + contentW, y);
+      }
+      y += 2;
+    }
+
+    doc.setFontSize(bt.body_font_size);
+    items.forEach((item, idx) => {
+      y = checkPage(doc, y, bt.row_padding + 6, margins.top, margins.bottom);
+      if (idx % 2 === 1 && br.table_row_alt_bg) {
+        doc.setFillColor(...hexToRgb(br.table_row_alt_bg));
+        doc.rect(x0, y - 3.5, contentW, bt.row_padding + 2, 'F');
+      }
+      const discountPrice = item.total * (1 - discountPct);
+      const { parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
+      const values: Record<string, string> = {
+        option_number: String(idx + 1),
+        product_name: item.name,
+        area: `${item.area} m²`,
+        unit_price: formatCurrency(item.unitPrice),
+        total: formatCurrency(item.total),
+        discount_price: formatCurrency(discountPrice),
+        installment_price: `${numeroParcelas}x ${formatCurrency(parcela)}`,
+      };
+      doc.setFont(font, 'normal');
+      doc.setTextColor(...hexToRgb(br.secondary_color));
+      let cx = x0;
+      for (let i = 0; i < cols.length; i++) {
+        const col = cols[i];
+        const val = values[col.key] || '';
+        if (col.key === 'discount_price') {
+          doc.setFont(font, 'bold');
+          doc.setTextColor(...hexToRgb(br.price_highlight_color));
+        }
+        const tx = col.align === 'center' ? cx + colWidths[i] / 2
+          : col.align === 'right' ? cx + colWidths[i] - 1 : cx + 1;
+        doc.text(val, tx, y, { align: col.align });
+        if (col.key === 'discount_price') {
+          doc.setFont(font, 'normal');
+          doc.setTextColor(...hexToRgb(br.secondary_color));
+        }
+        cx += colWidths[i];
+      }
+      y += bt.row_padding;
+      if (bt.show_borders) {
+        doc.setDrawColor(...hexToRgb(br.border_color));
+        doc.setLineWidth(0.1);
+        doc.line(x0, y - 1, x0 + contentW, y - 1);
+      }
+    });
+
+  } else if (bt.style === 'cards') {
+    doc.setFontSize(bt.body_font_size);
+    items.forEach((item, idx) => {
+      const cardH = 32 + (tpl.totals.position === 'per_item' ? 14 : 0);
+      y = checkPage(doc, y, cardH, margins.top, margins.bottom);
+      if (br.table_row_alt_bg) {
+        doc.setFillColor(...hexToRgb(br.table_row_alt_bg));
+        doc.rect(x0, y - 2, contentW, cardH - 4, 'F');
+      }
+      if (br.table_header_bg) {
+        doc.setFillColor(...hexToRgb(br.table_header_bg));
+        doc.rect(x0, y - 2, contentW, 7, 'F');
+      }
+      doc.setFontSize(bt.header_font_size);
+      doc.setFont(font, 'bold');
+      doc.setTextColor(...hexToRgb(br.table_header_text));
+      doc.text(`OPÇÃO ${idx + 1}: ${item.name}`, x0 + 3, y + 2);
+      y += 10;
+      doc.setFontSize(bt.body_font_size);
+      doc.setFont(font, 'normal');
+      doc.setTextColor(...hexToRgb(br.secondary_color));
+      doc.text(`Área: ${item.area} m²  |  Preço: ${formatCurrency(item.unitPrice)}/m²`, x0 + 3, y);
+      y += 6;
+      if (tpl.totals.position === 'per_item') {
+        const discountPrice = item.total * (1 - discountPct);
+        const { totalComTaxa, parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
+        const taxaText = taxaJuros > 0 ? ` (${taxaJuros}% taxa)` : '';
+        doc.setFont(font, 'bold');
+        doc.setTextColor(...hexToRgb(br.price_highlight_color));
+        doc.text(`${tpl.totals.discount_label} ${formatCurrency(discountPrice)}`, x0 + 3, y);
+        y += 5.5;
+        doc.setFont(font, 'normal');
+        doc.setTextColor(...hexToRgb(br.secondary_color));
+        doc.text(`${tpl.totals.installment_label} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + 3, y);
+        y += 5;
+        doc.setFontSize(bt.body_font_size - 1);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Total: ${formatCurrency(totalComTaxa)}`, x0 + 3, y);
+        doc.setTextColor(0, 0, 0);
+        y += 3;
+      }
+      y += bt.row_padding;
+    });
+
+  } else {
+    doc.setFontSize(bt.body_font_size);
+    items.forEach((item, idx) => {
+      y = checkPage(doc, y, 20, margins.top, margins.bottom);
+      doc.setFont(font, 'bold');
+      doc.setTextColor(...hexToRgb(br.primary_color));
+      doc.text(`${idx + 1}. ${item.name}`, x0, y);
+      y += 5;
+      doc.setFont(font, 'normal');
+      doc.setTextColor(...hexToRgb(br.secondary_color));
+      doc.text(`${item.area} m² × ${formatCurrency(item.unitPrice)} = ${formatCurrency(item.total)}`, x0 + 5, y);
+      y += 5;
+      if (tpl.totals.position === 'per_item') {
+        const discountPrice = item.total * (1 - discountPct);
+        doc.setFont(font, 'bold');
+        doc.setTextColor(...hexToRgb(br.price_highlight_color));
+        doc.text(`${tpl.totals.discount_label} ${formatCurrency(discountPrice)}`, x0 + 5, y);
+        doc.setFont(font, 'normal');
+        doc.setTextColor(...hexToRgb(br.secondary_color));
+        y += 5;
+      }
+      doc.setDrawColor(...hexToRgb(br.border_color));
+      doc.setLineWidth(0.1);
+      doc.line(x0, y, x0 + contentW, y);
+      y += bt.row_padding;
+    });
+  }
+
   return y;
 }
 
@@ -223,193 +650,15 @@ function renderFromTemplate(
       y += lm.section_spacing;
     }
 
-    // ---- BUDGET TABLE ----
-    if (section === 'budget_table') {
-      const bt = tpl.budget_table;
-      const discountPct = tpl.totals.discount_percent / 100;
+    // ---- CONTENT BLOCKS (block-based rendering) ----
+    if (section === 'content_blocks' && tpl.content_blocks && tpl.content_blocks.length > 0) {
+      y = renderContentBlocks(doc, tpl, items, y, x0, contentW, font, br, margins, numeroParcelas, taxaJuros);
+      y += lm.section_spacing;
+    }
 
-      if (bt.style === 'table') {
-        // -- TABLE STYLE --
-        const cols = bt.columns;
-        const colWidths = cols.map(c => (c.width_percent / 100) * contentW);
-
-        // Header row
-        if (bt.show_header) {
-          y = checkPage(doc, y, 10, margins.top, margins.bottom);
-          if (br.table_header_bg) {
-            doc.setFillColor(...hexToRgb(br.table_header_bg));
-            doc.rect(x0, y - 4, contentW, 7, 'F');
-          }
-          doc.setFontSize(bt.header_font_size);
-          doc.setFont(font, 'bold');
-          doc.setTextColor(...hexToRgb(br.table_header_text));
-          let cx = x0;
-          for (let i = 0; i < cols.length; i++) {
-            const col = cols[i];
-            const tx = col.align === 'center' ? cx + colWidths[i] / 2
-              : col.align === 'right' ? cx + colWidths[i] - 1 : cx + 1;
-            doc.text(col.label, tx, y, { align: col.align });
-            cx += colWidths[i];
-          }
-          y += 5;
-          if (bt.show_borders) {
-            doc.setDrawColor(...hexToRgb(br.border_color));
-            doc.setLineWidth(0.2);
-            doc.line(x0, y, x0 + contentW, y);
-          }
-          y += 2;
-        }
-
-        // Data rows
-        doc.setFontSize(bt.body_font_size);
-        items.forEach((item, idx) => {
-          y = checkPage(doc, y, bt.row_padding + 6, margins.top, margins.bottom);
-
-          // Alternating background
-          if (idx % 2 === 1 && br.table_row_alt_bg) {
-            doc.setFillColor(...hexToRgb(br.table_row_alt_bg));
-            doc.rect(x0, y - 3.5, contentW, bt.row_padding + 2, 'F');
-          }
-
-          const discountPrice = item.total * (1 - discountPct);
-          const { parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
-
-          const values: Record<string, string> = {
-            option_number: String(idx + 1),
-            product_name: item.name,
-            area: `${item.area} m²`,
-            unit_price: formatCurrency(item.unitPrice),
-            total: formatCurrency(item.total),
-            discount_price: formatCurrency(discountPrice),
-            installment_price: `${numeroParcelas}x ${formatCurrency(parcela)}`,
-          };
-
-          doc.setFont(font, 'normal');
-          doc.setTextColor(...hexToRgb(br.secondary_color));
-          let cx = x0;
-          for (let i = 0; i < cols.length; i++) {
-            const col = cols[i];
-            const val = values[col.key] || '';
-            // Highlight price columns
-            if (col.key === 'discount_price') {
-              doc.setFont(font, 'bold');
-              doc.setTextColor(...hexToRgb(br.price_highlight_color));
-            }
-            const tx = col.align === 'center' ? cx + colWidths[i] / 2
-              : col.align === 'right' ? cx + colWidths[i] - 1 : cx + 1;
-            doc.text(val, tx, y, { align: col.align });
-            // Reset
-            if (col.key === 'discount_price') {
-              doc.setFont(font, 'normal');
-              doc.setTextColor(...hexToRgb(br.secondary_color));
-            }
-            cx += colWidths[i];
-          }
-
-          y += bt.row_padding;
-
-          // Row border
-          if (bt.show_borders) {
-            doc.setDrawColor(...hexToRgb(br.border_color));
-            doc.setLineWidth(0.1);
-            doc.line(x0, y - 1, x0 + contentW, y - 1);
-          }
-        });
-
-      } else if (bt.style === 'cards') {
-        // -- CARDS STYLE --
-        doc.setFontSize(bt.body_font_size);
-        items.forEach((item, idx) => {
-          const cardH = 32 + (tpl.totals.position === 'per_item' ? 14 : 0);
-          y = checkPage(doc, y, cardH, margins.top, margins.bottom);
-
-          // Card background
-          if (br.table_row_alt_bg) {
-            doc.setFillColor(...hexToRgb(br.table_row_alt_bg));
-            doc.rect(x0, y - 2, contentW, cardH - 4, 'F');
-          }
-
-          // Option header
-          if (br.table_header_bg) {
-            doc.setFillColor(...hexToRgb(br.table_header_bg));
-            doc.rect(x0, y - 2, contentW, 7, 'F');
-          }
-          doc.setFontSize(bt.header_font_size);
-          doc.setFont(font, 'bold');
-          doc.setTextColor(...hexToRgb(br.table_header_text));
-          doc.text(`OPÇÃO ${idx + 1}: ${item.name}`, x0 + 3, y + 2);
-          y += 10;
-
-          // Metrics
-          doc.setFontSize(bt.body_font_size);
-          doc.setFont(font, 'normal');
-          doc.setTextColor(...hexToRgb(br.secondary_color));
-          doc.text(`Área: ${item.area} m²  |  Preço: ${formatCurrency(item.unitPrice)}/m²`, x0 + 3, y);
-          y += 6;
-
-          // Per-item totals
-          if (tpl.totals.position === 'per_item') {
-            const discountPrice = item.total * (1 - discountPct);
-            const { totalComTaxa, parcela } = calcularParcelamento(item.total, taxaJuros, numeroParcelas);
-            const taxaText = taxaJuros > 0 ? ` (${taxaJuros}% taxa)` : '';
-
-            // Cash price
-            doc.setFont(font, 'bold');
-            doc.setTextColor(...hexToRgb(br.price_highlight_color));
-            doc.text(`${tpl.totals.discount_label} ${formatCurrency(discountPrice)}`, x0 + 3, y);
-            y += 5.5;
-
-            // Installments
-            doc.setFont(font, 'normal');
-            doc.setTextColor(...hexToRgb(br.secondary_color));
-            doc.text(`${tpl.totals.installment_label} ${numeroParcelas}x de ${formatCurrency(parcela)}${taxaText}`, x0 + 3, y);
-            y += 5;
-
-            // Total with tax
-            doc.setFontSize(bt.body_font_size - 1);
-            doc.setTextColor(128, 128, 128);
-            doc.text(`Total: ${formatCurrency(totalComTaxa)}`, x0 + 3, y);
-            doc.setTextColor(0, 0, 0);
-            y += 3;
-          }
-
-          y += bt.row_padding;
-        });
-
-      } else {
-        // -- LIST STYLE --
-        doc.setFontSize(bt.body_font_size);
-        items.forEach((item, idx) => {
-          y = checkPage(doc, y, 20, margins.top, margins.bottom);
-
-          doc.setFont(font, 'bold');
-          doc.setTextColor(...hexToRgb(br.primary_color));
-          doc.text(`${idx + 1}. ${item.name}`, x0, y);
-          y += 5;
-
-          doc.setFont(font, 'normal');
-          doc.setTextColor(...hexToRgb(br.secondary_color));
-          doc.text(`${item.area} m² × ${formatCurrency(item.unitPrice)} = ${formatCurrency(item.total)}`, x0 + 5, y);
-          y += 5;
-
-          if (tpl.totals.position === 'per_item') {
-            const discountPrice = item.total * (1 - discountPct);
-            doc.setFont(font, 'bold');
-            doc.setTextColor(...hexToRgb(br.price_highlight_color));
-            doc.text(`${tpl.totals.discount_label} ${formatCurrency(discountPrice)}`, x0 + 5, y);
-            doc.setFont(font, 'normal');
-            doc.setTextColor(...hexToRgb(br.secondary_color));
-            y += 5;
-          }
-
-          // Separator
-          doc.setDrawColor(...hexToRgb(br.border_color));
-          doc.setLineWidth(0.1);
-          doc.line(x0, y, x0 + contentW, y);
-          y += bt.row_padding;
-        });
-      }
-
+    // ---- BUDGET TABLE (legacy fallback) ----
+    if (section === 'budget_table' && (!tpl.content_blocks || tpl.content_blocks.length === 0)) {
+      y = renderBudgetTable(doc, tpl, items, y, x0, contentW, font, br, margins, numeroParcelas, taxaJuros);
       y += lm.section_spacing;
     }
 

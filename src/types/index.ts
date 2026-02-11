@@ -157,6 +157,50 @@ export interface BrandExtraction {
 // Document Template v2 (Canônico — extraído pela IA)
 // =============================================
 
+// --- Content Blocks (análise heterogênea do documento) ---
+
+export type DocumentBlockType =
+  | 'measurement_item'      // Item por m² (piso, gesso, pintura)
+  | 'fixed_price_product'   // Produto preço fixo (rodapé, soleira)
+  | 'product_option'        // Opção comparativa (produto A vs B)
+  | 'informational';        // Bloco informativo (obs, condições)
+
+export type DocumentBlockRole =
+  | 'calculavel'    // Tem cálculo explícito (area × preço)
+  | 'informativo'   // Apenas texto/informação
+  | 'comparativo';  // Compara opções lado a lado
+
+export interface DocumentBlockField {
+  key: string;       // e.g. 'area', 'preco_m2', 'total', 'quantidade', 'descricao'
+  label: string;     // Label visível no documento original
+  type: 'text' | 'number' | 'currency' | 'area' | 'percentage';
+  visible: boolean;  // Campo realmente presente no documento
+}
+
+export interface DocumentBlockCalculation {
+  formula: string | null;  // e.g. "area * preco_m2" or null
+  explicit: boolean;       // Cálculo visível no documento?
+}
+
+export interface DocumentBlock {
+  id: string;
+  type: DocumentBlockType;
+  role: DocumentBlockRole;
+  title: string;                          // Título do bloco no documento
+  fields: DocumentBlockField[];           // Apenas campos visíveis
+  calculation: DocumentBlockCalculation | null;
+  confidence: number;                     // 0-1
+  style: {
+    display: 'card' | 'table_row' | 'text_block' | 'comparison';
+    background_color: string | null;
+    border: boolean;
+    title_font_size: number;
+    body_font_size: number;
+  };
+}
+
+// --- Document Template ---
+
 export interface DocumentTemplate {
   version: 2;
   branding: {
@@ -184,6 +228,9 @@ export interface DocumentTemplate {
     type: 'cliente_nome' | 'cliente_telefone' | 'endereco_completo' | 'tipo_servico' | 'data';
     required: boolean;
   }>;
+  // Block-based content (v2 — heterogeneous blocks)
+  content_blocks: DocumentBlock[];
+  // Legacy single-table (backward compat for saved templates without blocks)
   budget_table: {
     columns: Array<{
       key: 'option_number' | 'product_name' | 'area' | 'unit_price' | 'total' | 'discount_price' | 'installment_price';
@@ -226,7 +273,7 @@ export interface DocumentTemplate {
       show_separator: boolean;
       separator_color: string | null;
     };
-    sections_order: Array<'header' | 'client' | 'budget_table' | 'totals' | 'observations' | 'footer'>;
+    sections_order: Array<'header' | 'client' | 'content_blocks' | 'budget_table' | 'totals' | 'observations' | 'footer'>;
     section_spacing: number;
     client_section: {
       style: 'inline' | 'card' | 'table';
