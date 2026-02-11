@@ -41,14 +41,14 @@ export default function MarcaConfig() {
     if (config) {
       setLogoUrl(config.logo_url || '');
       if (config.logo_url) setLogoPreview(config.logo_url);
-      if (config.pdf_template) {
+      if (config.pdf_template?.header && config.pdf_template?.colors) {
         setTemplate(config.pdf_template);
-        setCompanyName(config.pdf_template.company.name || '');
-        setCompanyCnpj(config.pdf_template.company.cnpj || '');
-        setCompanyPhone(config.pdf_template.company.phone || '');
-        setCompanyEmail(config.pdf_template.company.email || '');
-        setCompanyAddress(config.pdf_template.company.address || '');
-        setFooterText(config.pdf_template.footer.text || '');
+        setCompanyName(config.pdf_template.company?.name || '');
+        setCompanyCnpj(config.pdf_template.company?.cnpj || '');
+        setCompanyPhone(config.pdf_template.company?.phone || '');
+        setCompanyEmail(config.pdf_template.company?.email || '');
+        setCompanyAddress(config.pdf_template.company?.address || '');
+        setFooterText(config.pdf_template.footer?.text || '');
         setValidityDays(config.pdf_template.validityDays || 15);
       } else {
         setCompanyName(config.company_name || '');
@@ -342,10 +342,10 @@ export default function MarcaConfig() {
           <div className="mt-3 p-3 bg-green-50 rounded-lg">
             <p className="text-sm text-green-700 font-medium">Template extraído</p>
             <p className="text-xs text-green-600 mt-1">
-              Layout: {template.header.backgroundColor ? 'Header colorido' : 'Header limpo'} |
-              Fonte: {template.fonts.family} |
-              Seção cliente: {template.clientSection.style} |
-              Produtos: {template.productsSection.style}
+              Layout: {template.header?.backgroundColor ? 'Header colorido' : 'Header limpo'} |
+              Fonte: {template.fonts?.family || 'helvetica'} |
+              Seção cliente: {template.clientSection?.style || 'inline'} |
+              Produtos: {template.productsSection?.style || 'list'}
             </p>
           </div>
         )}
