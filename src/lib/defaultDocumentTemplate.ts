@@ -2,67 +2,6 @@ import type { DocumentTemplate } from '../types';
 
 export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
   version: 2,
-  mockup: {
-    blocks: [
-      {
-        type: 'header',
-        elements: [
-          { role: 'logo', style: 'image', position: 'left' },
-          { role: 'company_name', style: 'bold' },
-          { role: 'company_phone', style: 'small' },
-          { role: 'company_email', style: 'small' },
-          { role: 'company_cnpj', style: 'small' },
-          { role: 'company_address', style: 'small' },
-        ],
-      },
-      {
-        type: 'title',
-        elements: [
-          { role: 'document_title', style: 'bold', text: 'ORÇAMENTO', alignment: 'center' },
-        ],
-      },
-      { type: 'separator' },
-      {
-        type: 'client_data',
-        elements: [
-          { role: 'label', style: 'bold', text: 'Cliente:' },
-          { role: 'client_name', style: 'normal' },
-          { role: 'label', style: 'bold', text: 'Telefone:' },
-          { role: 'client_phone', style: 'normal' },
-          { role: 'label', style: 'bold', text: 'Endereço:' },
-          { role: 'client_address', style: 'normal' },
-          { role: 'label', style: 'bold', text: 'Serviço:' },
-          { role: 'client_service_type', style: 'normal' },
-          { role: 'label', style: 'bold', text: 'Data:' },
-          { role: 'budget_date', style: 'normal' },
-        ],
-      },
-      {
-        type: 'table',
-        columns: [
-          '{{budget_item_option}}',
-          '{{budget_item_product}}',
-          '{{budget_item_area}}',
-          '{{budget_item_unit_price}}',
-          '{{budget_item_total}}',
-          '{{payment_cash_price}}',
-        ],
-        row_style: 'cards',
-      },
-      {
-        type: 'observations',
-        elements: [
-          { role: 'budget_terms_text', style: 'italic' },
-        ],
-      },
-      {
-        type: 'footer',
-        elements: [
-          { role: 'budget_validity', style: 'small', alignment: 'center' },
-        ],
-      },
-    ],
-  },
   branding: {
     primary_color: '#1e40af',
     secondary_color: '#374151',

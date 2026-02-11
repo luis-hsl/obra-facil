@@ -96,37 +96,6 @@ export default function AtendimentoForm() {
       }
       navigate(`/atendimentos/${id}`);
     } else {
-      // Verificar se já existe atendimento com mesmo telefone
-      const { data: existenteTelefone } = await supabase
-        .from('atendimentos')
-        .select('id, cliente_nome, endereco')
-        .eq('user_id', user!.id)
-        .eq('cliente_telefone', clienteTelefone.trim())
-        .limit(1)
-        .maybeSingle();
-
-      if (existenteTelefone) {
-        setErro(`Já existe um cadastro com este telefone: ${existenteTelefone.cliente_nome} - ${existenteTelefone.endereco}`);
-        setLoading(false);
-        return;
-      }
-
-      // Verificar se já existe atendimento com mesmo endereço + número
-      const { data: existenteEndereco } = await supabase
-        .from('atendimentos')
-        .select('id, cliente_nome, cliente_telefone')
-        .eq('user_id', user!.id)
-        .eq('endereco', endereco.trim())
-        .eq('numero', numero.trim() || null)
-        .limit(1)
-        .maybeSingle();
-
-      if (existenteEndereco) {
-        setErro(`Já existe um cadastro neste endereço: ${existenteEndereco.cliente_nome} - ${existenteEndereco.cliente_telefone}`);
-        setLoading(false);
-        return;
-      }
-
       // Criar com status 'visita_tecnica' - vai para aba Em Andamento
       const { data, error } = await supabase
         .from('atendimentos')

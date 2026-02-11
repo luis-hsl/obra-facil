@@ -125,77 +125,17 @@ export interface BrandConfig {
   validity_days: number;
   layout_style: 'classic' | 'modern' | 'minimal';
   font_family: 'helvetica' | 'times' | 'courier';
-  template_pdf_url: string | null;
   pdf_template: DocumentTemplate | null;
-  html_template: string | null;
-  product_html_template: string | null;
-  overlay_template: OverlayTemplate | null;
-  background_image_url: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface BrandExtraction {
-  colors: {
-    primary: string;
-    secondary: string;
-    accent: string;
-  };
-  company: {
-    name: string | null;
-    cnpj: string | null;
-    phone: string | null;
-    email: string | null;
-    address: string | null;
-  };
-  footer_text: string | null;
-  layout_suggestion: 'classic' | 'modern' | 'minimal';
-  font_suggestion: 'helvetica' | 'times' | 'courier';
-}
-
 // =============================================
-// Mockup Visual (estrutura pura — sem dados)
-// =============================================
-
-export type MockupBlockType =
-  | 'header'
-  | 'title'
-  | 'separator'
-  | 'client_data'
-  | 'table'
-  | 'observations'
-  | 'footer';
-
-export interface MockupElement {
-  role: string;               // e.g. 'company_name', 'client_name', 'logo', 'date'
-  style: string;              // e.g. 'bold', 'small', 'italic', 'normal', 'image'
-  text?: string;              // Texto fixo (labels). Ausente = placeholder injetado no render
-  alignment?: 'left' | 'center' | 'right';
-  position?: 'left' | 'center' | 'right';
-}
-
-export interface MockupBlock {
-  type: MockupBlockType;
-  elements?: MockupElement[];
-  // Específico para type === 'table'
-  columns?: string[];         // Labels de coluna — {{placeholder}} para colunas numéricas
-  row_style?: 'striped' | 'bordered' | 'cards' | 'plain';
-  // Específico para type === 'separator'
-  separator_style?: { color: string | null };
-}
-
-export interface MockupTemplate {
-  blocks: MockupBlock[];
-}
-
-// =============================================
-// Document Template v2 (Canônico — extraído pela IA)
+// Document Template (configuração visual do PDF)
 // =============================================
 
 export interface DocumentTemplate {
   version: 2;
-  // Mockup visual (prioridade máxima quando presente)
-  mockup?: MockupTemplate;
   branding: {
     primary_color: string;
     secondary_color: string;
@@ -221,8 +161,6 @@ export interface DocumentTemplate {
     type: 'cliente_nome' | 'cliente_telefone' | 'endereco_completo' | 'tipo_servico' | 'data';
     required: boolean;
   }>;
-  // Legacy fields (backward compat for saved templates)
-  content_blocks?: unknown[];
   budget_table: {
     columns: Array<{
       key: 'option_number' | 'product_name' | 'area' | 'unit_price' | 'total' | 'discount_price' | 'installment_price';
@@ -265,7 +203,7 @@ export interface DocumentTemplate {
       show_separator: boolean;
       separator_color: string | null;
     };
-    sections_order: Array<'header' | 'client' | 'content_blocks' | 'budget_table' | 'totals' | 'observations' | 'footer'>;
+    sections_order: Array<'header' | 'client' | 'budget_table' | 'totals' | 'observations' | 'footer'>;
     section_spacing: number;
     client_section: {
       style: 'inline' | 'card' | 'table';
@@ -284,60 +222,4 @@ export interface DocumentTemplate {
       text_color: string;
     };
   };
-}
-
-// =============================================
-// Overlay Template (fundo do PDF original + zonas)
-// =============================================
-
-export interface OverlayEraseZone {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  color: string;
-}
-
-export interface OverlayTemplate {
-  erase: OverlayEraseZone[];
-  client: {
-    x: number;
-    y: number;
-    fontSize: number;
-    fontColor: string;
-    lineHeight: number;
-    labelBold: boolean;
-  };
-  products: {
-    x: number;
-    y: number;
-    w: number;
-    maxY: number;
-    fontSize: number;
-    fontColor: string;
-    titleFontSize: number;
-    titleColor: string;
-    priceColor: string;
-    itemSpacing: number;
-    lineHeight: number;
-  };
-  footer: {
-    x: number;
-    y: number;
-    w: number;
-    fontSize: number;
-    fontColor: string;
-    align: 'left' | 'center' | 'right';
-    lineHeight: number;
-  };
-  fontFamily: 'helvetica' | 'times' | 'courier';
-  company: {
-    name: string | null;
-    cnpj: string | null;
-    phone: string | null;
-    email: string | null;
-    address: string | null;
-  };
-  footerText: string | null;
-  validityDays: number;
 }
