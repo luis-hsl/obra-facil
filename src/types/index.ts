@@ -126,7 +126,7 @@ export interface BrandConfig {
   layout_style: 'classic' | 'modern' | 'minimal';
   font_family: 'helvetica' | 'times' | 'courier';
   template_pdf_url: string | null;
-  pdf_template: PdfTemplate | null;
+  pdf_template: DocumentTemplate | null;
   html_template: string | null;
   product_html_template: string | null;
   overlay_template: OverlayTemplate | null;
@@ -154,72 +154,97 @@ export interface BrandExtraction {
 }
 
 // =============================================
-// Template de PDF (extraído pela IA)
+// Document Template v2 (Canônico — extraído pela IA)
 // =============================================
 
-export interface PdfTemplate {
-  header: {
-    height: number;
-    backgroundColor: string | null;
-    logoPosition: 'left' | 'center' | 'right';
-    logoMaxHeight: number;
-    companyInfoPosition: 'left' | 'right' | 'below-logo';
-    showTitle: boolean;
-    titleText: string;
-    titleAlignment: 'left' | 'center' | 'right';
+export interface DocumentTemplate {
+  version: 2;
+  branding: {
+    primary_color: string;
+    secondary_color: string;
+    accent_color: string;
+    font_family: 'helvetica' | 'times' | 'courier';
+    header_bg_color: string | null;
+    header_text_color: string;
+    table_header_bg: string | null;
+    table_header_text: string;
+    table_row_alt_bg: string | null;
+    border_color: string;
+    price_highlight_color: string;
   };
-  colors: {
-    primary: string;
-    secondary: string;
-    accent: string;
-    headerText: string;
-    bodyText: string;
+  company_fields: Array<{
+    label: string;
+    value: string;
+    type: 'text' | 'phone' | 'email' | 'cnpj' | 'address';
+    style: 'normal' | 'bold' | 'light';
+    fontSize: number;
+  }>;
+  client_fields: Array<{
+    label: string;
+    type: 'cliente_nome' | 'cliente_telefone' | 'endereco_completo' | 'tipo_servico' | 'data';
+    required: boolean;
+  }>;
+  budget_table: {
+    columns: Array<{
+      key: 'option_number' | 'product_name' | 'area' | 'unit_price' | 'total' | 'discount_price' | 'installment_price';
+      label: string;
+      width_percent: number;
+      align: 'left' | 'center' | 'right';
+    }>;
+    style: 'table' | 'cards' | 'list';
+    show_header: boolean;
+    show_borders: boolean;
+    row_padding: number;
+    header_font_size: number;
+    body_font_size: number;
   };
-  fonts: {
-    family: 'helvetica' | 'times' | 'courier';
-    titleSize: number;
-    subtitleSize: number;
-    bodySize: number;
-    smallSize: number;
+  totals: {
+    show_discount: boolean;
+    discount_label: string;
+    discount_percent: number;
+    show_installments: boolean;
+    installment_label: string;
+    position: 'per_item' | 'summary_bottom';
   };
-  clientSection: {
-    style: 'inline' | 'card' | 'table';
-    backgroundColor: string | null;
-    borderRadius: boolean;
-    labelBold: boolean;
+  observations: {
+    default_text: string;
+    position: 'bottom' | 'after_totals';
+    style: 'italic' | 'normal' | 'light';
+    font_size: number;
   };
-  productsSection: {
-    style: 'list' | 'table' | 'cards';
-    headerBackgroundColor: string | null;
-    headerTextColor: string;
-    showOptionNumber: boolean;
-    showUnitPrice: boolean;
-    priceHighlightColor: string;
-  };
-  paymentSection: {
-    showDiscount: boolean;
-    discountLabel: string;
-    installmentLabel: string;
-  };
-  footer: {
-    style: 'line' | 'bar' | 'minimal';
-    text: string | null;
-    alignment: 'left' | 'center' | 'right';
-    separatorColor: string | null;
-  };
-  spacing: {
-    sectionGap: number;
-    lineHeight: number;
+  layout_metadata: {
+    page_size: 'a4';
+    orientation: 'portrait' | 'landscape';
     margins: { top: number; right: number; bottom: number; left: number };
+    header: {
+      height: number;
+      logo_position: 'left' | 'center' | 'right';
+      logo_max_height: number;
+      company_info_position: 'right' | 'left' | 'below-logo' | 'below-title';
+      title: { text: string; alignment: 'left' | 'center' | 'right'; font_size: number };
+      background_color: string | null;
+      show_separator: boolean;
+      separator_color: string | null;
+    };
+    sections_order: Array<'header' | 'client' | 'budget_table' | 'totals' | 'observations' | 'footer'>;
+    section_spacing: number;
+    client_section: {
+      style: 'inline' | 'card' | 'table';
+      background_color: string | null;
+      border: boolean;
+      border_color: string | null;
+      label_bold: boolean;
+      label_font_size: number;
+      value_font_size: number;
+    };
+    footer: {
+      style: 'line' | 'bar' | 'minimal';
+      separator_color: string | null;
+      text_alignment: 'left' | 'center' | 'right';
+      font_size: number;
+      text_color: string;
+    };
   };
-  company: {
-    name: string | null;
-    cnpj: string | null;
-    phone: string | null;
-    email: string | null;
-    address: string | null;
-  };
-  validityDays: number;
 }
 
 // =============================================

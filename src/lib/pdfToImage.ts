@@ -56,7 +56,8 @@ export async function pdfFirstPageToJpegBlob(file: File, scale = 3): Promise<Blo
 
   await page.render({ canvas, canvasContext: context, viewport }).promise;
 
+  // PNG for lossless quality (no compression artifacts on text/borders)
   return new Promise<Blob>((resolve) => {
-    canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.92);
+    canvas.toBlob((blob) => resolve(blob!), 'image/png');
   });
 }

@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../lib/useAuth';
 import { useBrandConfig } from '../lib/useBrandConfig';
 import { supabase } from '../lib/supabase';
-import { pdfFirstPageToBase64, pdfFirstPageToDataUrl, pdfFirstPageToJpegBlob } from '../lib/pdfToImage';
+import { pdfFirstPageToBase64, pdfFirstPageToDataUrl } from '../lib/pdfToImage';
 import { gerarPDF } from '../lib/gerarPDF';
-import type { BrandConfig, OverlayTemplate } from '../types';
+import { DEFAULT_DOCUMENT_TEMPLATE } from '../lib/defaultDocumentTemplate';
+import type { BrandConfig, DocumentTemplate } from '../types';
 
 export default function MarcaConfig() {
   const { user } = useAuth();
@@ -22,9 +23,8 @@ export default function MarcaConfig() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  // Overlay template from AI
-  const [overlayTemplate, setOverlayTemplate] = useState<OverlayTemplate | null>(null);
-  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
+  // Document Template from AI
+  const [documentTemplate, setDocumentTemplate] = useState<DocumentTemplate | null>(null);
 
   // Editable company fields
   const [companyName, setCompanyName] = useState('');
@@ -43,8 +43,9 @@ export default function MarcaConfig() {
     if (config) {
       setLogoUrl(config.logo_url || '');
       if (config.logo_url) setLogoPreview(config.logo_url);
-      if (config.overlay_template) setOverlayTemplate(config.overlay_template);
-      if (config.background_image_url) setBackgroundImageUrl(config.background_image_url);
+      if (config.pdf_template && (config.pdf_template as DocumentTemplate).version === 2) {
+        setDocumentTemplate(config.pdf_template as DocumentTemplate);
+      }
       setCompanyName(config.company_name || '');
       setCompanyCnpj(config.company_cnpj || '');
       setCompanyPhone(config.company_phone || '');
@@ -81,17 +82,7 @@ export default function MarcaConfig() {
       const path = `${user.id}/template.${ext}`;
       await supabase.storage.from('brand').upload(path, file, { upsert: true });
 
-      // Upload high-quality JPEG background image
-      const jpegBlob = await pdfFirstPageToJpegBlob(file, 3);
-      const bgPath = `${user.id}/background.jpg`;
-      await supabase.storage.from('brand').upload(bgPath, jpegBlob, {
-        upsert: true,
-        contentType: 'image/jpeg',
-      });
-      const { data: bgUrlData } = supabase.storage.from('brand').getPublicUrl(bgPath);
-      setBackgroundImageUrl(bgUrlData.publicUrl);
-
-      setMessage({ type: 'success', text: 'Template enviado! Clique em "Extrair Zonas" para analisar.' });
+      setMessage({ type: 'success', text: 'Template enviado! Clique em "Analisar Template" para extrair a estrutura.' });
     } catch (err) {
       setMessage({ type: 'error', text: `Erro ao enviar: ${err instanceof Error ? err.message : 'desconhecido'}` });
     } finally {
@@ -99,7 +90,7 @@ export default function MarcaConfig() {
     }
   };
 
-  // AI extraction of overlay zones
+  // AI extraction of DocumentTemplate
   const handleExtract = async () => {
     if (!pdfBase64ForExtract) {
       setMessage({ type: 'error', text: 'Envie um template PDF primeiro.' });
@@ -116,36 +107,37 @@ export default function MarcaConfig() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error + (data.raw ? `\nRaw: ${data.raw}` : ''));
 
-      // Build overlay template from response
-      const template: OverlayTemplate = {
-        erase: data.erase || [],
-        client: data.client,
-        products: data.products,
-        footer: data.footer,
-        fontFamily: data.fontFamily || 'helvetica',
-        company: {
-          name: data.company_name || null,
-          cnpj: data.company_cnpj || null,
-          phone: data.company_phone || null,
-          email: data.company_email || null,
-          address: data.company_address || null,
+      // Merge with defaults for any missing fields
+      const template: DocumentTemplate = {
+        ...DEFAULT_DOCUMENT_TEMPLATE,
+        ...data,
+        version: 2,
+        branding: { ...DEFAULT_DOCUMENT_TEMPLATE.branding, ...data.branding },
+        budget_table: { ...DEFAULT_DOCUMENT_TEMPLATE.budget_table, ...data.budget_table },
+        totals: { ...DEFAULT_DOCUMENT_TEMPLATE.totals, ...data.totals },
+        observations: { ...DEFAULT_DOCUMENT_TEMPLATE.observations, ...data.observations },
+        layout_metadata: {
+          ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata,
+          ...data.layout_metadata,
+          margins: { ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata.margins, ...data.layout_metadata?.margins },
+          header: { ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata.header, ...data.layout_metadata?.header, title: { ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata.header.title, ...data.layout_metadata?.header?.title } },
+          client_section: { ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata.client_section, ...data.layout_metadata?.client_section },
+          footer: { ...DEFAULT_DOCUMENT_TEMPLATE.layout_metadata.footer, ...data.layout_metadata?.footer },
         },
-        footerText: data.footer_text || null,
-        validityDays: data.validity_days || 15,
       };
 
-      setOverlayTemplate(template);
+      setDocumentTemplate(template);
 
-      // Fill company data
-      if (data.company_name) setCompanyName(data.company_name);
-      if (data.company_cnpj) setCompanyCnpj(data.company_cnpj);
-      if (data.company_phone) setCompanyPhone(data.company_phone);
-      if (data.company_email) setCompanyEmail(data.company_email);
-      if (data.company_address) setCompanyAddress(data.company_address);
-      if (data.footer_text) setFooterText(data.footer_text);
-      if (data.validity_days) setValidityDays(data.validity_days);
+      // Fill company data from extracted fields
+      const findCompany = (type: string) => template.company_fields.find(f => f.type === type)?.value || '';
+      if (findCompany('text')) setCompanyName(findCompany('text'));
+      if (findCompany('cnpj')) setCompanyCnpj(findCompany('cnpj'));
+      if (findCompany('phone')) setCompanyPhone(findCompany('phone'));
+      if (findCompany('email')) setCompanyEmail(findCompany('email'));
+      if (findCompany('address')) setCompanyAddress(findCompany('address'));
+      if (template.observations.default_text) setFooterText(template.observations.default_text);
 
-      setMessage({ type: 'success', text: 'Zonas extraídas! Clique em "Testar PDF" para ver o resultado.' });
+      setMessage({ type: 'success', text: 'Template extraído! Revise os dados e clique em "Testar PDF".' });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro desconhecido';
       setMessage({ type: 'error', text: `Erro na extração: ${msg}` });
@@ -174,44 +166,45 @@ export default function MarcaConfig() {
     }
   };
 
-  // Test PDF generation with overlay
+  // Test PDF generation
   const handleTestPDF = async () => {
-    if (!overlayTemplate || !backgroundImageUrl) {
-      setMessage({ type: 'error', text: 'Extraia as zonas primeiro.' });
+    if (!documentTemplate) {
+      setMessage({ type: 'error', text: 'Extraia o template primeiro.' });
       return;
     }
 
     setGeneratingPdf(true);
     setMessage(null);
     try {
-      // Update template with current editable values
-      const tplWithEdits: OverlayTemplate = {
-        ...overlayTemplate,
-        company: {
-          name: companyName || null,
-          cnpj: companyCnpj || null,
-          phone: companyPhone || null,
-          email: companyEmail || null,
-          address: companyAddress || null,
-        },
-        footerText: footerText || null,
-        validityDays,
-      };
-
       const brandForTest: BrandConfig = {
         id: '', user_id: '', created_at: '', updated_at: '',
         template_pdf_url: null, logo_url: logoUrl || null,
-        logo_position: 'left', primary_color: '#1e40af',
-        secondary_color: '#374151', accent_color: '#059669',
+        logo_position: 'left', primary_color: documentTemplate.branding.primary_color,
+        secondary_color: documentTemplate.branding.secondary_color,
+        accent_color: documentTemplate.branding.accent_color,
         company_name: companyName || null, company_cnpj: companyCnpj || null,
         company_phone: companyPhone || null, company_email: companyEmail || null,
         company_address: companyAddress || null, footer_text: footerText || null,
         validity_days: validityDays, layout_style: 'classic',
-        font_family: 'helvetica', pdf_template: null,
+        font_family: documentTemplate.branding.font_family,
+        pdf_template: documentTemplate,
         html_template: null, product_html_template: null,
-        overlay_template: tplWithEdits,
-        background_image_url: backgroundImageUrl,
+        overlay_template: null, background_image_url: null,
       };
+
+      // Load logo as base64 for PDF
+      let logoBase64: string | null = null;
+      if (logoUrl) {
+        try {
+          const resp = await fetch(logoUrl);
+          const blob = await resp.blob();
+          logoBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch { /* logo failed */ }
+      }
 
       const url = await gerarPDF({
         atendimento: {
@@ -240,6 +233,7 @@ export default function MarcaConfig() {
         ],
         produtosMap: {},
         brandConfig: brandForTest,
+        logoBase64,
         preview: true,
       });
 
@@ -256,24 +250,9 @@ export default function MarcaConfig() {
     setSaving(true);
     setMessage(null);
 
-    // Update template with current editable values
-    const tplToSave = overlayTemplate ? {
-      ...overlayTemplate,
-      company: {
-        name: companyName || null,
-        cnpj: companyCnpj || null,
-        phone: companyPhone || null,
-        email: companyEmail || null,
-        address: companyAddress || null,
-      },
-      footerText: footerText || null,
-      validityDays,
-    } : null;
-
     const { error } = await saveConfig({
       logo_url: logoUrl || null,
-      overlay_template: tplToSave,
-      background_image_url: backgroundImageUrl,
+      pdf_template: documentTemplate as any,
       company_name: companyName || null,
       company_cnpj: companyCnpj || null,
       company_phone: companyPhone || null,
@@ -299,7 +278,7 @@ export default function MarcaConfig() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Minha Marca</h1>
       <p className="text-gray-600 text-sm">
-        Envie seu PDF de orçamento. O sistema usa a imagem original como fundo e sobrepõe os dados do cliente.
+        Envie seu PDF de orçamento modelo. A IA extrai a estrutura completa e gera novos orçamentos com o mesmo layout.
       </p>
 
       {message && (
@@ -312,7 +291,7 @@ export default function MarcaConfig() {
       <section className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Template do Orçamento</h2>
         <p className="text-sm text-gray-500 mb-4">
-          O PDF original vira o fundo. A IA identifica onde colocar dados do cliente, produtos e rodapé.
+          A IA analisa cores, fontes, tabelas e estrutura do seu PDF e cria um template reutilizável.
         </p>
 
         <input ref={templateInputRef} type="file" accept=".pdf" onChange={handleTemplateUpload} className="hidden" />
@@ -331,10 +310,10 @@ export default function MarcaConfig() {
             disabled={!pdfBase64ForExtract || extracting}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
           >
-            {extracting ? 'Analisando...' : 'Extrair Zonas'}
+            {extracting ? 'Analisando...' : 'Analisar Template'}
           </button>
 
-          {overlayTemplate && backgroundImageUrl && (
+          {documentTemplate && (
             <button
               onClick={handleTestPDF}
               disabled={generatingPdf}
@@ -345,27 +324,37 @@ export default function MarcaConfig() {
           )}
         </div>
 
-        {/* Preview + Status */}
+        {/* Preview + Template Summary */}
         <div className="mt-4 flex gap-4 flex-wrap">
           {templatePreview && (
             <div>
-              <p className="text-xs text-gray-500 mb-2">Seu template original:</p>
+              <p className="text-xs text-gray-500 mb-2">Seu modelo original:</p>
               <img src={templatePreview} alt="Preview" className="max-h-64 rounded-lg border border-gray-200" />
             </div>
           )}
 
-          {overlayTemplate && (
-            <div className="p-3 bg-green-50 rounded-lg flex-1 min-w-[200px]">
-              <p className="text-sm text-green-700 font-medium">Zonas extraídas</p>
-              <p className="text-xs text-green-600 mt-1">
-                {overlayTemplate.erase.length} zona(s) de apagar |
-                Cliente em y={overlayTemplate.client.y}mm |
-                Produtos em y={overlayTemplate.products.y}mm |
-                Fonte: {overlayTemplate.fontFamily}
-              </p>
-              {backgroundImageUrl && (
-                <p className="text-xs text-green-600 mt-1">Imagem de fundo salva.</p>
-              )}
+          {documentTemplate && (
+            <div className="p-4 bg-gray-50 rounded-lg flex-1 min-w-[220px] space-y-3">
+              <p className="text-sm font-semibold text-gray-800">Template Extraído</p>
+
+              {/* Colors */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Cores:</span>
+                <div className="w-5 h-5 rounded border" style={{ backgroundColor: documentTemplate.branding.primary_color }} title="Primária" />
+                <div className="w-5 h-5 rounded border" style={{ backgroundColor: documentTemplate.branding.secondary_color }} title="Secundária" />
+                <div className="w-5 h-5 rounded border" style={{ backgroundColor: documentTemplate.branding.accent_color }} title="Destaque" />
+                <div className="w-5 h-5 rounded border" style={{ backgroundColor: documentTemplate.branding.price_highlight_color }} title="Preço" />
+              </div>
+
+              {/* Layout info */}
+              <div className="text-xs text-gray-600 space-y-1">
+                <p>Fonte: <span className="font-medium">{documentTemplate.branding.font_family}</span></p>
+                <p>Produtos: <span className="font-medium">{documentTemplate.budget_table.style}</span> ({documentTemplate.budget_table.columns.length} colunas)</p>
+                <p>Totais: <span className="font-medium">{documentTemplate.totals.position === 'per_item' ? 'por item' : 'resumo no final'}</span></p>
+                <p>Empresa: <span className="font-medium">{documentTemplate.company_fields.length} campo(s)</span></p>
+                <p>Cliente: <span className="font-medium">{documentTemplate.client_fields.length} campo(s)</span></p>
+                <p>Margens: {documentTemplate.layout_metadata.margins.top}/{documentTemplate.layout_metadata.margins.right}/{documentTemplate.layout_metadata.margins.bottom}/{documentTemplate.layout_metadata.margins.left}mm</p>
+              </div>
             </div>
           )}
         </div>
@@ -420,7 +409,7 @@ export default function MarcaConfig() {
 
       {/* 4. Rodapé */}
       <section className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Rodapé do PDF</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Observações / Rodapé</h2>
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Texto</label>
@@ -438,7 +427,7 @@ export default function MarcaConfig() {
       {/* 5. Ações */}
       <section className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
         <div className="flex gap-3">
-          {overlayTemplate && backgroundImageUrl && (
+          {documentTemplate && (
             <button onClick={handleTestPDF} disabled={generatingPdf}
               className="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
               {generatingPdf ? 'Gerando...' : 'Testar PDF'}
