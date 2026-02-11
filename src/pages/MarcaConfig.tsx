@@ -115,7 +115,10 @@ export default function MarcaConfig() {
         body: { image_base64: pdfBase64ForExtract },
       });
 
-      if (error) throw error;
+      if (error) {
+        const errDetail = typeof data === 'object' && data?.details ? JSON.stringify(data.details) : String(error);
+        throw new Error(errDetail);
+      }
 
       const extraction = data as BrandExtraction;
 
@@ -137,8 +140,9 @@ export default function MarcaConfig() {
       if (extraction.font_suggestion) setFontFamily(extraction.font_suggestion);
 
       setMessage({ type: 'success', text: 'Identidade visual extraída! Revise e ajuste os dados abaixo.' });
-    } catch {
-      setMessage({ type: 'error', text: 'Erro na extração. Verifique se a ANTHROPIC_API_KEY está configurada no Supabase.' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+      setMessage({ type: 'error', text: `Erro na extração: ${msg}` });
     } finally {
       setExtracting(false);
     }
