@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Fechamento, Orcamento } from '../types';
+import ConfirmModal from './ConfirmModal';
 
 interface Props {
   atendimentoId: string;
@@ -21,6 +22,7 @@ export default function FechamentoForm({ atendimentoId, orcamentos, fechamento, 
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const [editing, setEditing] = useState(!fechamento);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (fechamento) {
@@ -45,11 +47,7 @@ export default function FechamentoForm({ atendimentoId, orcamentos, fechamento, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (recebido <= 0) {
-      setErro('O valor recebido precisa ser maior que zero.');
-      return;
-    }
-
+    if (recebido <= 0) { setErro('O valor recebido precisa ser maior que zero.'); return; }
     setErro('');
     setLoading(true);
 
@@ -71,10 +69,11 @@ export default function FechamentoForm({ atendimentoId, orcamentos, fechamento, 
       error = result.error;
     }
 
-    if (error) {
-      setErro('Erro ao salvar fechamento.');
-      setLoading(false);
-      return;
+    if (error) { setErro('Erro ao salvar fechamento.'); setLoading(false); return; }
+
+    // Auto-advance to concluído
+    if (!fechamento) {
+      await supabase.from('atendimentos').update({ status: 'concluido' }).eq('id', atendimentoId);
     }
 
     setEditing(false);
@@ -84,14 +83,11 @@ export default function FechamentoForm({ atendimentoId, orcamentos, fechamento, 
 
   const handleDelete = async () => {
     if (!fechamento) return;
-    if (!confirm('Excluir este fechamento?')) return;
     setLoading(true);
     const { error } = await supabase.from('fechamentos').delete().eq('id', fechamento.id);
-    if (error) {
-      setErro('Erro ao excluir fechamento.');
-      setLoading(false);
-      return;
-    }
+    if (error) { setErro('Erro ao excluir fechamento.'); setLoading(false); return; }
+    // Revert status back to execucao
+    await supabase.from('atendimentos').update({ status: 'execucao' }).eq('id', atendimentoId);
     setValorRecebido(String(valorSugerido));
     setCustoDistribuidor('');
     setCustoInstalador('');
@@ -99,6 +95,7 @@ export default function FechamentoForm({ atendimentoId, orcamentos, fechamento, 
     setObservacoesExtras('');
     setEditing(true);
     setLoading(false);
+    setShowDeleteConfirm(false);
     onSave();
   };
 
@@ -114,29 +111,33 @@ export default function FechamentoForm({ atendimentoId, orcamentos, fechamento, 
         <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 space-y-1">
           <p>Valor Recebido: <strong className="text-gray-800">{formatCurrency(fechamento.valor_recebido)}</strong></p>
           <p className="font-semibold text-gray-700 mt-2">Custos:</p>
-          <p>Distribuidor: {formatCurrency(fechamento.custo_distribuidor)}</p>
-          <p>Instalador: {formatCurrency(fechamento.custo_instalador)}</p>
-          <p>Extras: {formatCurrency(fechamento.custo_extras)}</p>
+          <p>Distribuidor (material): {formatCurrency(fechamento.custo_distribuidor)}</p>
+          <p>Instalador (mão de obra): {formatCurrency(fechamento.custo_instalador)}</p>
+          <p>Extras (imprevistos): {formatCurrency(fechamento.custo_extras)}</p>
           {fechamento.observacoes_extras && (
             <p className="mt-2 text-gray-500">Obs: {fechamento.observacoes_extras}</p>
           )}
         </div>
 
         <div className="flex gap-3">
-          <button
-            onClick={() => setEditing(true)}
-            className="flex-1 py-2 text-sm text-blue-600 font-medium border border-blue-200 rounded-lg"
-          >
+          <button onClick={() => setEditing(true)} className="flex-1 py-2 text-sm text-blue-600 font-medium border border-blue-200 rounded-lg">
             Editar
           </button>
-          <button
-            onClick={handleDelete}
-            disabled={loading}
-            className="py-2 px-4 text-sm text-red-500 font-medium disabled:opacity-50"
-          >
+          <button onClick={() => setShowDeleteConfirm(true)} disabled={loading} className="py-2 px-4 text-sm text-red-500 font-medium disabled:opacity-50">
             Excluir
           </button>
         </div>
+
+        <ConfirmModal
+          aberto={showDeleteConfirm}
+          titulo="Excluir fechamento?"
+          descricao="Isso vai apagar os dados financeiros e reverter o status para execução."
+          confirmLabel="Excluir"
+          variante="danger"
+          loading={loading}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       </div>
     );
   }
@@ -146,82 +147,43 @@ export default function FechamentoForm({ atendimentoId, orcamentos, fechamento, 
       {erro && <p className="text-red-600 text-sm">{erro}</p>}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Valor Recebido *
-        </label>
-        <input
-          type="number"
-          inputMode="decimal"
-          step="0.01"
-          min="0.01"
-          value={valorRecebido}
-          onChange={(e) => setValorRecebido(e.target.value)}
-          required
-          placeholder="Ex: 5000"
-          className="w-full px-3 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <label className="block text-sm font-medium text-gray-700 mb-1">Valor Recebido *</label>
+        <input type="number" inputMode="decimal" step="0.01" min="0.01"
+          value={valorRecebido} onChange={(e) => setValorRecebido(e.target.value)} required placeholder="Ex: 5000"
+          className="w-full px-3 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
         {orcamentoAprovado && (
-          <p className="text-xs text-gray-400 mt-1">
-            Valor do orçamento aprovado: {formatCurrency(valorSugerido)}
-          </p>
+          <p className="text-xs text-gray-400 mt-1">Valor do orçamento aprovado: {formatCurrency(valorSugerido)}</p>
         )}
       </div>
 
       <div className="border-t border-gray-200 pt-4">
-        <p className="text-sm font-medium text-gray-700 mb-3">Custos</p>
+        <p className="text-sm font-medium text-gray-700 mb-1">Custos</p>
+        <p className="text-xs text-gray-400 mb-3">Informe os custos reais do projeto para calcular o lucro.</p>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Distribuidor</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min="0"
-              value={custoDistribuidor}
-              onChange={(e) => setCustoDistribuidor(e.target.value)}
-              placeholder="Ex: 2000"
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <label className="block text-sm text-gray-600 mb-1">Distribuidor (material)</label>
+            <input type="number" inputMode="decimal" step="0.01" min="0"
+              value={custoDistribuidor} onChange={(e) => setCustoDistribuidor(e.target.value)} placeholder="Ex: 2000"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Instalador</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min="0"
-              value={custoInstalador}
-              onChange={(e) => setCustoInstalador(e.target.value)}
-              placeholder="Ex: 800"
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <label className="block text-sm text-gray-600 mb-1">Instalador (mão de obra)</label>
+            <input type="number" inputMode="decimal" step="0.01" min="0"
+              value={custoInstalador} onChange={(e) => setCustoInstalador(e.target.value)} placeholder="Ex: 800"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Extras</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min="0"
-              value={custoExtras}
-              onChange={(e) => setCustoExtras(e.target.value)}
-              placeholder="Ex: 150"
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <label className="block text-sm text-gray-600 mb-1">Extras (imprevistos)</label>
+            <input type="number" inputMode="decimal" step="0.01" min="0"
+              value={custoExtras} onChange={(e) => setCustoExtras(e.target.value)} placeholder="Ex: 150"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-
           <div>
             <label className="block text-sm text-gray-600 mb-1">Observações (extras, imprevistos)</label>
-            <textarea
-              value={observacoesExtras}
-              onChange={(e) => setObservacoesExtras(e.target.value)}
-              placeholder="Ex: Faltou material, precisou comprar mais uma caixa"
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <textarea value={observacoesExtras} onChange={(e) => setObservacoesExtras(e.target.value)}
+              placeholder="Ex: Faltou material, precisou comprar mais uma caixa" rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         </div>
       </div>
@@ -229,31 +191,25 @@ export default function FechamentoForm({ atendimentoId, orcamentos, fechamento, 
       {recebido > 0 && (
         <div className={`rounded-lg p-4 ${lucroCalculado >= 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
           <p className="text-sm text-gray-600 mb-1">Lucro calculado:</p>
-          <p className={`text-2xl font-bold ${lucroCalculado >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-            {formatCurrency(lucroCalculado)}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            {formatCurrency(recebido)} - {formatCurrency(distribuidor + instalador + extras)} (custos)
-          </p>
+          <p className={`text-2xl font-bold ${lucroCalculado >= 0 ? 'text-green-800' : 'text-red-800'}`}>{formatCurrency(lucroCalculado)}</p>
+          <p className="text-xs text-gray-500 mt-1">{formatCurrency(recebido)} - {formatCurrency(distribuidor + instalador + extras)} (custos)</p>
         </div>
+      )}
+
+      {!fechamento && (
+        <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
+          Ao salvar, o atendimento será automaticamente marcado como concluído.
+        </p>
       )}
 
       <div className="flex gap-3">
         {fechamento && (
-          <button
-            type="button"
-            onClick={() => setEditing(false)}
-            className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium"
-          >
+          <button type="button" onClick={() => setEditing(false)} className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium">
             Cancelar
           </button>
         )}
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50"
-        >
-          {loading ? 'Salvando...' : fechamento ? 'Atualizar' : 'Salvar Fechamento'}
+        <button type="submit" disabled={loading} className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50">
+          {loading ? 'Salvando...' : fechamento ? 'Atualizar' : 'Salvar e Concluir'}
         </button>
       </div>
     </form>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Orcamento, OrcamentoItem, Produto, Atendimento } from '../types';
 import StatusBadge from './StatusBadge';
+import ConfirmModal from './ConfirmModal';
 import { gerarPDF } from '../lib/gerarPDF';
 import { useBrandConfig } from '../lib/useBrandConfig';
 import { fetchImageAsBase64 } from '../lib/imageUtils';
@@ -72,6 +73,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
 
   // Itens dos orçamentos existentes
   const [orcamentoItens, setOrcamentoItens] = useState<Record<string, OrcamentoItem[]>>({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -254,7 +256,6 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Excluir este orçamento?')) return;
     setDeletingId(id);
     const { error } = await supabase.from('orcamentos').delete().eq('id', id);
     if (error) {
@@ -263,6 +264,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
       onSave();
     }
     setDeletingId(null);
+    setConfirmDeleteId(null);
   };
 
   const handleGerarPDF = async (orcamento: Orcamento) => {
@@ -302,7 +304,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
             const prodLegado = o.produto_id ? produtosMap[o.produto_id] : null;
 
             return (
-              <div key={o.id} className="bg-white rounded-lg border border-gray-200 p-4">
+              <div key={o.id} className={`rounded-lg border p-4 ${o.status === 'aprovado' ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <p className="font-semibold text-gray-700">
                     {temItens ? `${itensDoOrc.length} ${itensDoOrc.length === 1 ? 'opção' : 'opções'}` : 'Orçamento'}
@@ -380,7 +382,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                   <button onClick={() => handleGerarPDF(o)} className="text-sm text-purple-600 font-medium">
                     PDF
                   </button>
-                  <button onClick={() => handleDelete(o.id)} disabled={deletingId === o.id} className="text-sm text-gray-400 ml-auto disabled:opacity-50">
+                  <button onClick={() => setConfirmDeleteId(o.id)} disabled={deletingId === o.id} className="text-sm text-gray-400 ml-auto disabled:opacity-50">
                     {deletingId === o.id ? '...' : 'Excluir'}
                   </button>
                 </div>
@@ -551,6 +553,17 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
           )}
         </form>
       )}
+
+      <ConfirmModal
+        aberto={!!confirmDeleteId}
+        titulo="Excluir orçamento?"
+        descricao="Isso vai apagar o orçamento e todos os itens relacionados."
+        confirmLabel="Excluir"
+        variante="danger"
+        loading={!!deletingId}
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

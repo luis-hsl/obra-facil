@@ -3,6 +3,24 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/useAuth';
 
+const TIPOS_SERVICO = [
+  'Piso laminado',
+  'Piso vinílico',
+  'Porcelanato',
+  'Gesso',
+  'Vidro temperado',
+  'Pintura',
+  'Elétrica',
+  'Hidráulica',
+];
+
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 export default function AtendimentoForm() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -10,7 +28,6 @@ export default function AtendimentoForm() {
   const { user } = useAuth();
   const isEditing = Boolean(id);
 
-  // Preencher com dados do cliente se vindo da aba Clientes
   const clienteParam = searchParams.get('cliente') || '';
   const telefoneParam = searchParams.get('telefone') || '';
 
@@ -22,6 +39,7 @@ export default function AtendimentoForm() {
   const [bairro, setBairro] = useState('');
   const [cidade, setCidade] = useState('');
   const [tipoServico, setTipoServico] = useState('');
+  const [tipoServicoCustom, setTipoServicoCustom] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [status, setStatus] = useState('iniciado');
   const [loading, setLoading] = useState(false);
@@ -35,10 +53,7 @@ export default function AtendimentoForm() {
         .eq('id', id)
         .single()
         .then(({ data, error }) => {
-          if (error || !data) {
-            setErro('Erro ao carregar atendimento.');
-            return;
-          }
+          if (error || !data) { setErro('Erro ao carregar atendimento.'); return; }
           setClienteNome(data.cliente_nome);
           setClienteTelefone(data.cliente_telefone);
           setEndereco(data.endereco);
@@ -46,31 +61,27 @@ export default function AtendimentoForm() {
           setComplemento(data.complemento || '');
           setBairro(data.bairro || '');
           setCidade(data.cidade || '');
-          setTipoServico(data.tipo_servico);
           setObservacoes(data.observacoes || '');
           setStatus(data.status);
+          // Set tipo_servico: check if it's a predefined or custom value
+          if (TIPOS_SERVICO.includes(data.tipo_servico)) {
+            setTipoServico(data.tipo_servico);
+          } else {
+            setTipoServico('outro');
+            setTipoServicoCustom(data.tipo_servico);
+          }
         });
     }
   }, [id, isEditing]);
 
+  const tipoFinal = tipoServico === 'outro' ? tipoServicoCustom.trim() : tipoServico;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clienteNome.trim()) {
-      setErro('Informe o nome do cliente.');
-      return;
-    }
-    if (!clienteTelefone.trim()) {
-      setErro('Informe o telefone do cliente.');
-      return;
-    }
-    if (!endereco.trim()) {
-      setErro('Informe o endereço da obra.');
-      return;
-    }
-    if (!tipoServico) {
-      setErro('Selecione o tipo de serviço.');
-      return;
-    }
+    if (!clienteNome.trim()) { setErro('Informe o nome do cliente.'); return; }
+    if (!clienteTelefone.trim()) { setErro('Informe o telefone do cliente.'); return; }
+    if (!endereco.trim()) { setErro('Informe o endereço da obra.'); return; }
+    if (!tipoFinal) { setErro('Selecione o tipo de serviço.'); return; }
     setErro('');
     setLoading(true);
 
@@ -82,34 +93,25 @@ export default function AtendimentoForm() {
       complemento: complemento.trim() || null,
       bairro: bairro.trim() || null,
       cidade: cidade.trim() || null,
-      tipo_servico: tipoServico,
+      tipo_servico: tipoFinal,
       observacoes: observacoes.trim() || null,
       status,
     };
 
     if (isEditing) {
       const { error } = await supabase.from('atendimentos').update(atendimentoData).eq('id', id);
-      if (error) {
-        setErro('Erro ao salvar atendimento.');
-        setLoading(false);
-        return;
-      }
+      if (error) { setErro('Erro ao salvar atendimento.'); setLoading(false); return; }
       navigate(`/atendimentos/${id}`);
     } else {
-      // Criar com status 'visita_tecnica' - vai para aba Em Andamento
       const { data, error } = await supabase
         .from('atendimentos')
         .insert({ ...atendimentoData, status: 'visita_tecnica', user_id: user!.id })
         .select()
         .single();
 
-      if (error || !data) {
-        setErro('Erro ao salvar atendimento.');
-        setLoading(false);
-        return;
-      }
-      // Redirecionar para Em Andamento
-      navigate('/andamento');
+      if (error || !data) { setErro('Erro ao salvar atendimento.'); setLoading(false); return; }
+      // Redirect to the new atendimento detail so user sees next steps
+      navigate(`/atendimentos/${data.id}?novo=1`);
     }
   };
 
@@ -140,7 +142,7 @@ export default function AtendimentoForm() {
             <input
               type="tel"
               value={clienteTelefone}
-              onChange={(e) => setClienteTelefone(e.target.value)}
+              onChange={(e) => setClienteTelefone(formatPhone(e.target.value))}
               placeholder="(00) 00000-0000"
               className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -152,56 +154,31 @@ export default function AtendimentoForm() {
           <legend className="text-sm font-semibold text-gray-700 mb-1">Endereço da Obra</legend>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Endereço *</label>
-            <input
-              type="text"
-              value={endereco}
-              onChange={(e) => setEndereco(e.target.value)}
-              placeholder="Rua, Avenida..."
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <input type="text" value={endereco} onChange={(e) => setEndereco(e.target.value)} placeholder="Rua, Avenida..."
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
-              <input
-                type="text"
-                value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                placeholder="123"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="text" value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="123"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
-              <input
-                type="text"
-                value={complemento}
-                onChange={(e) => setComplemento(e.target.value)}
-                placeholder="Apto 12, Bloco B"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="text" value={complemento} onChange={(e) => setComplemento(e.target.value)} placeholder="Apto 12, Bloco B"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
-              <input
-                type="text"
-                value={bairro}
-                onChange={(e) => setBairro(e.target.value)}
-                placeholder="Bairro"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="text" value={bairro} onChange={(e) => setBairro(e.target.value)} placeholder="Bairro"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
-              <input
-                type="text"
-                value={cidade}
-                onChange={(e) => setCidade(e.target.value)}
-                placeholder="Cidade"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="text" value={cidade} onChange={(e) => setCidade(e.target.value)} placeholder="Cidade"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
         </fieldset>
@@ -211,14 +188,28 @@ export default function AtendimentoForm() {
           <legend className="text-sm font-semibold text-gray-700 mb-1">Serviço</legend>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Serviço *</label>
-            <input
-              type="text"
+            <select
               value={tipoServico}
-              onChange={(e) => setTipoServico(e.target.value)}
-              placeholder="Ex: Piso laminado, Gesso, Vidro temperado"
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+              onChange={(e) => { setTipoServico(e.target.value); if (e.target.value !== 'outro') setTipoServicoCustom(''); }}
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Selecione...</option>
+              {TIPOS_SERVICO.map((t) => <option key={t} value={t}>{t}</option>)}
+              <option value="outro">Outro...</option>
+            </select>
           </div>
+          {tipoServico === 'outro' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Especifique o serviço *</label>
+              <input
+                type="text"
+                value={tipoServicoCustom}
+                onChange={(e) => setTipoServicoCustom(e.target.value)}
+                placeholder="Ex: Instalação de persianas"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
             <textarea
@@ -252,18 +243,12 @@ export default function AtendimentoForm() {
         )}
 
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 font-semibold"
-          >
+          <button type="button" onClick={() => navigate(-1)}
+            className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 font-semibold">
             Cancelar
           </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading}
+            className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50">
             {loading ? 'Salvando...' : 'Salvar'}
           </button>
         </div>

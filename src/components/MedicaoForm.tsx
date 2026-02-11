@@ -338,7 +338,7 @@ export default function MedicaoForm({ atendimentoId, medicoes, currentStatus, on
                       </div>
 
                       {comodo.adicionais.length === 0 ? (
-                        <p className="text-xs text-gray-400">Rodapé, perfil, soleira...</p>
+                        <p className="text-xs text-gray-400">Rodapé, perfil, soleira... Some os valores com + (ex: 4,47 + 5,58)</p>
                       ) : (
                         <div className="space-y-2">
                           {comodo.adicionais.map((adicional, adicionalIndex) => {
@@ -420,7 +420,9 @@ export default function MedicaoForm({ atendimentoId, medicoes, currentStatus, on
                 placeholder="Ex: 10"
                 className="w-full px-3 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-gray-400 mt-1">Recortes geram perda de material. O padrão é 10%</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Ao cortar peças para encaixe em cantos e paredes, parte do material é desperdiçada. O padrão de 10% cobre a maioria dos casos. Ambientes com muitos recortes (banheiros, corredores estreitos) podem exigir 15% ou mais.
+              </p>
             </div>
           )}
 

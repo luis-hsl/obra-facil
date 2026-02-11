@@ -74,7 +74,7 @@ export default function ProdutoForm() {
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-4">
-        {isEditing ? 'Editar Produto' : 'Cadastrar Piso'}
+        {isEditing ? 'Editar Produto' : 'Cadastrar Produto'}
       </h2>
 
       {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
@@ -123,7 +123,7 @@ export default function ProdutoForm() {
             placeholder="Ex: 120.00"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <p className="text-xs text-gray-400 mt-1">Preço por metro quadrado do piso</p>
+          <p className="text-xs text-gray-400 mt-1">Preço por metro quadrado do produto</p>
         </div>
 
         <div className="flex gap-3">

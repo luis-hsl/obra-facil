@@ -279,6 +279,10 @@ export default function MarcaConfig() {
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-xl font-bold text-gray-900">Minha Marca</h2>
         <div className="flex gap-2">
+          <button type="button" onClick={() => { setTokenConfig(DEFAULT_PDF_BRAND_CONFIG); setMsg('Resetado!'); setTimeout(() => setMsg(''), 2000); }}
+            className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors">
+            Resetar
+          </button>
           <button type="button" onClick={() => setPreviewOpen(p => !p)}
             className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
               previewOpen ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'

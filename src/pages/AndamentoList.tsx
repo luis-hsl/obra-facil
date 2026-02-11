@@ -44,6 +44,9 @@ export default function AndamentoList() {
     return matchTexto && matchStatus;
   });
 
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
   if (loading) {
     return <LoadingSkeleton count={4} />;
   }
@@ -51,7 +54,16 @@ export default function AndamentoList() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Em Andamento</h2>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Em Andamento</h2>
+          <p className="text-sm text-gray-500 mt-1">{atendimentos.length} atendimento(s)</p>
+        </div>
+        <Link
+          to="/atendimentos/novo"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold no-underline"
+        >
+          + Novo
+        </Link>
       </div>
 
       {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
@@ -92,6 +104,8 @@ export default function AndamentoList() {
             icon="andamento"
             titulo="Nenhum atendimento em andamento"
             descricao="Quando um atendimento avançar para visita, medição ou orçamento, aparecerá aqui"
+            ctaLabel="+ Novo Atendimento"
+            ctaTo="/atendimentos/novo"
           />
         ) : (
           <EmptyState icon="busca" titulo="Nenhum resultado encontrado" />
@@ -110,7 +124,10 @@ export default function AndamentoList() {
                   <p className="text-sm text-gray-500 mt-1">
                     {[a.endereco, a.numero, a.bairro, a.cidade].filter(Boolean).join(', ')}
                   </p>
-                  <p className="text-sm text-gray-400 mt-1">{a.tipo_servico}</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <p className="text-sm text-gray-400">{a.tipo_servico}</p>
+                    <span className="text-xs text-gray-400">{formatDate(a.created_at)}</span>
+                  </div>
                 </div>
                 <StatusBadge status={a.status} />
               </div>
