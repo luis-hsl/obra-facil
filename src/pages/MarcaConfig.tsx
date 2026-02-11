@@ -6,57 +6,8 @@ import { gerarPDF } from '../lib/gerarPDF';
 import { DEFAULT_PDF_BRAND_CONFIG } from '../lib/pdf/defaults';
 import { PDF_PRESETS } from '../lib/pdf/presets';
 import type { BrandConfig, PdfBrandConfig } from '../types';
+import type { PdfPreset } from '../types/pdfTokens';
 import type { Orcamento, OrcamentoItem } from '../types';
-
-// ============================================================
-// Helpers
-// ============================================================
-
-function ColorInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex items-center gap-3">
-      <input type="color" value={value} onChange={e => onChange(e.target.value)}
-        className="w-10 h-10 rounded border border-gray-300 cursor-pointer p-0.5" />
-      <span className="text-sm text-gray-700">{label}</span>
-    </div>
-  );
-}
-
-function ToggleButtons<T extends string>({ options, value, onChange }: {
-  options: Array<{ value: T; label: string }>;
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div className="flex gap-2 flex-wrap">
-      {options.map(opt => (
-        <button key={opt.value} type="button"
-          onClick={() => onChange(opt.value)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-colors ${
-            value === opt.value
-              ? 'border-blue-500 bg-blue-50 text-blue-700'
-              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-          }`}
-        >{opt.label}</button>
-      ))}
-    </div>
-  );
-}
-
-function Section({ title, open, onToggle, children }: {
-  title: string; open: boolean; onToggle: () => void; children: React.ReactNode;
-}) {
-  return (
-    <div className="border border-gray-200 rounded-lg">
-      <button type="button" onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors">
-        <span className="font-semibold text-gray-800">{title}</span>
-        <span className="text-gray-400">{open ? '−' : '+'}</span>
-      </button>
-      {open && <div className="px-4 pb-4 space-y-4">{children}</div>}
-    </div>
-  );
-}
 
 // ============================================================
 // Mock data para preview
@@ -93,6 +44,53 @@ const MOCK_PRODUTOS_MAP: Record<string, { id: string; user_id: string; fabricant
 };
 
 // ============================================================
+// Template card mini-preview
+// ============================================================
+
+function TemplatePreviewIcon({ preset, color, active }: { preset: PdfPreset; color: string; active: boolean }) {
+  const style = preset.budgetTable.style;
+  return (
+    <div className={`w-full aspect-[3/4] rounded-md border-2 p-1.5 flex flex-col gap-0.5 transition-all ${
+      active ? 'border-blue-500 shadow-sm' : 'border-gray-200'
+    }`}>
+      {/* header bar */}
+      <div className="h-1.5 rounded-sm" style={{ backgroundColor: preset.header.showBackground ? color : 'transparent', border: preset.header.showBackground ? 'none' : `1px solid ${color}` }} />
+      {/* content lines */}
+      {style === 'table' && (
+        <>
+          <div className="h-1 rounded-sm mt-0.5" style={{ backgroundColor: color, opacity: 0.7 }} />
+          <div className="h-0.5 bg-gray-200 rounded-sm" />
+          <div className="h-0.5 bg-gray-100 rounded-sm" />
+          <div className="h-0.5 bg-gray-200 rounded-sm" />
+          <div className="h-0.5 bg-gray-100 rounded-sm" />
+        </>
+      )}
+      {style === 'cards' && (
+        <>
+          <div className="flex-1 rounded-sm border border-gray-200 mt-0.5">
+            <div className="h-1 rounded-t-sm" style={{ backgroundColor: color }} />
+          </div>
+          <div className="flex-1 rounded-sm border border-gray-200">
+            <div className="h-1 rounded-t-sm" style={{ backgroundColor: color }} />
+          </div>
+        </>
+      )}
+      {style === 'list' && (
+        <>
+          <div className="h-0.5 bg-gray-300 rounded-sm mt-1 w-3/4" />
+          <div className="h-0.5 bg-gray-200 rounded-sm w-1/2 ml-1" />
+          <div className="h-px bg-gray-100 my-0.5" />
+          <div className="h-0.5 bg-gray-300 rounded-sm w-3/4" />
+          <div className="h-0.5 bg-gray-200 rounded-sm w-1/2 ml-1" />
+        </>
+      )}
+      {/* footer line */}
+      <div className="h-px mt-auto" style={{ backgroundColor: color, opacity: 0.3 }} />
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -103,7 +101,7 @@ export default function MarcaConfig() {
   // Token state
   const [tokenConfig, setTokenConfig] = useState<PdfBrandConfig>(DEFAULT_PDF_BRAND_CONFIG);
 
-  // Company data (separate from style)
+  // Company data
   const [companyName, setCompanyName] = useState('');
   const [companyCnpj, setCompanyCnpj] = useState('');
   const [companyPhone, setCompanyPhone] = useState('');
@@ -118,7 +116,7 @@ export default function MarcaConfig() {
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
 
   // UI
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['visual']));
+  const [activeTab, setActiveTab] = useState<'template' | 'empresa'>('template');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -128,7 +126,6 @@ export default function MarcaConfig() {
   // Load saved config
   useEffect(() => {
     if (!config) {
-      // Fallback: user metadata
       if (user?.user_metadata) {
         const m = user.user_metadata;
         if (m.empresa) setCompanyName(m.empresa);
@@ -137,7 +134,6 @@ export default function MarcaConfig() {
       }
       return;
     }
-    // Load company data
     setCompanyName(config.company_name || '');
     setCompanyCnpj(config.company_cnpj || '');
     setCompanyPhone(config.company_phone || '');
@@ -148,12 +144,10 @@ export default function MarcaConfig() {
     setLogoUrl(config.logo_url || null);
     setLogoPreview(config.logo_url || null);
 
-    // Load token config
     const stored = config.pdf_template as Record<string, unknown> | null;
     if (stored && stored.version === 3) {
       setTokenConfig(stored as unknown as PdfBrandConfig);
     } else {
-      // Synthesize from flat fields
       setTokenConfig({
         ...DEFAULT_PDF_BRAND_CONFIG,
         templateId: (config.layout_style as PdfBrandConfig['templateId']) || 'modern',
@@ -194,17 +188,14 @@ export default function MarcaConfig() {
   // Token update helpers
   const updateColor = (key: keyof PdfBrandConfig['colors'], value: string) =>
     setTokenConfig(t => ({ ...t, colors: { ...t.colors, [key]: value } }));
-
   const updateTypo = <K extends keyof PdfBrandConfig['typography']>(key: K, value: PdfBrandConfig['typography'][K]) =>
     setTokenConfig(t => ({ ...t, typography: { ...t.typography, [key]: value } }));
-
   const updateLogo = <K extends keyof PdfBrandConfig['logo']>(key: K, value: PdfBrandConfig['logo'][K]) =>
     setTokenConfig(t => ({ ...t, logo: { ...t.logo, [key]: value } }));
-
   const updateLayout = <K extends keyof PdfBrandConfig['layout']>(key: K, value: PdfBrandConfig['layout'][K]) =>
     setTokenConfig(t => ({ ...t, layout: { ...t.layout, [key]: value } }));
 
-  // Build brand config for PDF generation
+  // Build brand config for PDF
   const buildBrandConfig = useCallback((): BrandConfig => ({
     id: '', user_id: '', created_at: '', updated_at: '',
     logo_url: logoUrl,
@@ -224,44 +215,28 @@ export default function MarcaConfig() {
     pdf_template: tokenConfig,
   }), [tokenConfig, logoUrl, companyName, companyCnpj, companyPhone, companyEmail, companyAddress, footerText, validityDays]);
 
-  // Live preview with debounce
+  // Live preview
   useEffect(() => {
     if (!previewOpen) return;
     const timer = setTimeout(async () => {
       try {
         const url = await gerarPDF({
-          atendimento: MOCK_ATENDIMENTO,
-          orcamento: MOCK_ORCAMENTO,
-          produto: null,
-          itens: MOCK_ITENS,
-          produtosMap: MOCK_PRODUTOS_MAP,
-          numeroParcelas: 10,
-          taxaJuros: 2,
-          brandConfig: buildBrandConfig(),
-          logoBase64,
-          preview: true,
+          atendimento: MOCK_ATENDIMENTO, orcamento: MOCK_ORCAMENTO,
+          produto: null, itens: MOCK_ITENS, produtosMap: MOCK_PRODUTOS_MAP,
+          numeroParcelas: 10, taxaJuros: 2,
+          brandConfig: buildBrandConfig(), logoBase64, preview: true,
         });
         if (url) {
           if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
           prevUrlRef.current = url as string;
           setPreviewUrl(url as string);
         }
-      } catch (err) {
-        console.error('Preview error:', err);
-      }
+      } catch (err) { console.error('Preview error:', err); }
     }, 400);
     return () => clearTimeout(timer);
   }, [previewOpen, buildBrandConfig, logoBase64]);
 
-  // Cleanup on unmount
   useEffect(() => () => { if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current); }, []);
-
-  // Toggle section
-  const toggle = (id: string) => setOpenSections(s => {
-    const next = new Set(s);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
-  });
 
   // Logo upload
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -279,24 +254,16 @@ export default function MarcaConfig() {
 
   // Save
   const handleSave = async () => {
-    setSaving(true);
-    setMsg('');
+    setSaving(true); setMsg('');
     const updates: Partial<BrandConfig> = {
-      company_name: companyName || null,
-      company_cnpj: companyCnpj || null,
-      company_phone: companyPhone || null,
-      company_email: companyEmail || null,
-      company_address: companyAddress || null,
-      footer_text: footerText || null,
-      validity_days: validityDays,
-      logo_url: logoUrl,
+      company_name: companyName || null, company_cnpj: companyCnpj || null,
+      company_phone: companyPhone || null, company_email: companyEmail || null,
+      company_address: companyAddress || null, footer_text: footerText || null,
+      validity_days: validityDays, logo_url: logoUrl,
       logo_position: tokenConfig.logo.alignment,
-      primary_color: tokenConfig.colors.primary,
-      secondary_color: tokenConfig.colors.text,
-      accent_color: tokenConfig.colors.secondary,
-      font_family: tokenConfig.typography.fontFamily,
-      layout_style: tokenConfig.templateId,
-      pdf_template: tokenConfig,
+      primary_color: tokenConfig.colors.primary, secondary_color: tokenConfig.colors.text,
+      accent_color: tokenConfig.colors.secondary, font_family: tokenConfig.typography.fontFamily,
+      layout_style: tokenConfig.templateId, pdf_template: tokenConfig,
     };
     const { error } = await saveConfig(updates);
     setSaving(false);
@@ -308,164 +275,333 @@ export default function MarcaConfig() {
 
   return (
     <div className={`transition-all ${previewOpen ? 'pb-[55vh] md:pb-0 md:pr-[420px]' : ''}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-5">
         <h2 className="text-xl font-bold text-gray-900">Minha Marca</h2>
         <div className="flex gap-2">
           <button type="button" onClick={() => setPreviewOpen(p => !p)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
               previewOpen ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
             }`}>
-            {previewOpen ? 'Fechar Preview' : 'Preview'}
+            {previewOpen ? 'Fechar' : 'Preview'}
           </button>
           <button type="button" onClick={handleSave} disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition-colors">
             {saving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
       </div>
       {msg && <p className={`text-sm mb-4 ${msg.includes('Erro') ? 'text-red-600' : 'text-green-600'}`}>{msg}</p>}
 
-      {/* Template Selector */}
-      <div className="mb-6">
-        <label className="block text-sm font-semibold text-gray-700 mb-3">Template</label>
-        <div className="grid grid-cols-3 gap-3">
-          {Object.values(PDF_PRESETS).map(preset => (
-            <button key={preset.id} type="button"
-              onClick={() => setTokenConfig(t => ({ ...t, templateId: preset.id }))}
-              className={`p-3 rounded-lg border-2 text-left transition-colors ${
-                tokenConfig.templateId === preset.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:bg-gray-50'
-              }`}>
-              <div className="font-semibold text-sm text-gray-800">{preset.label}</div>
-              <div className="text-xs text-gray-500 mt-1">{preset.description}</div>
-            </button>
-          ))}
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-6">
+        <button onClick={() => setActiveTab('template')}
+          className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-colors ${
+            activeTab === 'template' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}>
+          Design do PDF
+        </button>
+        <button onClick={() => setActiveTab('empresa')}
+          className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-colors ${
+            activeTab === 'empresa' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}>
+          Dados da Empresa
+        </button>
+      </div>
+
+      {/* ============================================================ */}
+      {/* TAB: Design do PDF */}
+      {/* ============================================================ */}
+      {activeTab === 'template' && (
+        <div className="space-y-6">
+
+          {/* Template selector */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">Escolha o estilo</label>
+            <div className="grid grid-cols-3 gap-3">
+              {Object.values(PDF_PRESETS).map(preset => {
+                const active = tokenConfig.templateId === preset.id;
+                return (
+                  <button key={preset.id} type="button"
+                    onClick={() => setTokenConfig(t => ({ ...t, templateId: preset.id }))}
+                    className={`rounded-xl border-2 p-3 text-center transition-all ${
+                      active ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}>
+                    <div className="w-12 mx-auto mb-2">
+                      <TemplatePreviewIcon preset={preset} color={tokenConfig.colors.primary} active={active} />
+                    </div>
+                    <div className={`text-sm font-semibold ${active ? 'text-blue-700' : 'text-gray-800'}`}>{preset.label}</div>
+                    <div className="text-[11px] text-gray-500 mt-0.5 leading-tight">{preset.description}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Cores */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Cores</h3>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <div className="flex items-center gap-2.5">
+                <input type="color" value={tokenConfig.colors.primary} onChange={e => updateColor('primary', e.target.value)}
+                  className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer p-0" />
+                <span className="text-sm text-gray-600">Principal</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <input type="color" value={tokenConfig.colors.secondary} onChange={e => updateColor('secondary', e.target.value)}
+                  className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer p-0" />
+                <span className="text-sm text-gray-600">Destaque</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <input type="color" value={tokenConfig.colors.text} onChange={e => updateColor('text', e.target.value)}
+                  className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer p-0" />
+                <span className="text-sm text-gray-600">Texto</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <input type="color" value={tokenConfig.colors.muted} onChange={e => updateColor('muted', e.target.value)}
+                  className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer p-0" />
+                <span className="text-sm text-gray-600">Sutil</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <input type="color" value={tokenConfig.colors.border} onChange={e => updateColor('border', e.target.value)}
+                  className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer p-0" />
+                <span className="text-sm text-gray-600">Bordas</span>
+              </div>
+            </div>
+            {/* Barra de preview das cores */}
+            <div className="flex gap-1 mt-4 h-2 rounded-full overflow-hidden">
+              <div className="flex-1 rounded-full" style={{ backgroundColor: tokenConfig.colors.primary }} />
+              <div className="flex-1 rounded-full" style={{ backgroundColor: tokenConfig.colors.secondary }} />
+              <div className="flex-1 rounded-full" style={{ backgroundColor: tokenConfig.colors.text }} />
+              <div className="flex-1 rounded-full" style={{ backgroundColor: tokenConfig.colors.muted }} />
+              <div className="flex-1 rounded-full" style={{ backgroundColor: tokenConfig.colors.border }} />
+            </div>
+          </div>
+
+          {/* Tipografia e Densidade */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">Tipografia</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5">Fonte</label>
+                <select value={tokenConfig.typography.fontFamily}
+                  onChange={e => updateTypo('fontFamily', e.target.value as PdfBrandConfig['typography']['fontFamily'])}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                  <option value="helvetica">Helvetica</option>
+                  <option value="times">Times</option>
+                  <option value="courier">Courier</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5">Titulo</label>
+                <div className="flex gap-1.5">
+                  {(['bold', 'normal'] as const).map(w => (
+                    <button key={w} type="button" onClick={() => updateTypo('headingWeight', w)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        tokenConfig.typography.headingWeight === w
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                      }`}>
+                      {w === 'bold' ? 'Negrito' : 'Normal'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5">Densidade do layout</label>
+              <div className="flex gap-1.5">
+                {([
+                  { v: 'compact' as const, l: 'Compacto' },
+                  { v: 'normal' as const, l: 'Normal' },
+                  { v: 'spacious' as const, l: 'Espaçoso' },
+                ]).map(d => (
+                  <button key={d.v} type="button" onClick={() => updateLayout('density', d.v)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      tokenConfig.layout.density === d.v
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                    }`}>
+                    {d.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Observações e rodapé */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700">Observações e Rodapé</h3>
+            <textarea value={footerText} onChange={e => setFooterText(e.target.value)}
+              rows={2} placeholder="Ex: Orçamento válido por 15 dias..."
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none" />
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-gray-600">Validade:</label>
+              <div className="flex items-center gap-1.5">
+                <input type="number" value={validityDays}
+                  onChange={e => setValidityDays(Math.max(1, Math.min(90, Number(e.target.value))))}
+                  min={1} max={90} className="w-16 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-center" />
+                <span className="text-sm text-gray-500">dias</span>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input type="checkbox" checked={tokenConfig.layout.showNotes}
+                  onChange={e => updateLayout('showNotes', e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600" />
+                Observações
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input type="checkbox" checked={tokenConfig.layout.showFooter}
+                  onChange={e => updateLayout('showFooter', e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600" />
+                Rodapé
+              </label>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Sections */}
-      <div className="space-y-3">
-        {/* 1. Empresa */}
-        <Section title="Dados da Empresa" open={openSections.has('empresa')} onToggle={() => toggle('empresa')}>
-          <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)}
-            placeholder="Nome da empresa" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-          <input type="text" value={companyCnpj} onChange={e => setCompanyCnpj(e.target.value)}
-            placeholder="CNPJ" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-          <input type="tel" value={companyPhone} onChange={e => setCompanyPhone(e.target.value)}
-            placeholder="Telefone" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-          <input type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)}
-            placeholder="Email" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-          <input type="text" value={companyAddress} onChange={e => setCompanyAddress(e.target.value)}
-            placeholder="Endereço" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-        </Section>
+      {/* ============================================================ */}
+      {/* TAB: Dados da Empresa */}
+      {/* ============================================================ */}
+      {activeTab === 'empresa' && (
+        <div className="space-y-6">
 
-        {/* 2. Logo */}
-        <Section title="Logo" open={openSections.has('logo')} onToggle={() => toggle('logo')}>
-          <input type="file" accept="image/png,image/jpeg" onChange={handleLogoUpload}
-            className="text-sm text-gray-600" />
-          {logoPreview && (
-            <img src={logoPreview} alt="Logo" className="h-16 object-contain rounded border border-gray-200 p-1" />
+          {/* Logo */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">Logo da empresa</h3>
+            <div className="flex items-start gap-4">
+              {logoPreview ? (
+                <img src={logoPreview} alt="Logo" className="h-16 w-24 object-contain rounded-lg border border-gray-200 bg-gray-50 p-1" />
+              ) : (
+                <div className="h-16 w-24 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              )}
+              <div className="flex-1">
+                <label className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+                  Enviar logo
+                  <input type="file" accept="image/png,image/jpeg" onChange={handleLogoUpload} className="hidden" />
+                </label>
+                <p className="text-xs text-gray-400 mt-1.5">PNG ou JPEG</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Posição no PDF</label>
+                <div className="flex gap-1.5">
+                  {([
+                    { v: 'left' as const, l: 'Esq.' },
+                    { v: 'center' as const, l: 'Centro' },
+                    { v: 'right' as const, l: 'Dir.' },
+                  ]).map(p => (
+                    <button key={p.v} type="button" onClick={() => updateLogo('alignment', p.v)}
+                      className={`flex-1 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                        tokenConfig.logo.alignment === p.v
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                      }`}>
+                      {p.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Tamanho</label>
+                <div className="flex gap-1.5">
+                  {([
+                    { v: 'small' as const, l: 'Pequeno' },
+                    { v: 'medium' as const, l: 'Medio' },
+                  ]).map(s => (
+                    <button key={s.v} type="button" onClick={() => updateLogo('size', s.v)}
+                      className={`flex-1 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                        tokenConfig.logo.size === s.v
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                      }`}>
+                      {s.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dados da empresa */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700">Informações</h3>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Nome da empresa</label>
+              <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)}
+                placeholder="Ex: João Pisos & Revestimentos"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">CNPJ / CPF</label>
+                <input type="text" value={companyCnpj} onChange={e => setCompanyCnpj(e.target.value)}
+                  placeholder="00.000.000/0000-00"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Telefone</label>
+                <input type="tel" value={companyPhone} onChange={e => setCompanyPhone(e.target.value)}
+                  placeholder="(00) 00000-0000"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Email</label>
+              <input type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)}
+                placeholder="contato@empresa.com"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Endereço</label>
+              <input type="text" value={companyAddress} onChange={e => setCompanyAddress(e.target.value)}
+                placeholder="Rua, número, bairro — cidade/UF"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            </div>
+          </div>
+
+          {/* Resumo visual */}
+          {companyName && (
+            <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+              <p className="text-xs text-gray-400 mb-2 uppercase tracking-wider">Dados que aparecem no PDF</p>
+              <p className="text-sm font-semibold text-gray-800">{companyName}</p>
+              {companyCnpj && <p className="text-xs text-gray-500">{companyCnpj}</p>}
+              <div className="flex gap-4 mt-1">
+                {companyPhone && <p className="text-xs text-gray-500">{companyPhone}</p>}
+                {companyEmail && <p className="text-xs text-gray-500">{companyEmail}</p>}
+              </div>
+              {companyAddress && <p className="text-xs text-gray-500 mt-0.5">{companyAddress}</p>}
+            </div>
           )}
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Posição</label>
-            <ToggleButtons
-              options={[{ value: 'left' as const, label: 'Esquerda' }, { value: 'center' as const, label: 'Centro' }, { value: 'right' as const, label: 'Direita' }]}
-              value={tokenConfig.logo.alignment}
-              onChange={v => updateLogo('alignment', v)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Tamanho</label>
-            <ToggleButtons
-              options={[{ value: 'small' as const, label: 'Pequeno' }, { value: 'medium' as const, label: 'Médio' }]}
-              value={tokenConfig.logo.size}
-              onChange={v => updateLogo('size', v)}
-            />
-          </div>
-        </Section>
-
-        {/* 3. Visual */}
-        <Section title="Visual" open={openSections.has('visual')} onToggle={() => toggle('visual')}>
-          <div className="grid grid-cols-2 gap-3">
-            <ColorInput label="Cor principal" value={tokenConfig.colors.primary} onChange={v => updateColor('primary', v)} />
-            <ColorInput label="Destaque (preços)" value={tokenConfig.colors.secondary} onChange={v => updateColor('secondary', v)} />
-            <ColorInput label="Texto" value={tokenConfig.colors.text} onChange={v => updateColor('text', v)} />
-            <ColorInput label="Texto sutil" value={tokenConfig.colors.muted} onChange={v => updateColor('muted', v)} />
-            <ColorInput label="Bordas" value={tokenConfig.colors.border} onChange={v => updateColor('border', v)} />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Fonte</label>
-            <select value={tokenConfig.typography.fontFamily}
-              onChange={e => updateTypo('fontFamily', e.target.value as PdfBrandConfig['typography']['fontFamily'])}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
-              <option value="helvetica">Helvetica</option>
-              <option value="times">Times</option>
-              <option value="courier">Courier</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Peso dos títulos</label>
-            <ToggleButtons
-              options={[{ value: 'bold' as const, label: 'Negrito' }, { value: 'normal' as const, label: 'Normal' }]}
-              value={tokenConfig.typography.headingWeight}
-              onChange={v => updateTypo('headingWeight', v)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Densidade</label>
-            <ToggleButtons
-              options={[
-                { value: 'compact' as const, label: 'Compacto' },
-                { value: 'normal' as const, label: 'Normal' },
-                { value: 'spacious' as const, label: 'Espaçoso' },
-              ]}
-              value={tokenConfig.layout.density}
-              onChange={v => updateLayout('density', v)}
-            />
-          </div>
-        </Section>
-
-        {/* 4. Observações */}
-        <Section title="Observações e Rodapé" open={openSections.has('obs')} onToggle={() => toggle('obs')}>
-          <textarea value={footerText} onChange={e => setFooterText(e.target.value)}
-            rows={3} placeholder="Texto de observações do orçamento"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-          <div className="flex items-center gap-3">
-            <label className="text-sm text-gray-700">Validade (dias):</label>
-            <input type="number" value={validityDays} onChange={e => setValidityDays(Math.max(1, Math.min(90, Number(e.target.value))))}
-              min={1} max={90} className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-          </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={tokenConfig.layout.showNotes}
-              onChange={e => updateLayout('showNotes', e.target.checked)}
-              className="rounded border-gray-300" />
-            Mostrar observações no PDF
-          </label>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={tokenConfig.layout.showFooter}
-              onChange={e => updateLayout('showFooter', e.target.checked)}
-              className="rounded border-gray-300" />
-            Mostrar rodapé com validade
-          </label>
-        </Section>
-      </div>
+        </div>
+      )}
 
       {/* Live Preview Panel */}
       {previewOpen && (
-        <div className="fixed bottom-0 left-0 right-0 h-[50vh] bg-white border-t border-gray-300 shadow-lg z-40
+        <div className="fixed bottom-0 left-0 right-0 h-[50vh] bg-white border-t border-gray-200 shadow-2xl z-40
                         md:top-0 md:bottom-0 md:left-auto md:right-0 md:w-[400px] md:h-full md:border-t-0 md:border-l">
-          <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
             <span className="text-sm font-semibold text-gray-700">Preview do PDF</span>
-            <button onClick={() => setPreviewOpen(false)} className="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+            <button onClick={() => setPreviewOpen(false)}
+              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <div className="h-[calc(100%-40px)] bg-gray-100">
+          <div className="h-[calc(100%-42px)] bg-gray-100">
             {previewUrl ? (
               <iframe src={previewUrl} className="w-full h-full" title="PDF Preview" />
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                Gerando preview...
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+                <svg className="w-8 h-8 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span className="text-sm">Gerando preview...</span>
               </div>
             )}
           </div>
