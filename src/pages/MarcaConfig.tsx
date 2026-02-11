@@ -222,8 +222,13 @@ export default function MarcaConfig() {
       preview: true,
     });
 
+    if (!filledHtml || filledHtml.trim().length < 10) {
+      setMessage({ type: 'error', text: 'Template HTML vazio. Extraia novamente.' });
+      return;
+    }
+
     // Create blob URL for iframe preview
-    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:0;background:#f5f5f5;display:flex;justify-content:center;}body>div{background:#fff;}</style></head><body>${filledHtml}</body></html>`;
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#f5f5f5;display:flex;justify-content:center;padding:20px 0;}</style></head><body>${filledHtml}</body></html>`;
     const blob = new Blob([fullHtml], { type: 'text/html' });
     setHtmlPreviewUrl(URL.createObjectURL(blob));
   };

@@ -115,9 +115,14 @@ async function renderFromHtmlTemplate(
 ): Promise<string | void> {
   const filledHtml = fillHtmlTemplate(params);
 
-  // Create hidden container
+  if (!filledHtml || filledHtml.trim().length < 10) {
+    console.warn('HTML template is empty, falling back to basic layout');
+    return renderBasicLayout(params);
+  }
+
+  // Create hidden container (must be visible to html2canvas, just off-screen)
   const container = document.createElement('div');
-  container.style.position = 'fixed';
+  container.style.position = 'absolute';
   container.style.left = '-9999px';
   container.style.top = '0';
   container.style.width = '794px';
@@ -125,25 +130,39 @@ async function renderFromHtmlTemplate(
   container.innerHTML = filledHtml;
   document.body.appendChild(container);
 
+  // Wait a frame for the browser to render the HTML
+  await new Promise(r => requestAnimationFrame(r));
+
   try {
     const doc = new jsPDF('p', 'mm', 'a4');
 
-    await doc.html(container, {
-      x: 0,
-      y: 0,
-      width: 210,
-      windowWidth: 794,
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      },
+    // Use callback-based approach to ensure html2canvas completes
+    await new Promise<void>((resolve, reject) => {
+      try {
+        doc.html(container, {
+          callback: () => resolve(),
+          x: 0,
+          y: 0,
+          width: 210,
+          windowWidth: 794,
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+          },
+        });
+      } catch (err) {
+        reject(err);
+      }
     });
 
     if (params.preview) {
       return String(doc.output('bloburl'));
     }
     doc.save(`orcamento-${params.atendimento.cliente_nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+  } catch (err) {
+    console.error('HTML template rendering failed, falling back:', err);
+    return renderBasicLayout(params);
   } finally {
     document.body.removeChild(container);
   }
