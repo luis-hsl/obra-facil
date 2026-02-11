@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
-import type { Orcamento, OrcamentoItem, Produto, Atendimento, BrandConfig } from '../types';
+import type { Orcamento, OrcamentoItem, Produto, Atendimento, BrandConfig, OverlayTemplate } from '../types';
+import { hexToRgb, fetchImageAsBase64 } from './imageUtils';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -26,146 +27,174 @@ interface GerarPDFParams {
 const DESCONTO_AVISTA = 0.05;
 
 // ============================================================
-// HTML Template renderer (async - uses jsPDF.html + html2canvas)
+// Overlay renderer — fundo do PDF original + texto sobreposto
 // ============================================================
 
-function fillHtmlTemplate(params: GerarPDFParams): string {
-  const { atendimento, brandConfig, logoBase64 } = params;
-  const htmlTemplate = brandConfig?.html_template || '';
-  const productTemplate = brandConfig?.product_html_template || '';
+async function renderWithOverlay(
+  params: GerarPDFParams,
+  tpl: OverlayTemplate,
+  bgImageUrl: string,
+): Promise<string | void> {
+  // Fetch background image
+  const bgBase64 = await fetchImageAsBase64(bgImageUrl);
 
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const font = tpl.fontFamily;
+
+  // 1. Draw background (full A4 page)
+  doc.addImage(bgBase64, 'JPEG', 0, 0, 210, 297);
+
+  // 2. Erase dynamic zones (draw colored rects over sample data)
+  for (const zone of tpl.erase) {
+    doc.setFillColor(...hexToRgb(zone.color));
+    doc.rect(zone.x, zone.y, zone.w, zone.h, 'F');
+  }
+
+  // 3. Write client info
+  const { atendimento } = params;
+  const cl = tpl.client;
+  let y = cl.y;
+
+  doc.setFont(font, 'normal');
+  doc.setFontSize(cl.fontSize);
+  doc.setTextColor(...hexToRgb(cl.fontColor));
+
+  // Cliente
+  if (cl.labelBold) doc.setFont(font, 'bold');
+  doc.text('Cliente: ', cl.x, y);
+  doc.setFont(font, 'normal');
+  doc.text(atendimento.cliente_nome, cl.x + doc.getTextWidth('Cliente: '), y);
+  y += cl.lineHeight;
+
+  // Telefone
+  if (atendimento.cliente_telefone) {
+    if (cl.labelBold) doc.setFont(font, 'bold');
+    doc.text('Telefone: ', cl.x, y);
+    doc.setFont(font, 'normal');
+    doc.text(atendimento.cliente_telefone, cl.x + doc.getTextWidth('Telefone: '), y);
+    y += cl.lineHeight;
+  }
+
+  // Endereço
   const endereco = [
     atendimento.endereco, atendimento.numero,
-    atendimento.complemento, atendimento.bairro,
-    atendimento.cidade,
+    atendimento.complemento, atendimento.bairro, atendimento.cidade,
   ].filter(Boolean).join(', ');
+  if (endereco) {
+    if (cl.labelBold) doc.setFont(font, 'bold');
+    doc.text('Endereço: ', cl.x, y);
+    doc.setFont(font, 'normal');
+    const labelW = doc.getTextWidth('Endereço: ');
+    const lines = doc.splitTextToSize(endereco, 170 - labelW);
+    doc.text(lines, cl.x + labelW, y);
+    y += cl.lineHeight * lines.length;
+  }
 
-  const hoje = new Date().toLocaleDateString('pt-BR');
-  const validityDays = brandConfig?.validity_days || 15;
+  // Serviço
+  if (cl.labelBold) doc.setFont(font, 'bold');
+  doc.text('Serviço: ', cl.x, y);
+  doc.setFont(font, 'normal');
+  doc.text(atendimento.tipo_servico, cl.x + doc.getTextWidth('Serviço: '), y);
 
-  // Build logo img tag
-  const logoImg = logoBase64
-    ? `<img src="${logoBase64}" style="max-height:60px;max-width:180px;object-fit:contain;" />`
-    : '';
-
-  // Build products section HTML
+  // 4. Write products
+  const pr = tpl.products;
   const itemList = params.itens && params.itens.length > 0 ? params.itens : [];
   const nParcelas = params.numeroParcelas || 12;
   const taxa = params.taxaJuros || 2;
+  y = pr.y;
 
-  let productsHtml = '';
+  if (itemList.length > 0) {
+    itemList.forEach((item, idx) => {
+      if (y > pr.maxY) return; // don't overflow
 
-  if (itemList.length > 0 && productTemplate) {
-    productsHtml = itemList.map((item, idx) => {
       const prod = item.produto_id ? (params.produtosMap || {})[item.produto_id] : null;
       const prodNome = prod ? `${prod.fabricante} — ${prod.linha}` : 'Produto';
       const valorDesc = item.valor_total * (1 - DESCONTO_AVISTA);
       const { totalComTaxa, parcela } = calcularParcelamento(item.valor_total, taxa, nParcelas);
       const taxaText = taxa > 0 ? ` (${taxa}% taxa)` : '';
 
-      return productTemplate
-        .replace(/%%OPTION_NUMBER%%/g, String(idx + 1))
-        .replace(/%%PRODUCT_NAME%%/g, prodNome)
-        .replace(/%%AREA%%/g, String(item.area_total))
-        .replace(/%%PRICE_M2%%/g, formatCurrency(item.preco_por_m2))
-        .replace(/%%DISCOUNT_VALUE%%/g, formatCurrency(valorDesc))
-        .replace(/%%INSTALLMENT_TEXT%%/g, `${nParcelas}x de ${formatCurrency(parcela)}${taxaText}`)
-        .replace(/%%TOTAL_TEXT%%/g, `Total: ${formatCurrency(totalComTaxa)}`);
-    }).join('\n');
+      // Title
+      doc.setFontSize(pr.titleFontSize);
+      doc.setFont(font, 'bold');
+      doc.setTextColor(...hexToRgb(pr.titleColor));
+      doc.text(`OPÇÃO ${idx + 1}: ${prodNome}`, pr.x, y);
+      y += pr.lineHeight;
+
+      // Area / Price
+      doc.setFontSize(pr.fontSize);
+      doc.setFont(font, 'normal');
+      doc.setTextColor(...hexToRgb(pr.fontColor));
+      doc.text(`Área: ${item.area_total} m²  |  Preço: ${formatCurrency(item.preco_por_m2)}/m²`, pr.x, y);
+      y += pr.lineHeight;
+
+      // À vista
+      doc.setFont(font, 'bold');
+      doc.setTextColor(...hexToRgb(pr.priceColor));
+      doc.text(`À VISTA (5% desc.): ${formatCurrency(valorDesc)}`, pr.x, y);
+      y += pr.lineHeight;
+
+      // Parcelado
+      doc.setFont(font, 'normal');
+      doc.setTextColor(...hexToRgb(pr.fontColor));
+      doc.text(`Parcelado: ${nParcelas}x de ${formatCurrency(parcela)}${taxaText}`, pr.x, y);
+      y += pr.lineHeight - 1;
+
+      // Total
+      doc.setFontSize(pr.fontSize - 1);
+      doc.setTextColor(128, 128, 128);
+      doc.text(`Total: ${formatCurrency(totalComTaxa)}`, pr.x, y);
+      doc.setTextColor(0, 0, 0);
+      y += pr.itemSpacing;
+    });
   } else if (params.produto && params.orcamento.area_total) {
     // Legado: produto único
     const valorDesc = params.orcamento.valor_total * (1 - DESCONTO_AVISTA);
     const { totalComTaxa, parcela } = calcularParcelamento(params.orcamento.valor_total, taxa, nParcelas);
-    const taxaText = taxa > 0 ? ` (${taxa}% taxa)` : '';
 
-    if (productTemplate) {
-      productsHtml = productTemplate
-        .replace(/%%OPTION_NUMBER%%/g, '1')
-        .replace(/%%PRODUCT_NAME%%/g, `${params.produto.fabricante} — ${params.produto.linha}`)
-        .replace(/%%AREA%%/g, String(params.orcamento.area_com_perda?.toFixed(2) || params.orcamento.area_total))
-        .replace(/%%PRICE_M2%%/g, formatCurrency(params.produto.preco_por_m2))
-        .replace(/%%DISCOUNT_VALUE%%/g, formatCurrency(valorDesc))
-        .replace(/%%INSTALLMENT_TEXT%%/g, `${nParcelas}x de ${formatCurrency(parcela)}${taxaText}`)
-        .replace(/%%TOTAL_TEXT%%/g, `Total: ${formatCurrency(totalComTaxa)}`);
-    }
+    doc.setFontSize(pr.fontSize);
+    doc.setFont(font, 'bold');
+    doc.setTextColor(...hexToRgb(pr.fontColor));
+    doc.text(`${params.produto.fabricante} — ${params.produto.linha}`, pr.x, y);
+    y += pr.lineHeight;
+    doc.setFont(font, 'normal');
+    doc.text(`Área: ${params.orcamento.area_com_perda?.toFixed(2) || params.orcamento.area_total} m²  |  ${formatCurrency(params.produto.preco_por_m2)}/m²`, pr.x, y);
+    y += pr.lineHeight + 2;
+
+    doc.setFont(font, 'bold');
+    doc.setTextColor(...hexToRgb(pr.priceColor));
+    doc.text(`À VISTA (5% desc.): ${formatCurrency(valorDesc)}`, pr.x, y);
+    y += pr.lineHeight;
+
+    doc.setFont(font, 'normal');
+    doc.setTextColor(...hexToRgb(pr.fontColor));
+    doc.text(`Parcelado: ${nParcelas}x de ${formatCurrency(parcela)}`, pr.x, y);
+    y += pr.lineHeight;
+
+    doc.setFontSize(pr.fontSize - 1);
+    doc.setTextColor(128, 128, 128);
+    doc.text(`Total: ${formatCurrency(totalComTaxa)}`, pr.x, y);
   }
 
-  // Fill main template
-  let html = htmlTemplate
-    .replace(/%%LOGO_IMG%%/g, logoImg)
-    .replace(/%%COMPANY_NAME%%/g, brandConfig?.company_name || '')
-    .replace(/%%COMPANY_CNPJ%%/g, brandConfig?.company_cnpj || '')
-    .replace(/%%COMPANY_PHONE%%/g, brandConfig?.company_phone || '')
-    .replace(/%%COMPANY_EMAIL%%/g, brandConfig?.company_email || '')
-    .replace(/%%COMPANY_ADDRESS%%/g, brandConfig?.company_address || '')
-    .replace(/%%CLIENT_NAME%%/g, atendimento.cliente_nome)
-    .replace(/%%CLIENT_PHONE%%/g, atendimento.cliente_telefone || '')
-    .replace(/%%CLIENT_ADDRESS%%/g, endereco)
-    .replace(/%%SERVICE_TYPE%%/g, atendimento.tipo_servico)
-    .replace(/%%DATE%%/g, hoje)
-    .replace(/%%PRODUCTS_SECTION%%/g, productsHtml)
-    .replace(/%%FOOTER_TEXT%%/g, brandConfig?.footer_text || '')
-    .replace(/%%VALIDITY_DAYS%%/g, String(validityDays));
+  // 5. Write footer
+  const ft = tpl.footer;
+  const validDays = tpl.validityDays || 15;
+  const footerContent = tpl.footerText
+    || `Orçamento válido por ${validDays} dias. Medidas devem ser confirmadas no local. Valores sujeitos a alteração sem aviso prévio.`;
 
-  return html;
-}
+  doc.setFontSize(ft.fontSize);
+  doc.setFont(font, 'normal');
+  doc.setTextColor(...hexToRgb(ft.fontColor));
 
-async function renderFromHtmlTemplate(
-  params: GerarPDFParams,
-): Promise<string | void> {
-  const filledHtml = fillHtmlTemplate(params);
+  const footerLines = doc.splitTextToSize(footerContent, ft.w);
+  const ftX = ft.align === 'center' ? ft.x + ft.w / 2
+    : ft.align === 'right' ? ft.x + ft.w : ft.x;
+  doc.text(footerLines, ftX, ft.y, { align: ft.align });
 
-  if (!filledHtml || filledHtml.trim().length < 10) {
-    console.warn('HTML template is empty, falling back to basic layout');
-    return renderBasicLayout(params);
+  // Output
+  if (params.preview) {
+    return String(doc.output('bloburl'));
   }
-
-  // Create hidden container (must be visible to html2canvas, just off-screen)
-  const container = document.createElement('div');
-  container.style.position = 'absolute';
-  container.style.left = '-9999px';
-  container.style.top = '0';
-  container.style.width = '794px';
-  container.style.background = '#fff';
-  container.innerHTML = filledHtml;
-  document.body.appendChild(container);
-
-  // Wait a frame for the browser to render the HTML
-  await new Promise(r => requestAnimationFrame(r));
-
-  try {
-    const doc = new jsPDF('p', 'mm', 'a4');
-
-    // Use callback-based approach to ensure html2canvas completes
-    await new Promise<void>((resolve, reject) => {
-      try {
-        doc.html(container, {
-          callback: () => resolve(),
-          x: 0,
-          y: 0,
-          width: 210,
-          windowWidth: 794,
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-          },
-        });
-      } catch (err) {
-        reject(err);
-      }
-    });
-
-    if (params.preview) {
-      return String(doc.output('bloburl'));
-    }
-    doc.save(`orcamento-${params.atendimento.cliente_nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
-  } catch (err) {
-    console.error('HTML template rendering failed, falling back:', err);
-    return renderBasicLayout(params);
-  } finally {
-    document.body.removeChild(container);
-  }
+  doc.save(`orcamento-${params.atendimento.cliente_nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
 }
 
 // ============================================================
@@ -201,7 +230,6 @@ function renderBasicLayout(params: GerarPDFParams): string | void {
   doc.line(20, y, pageWidth - 20, y);
   y += 12;
 
-  // Cliente
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('Cliente:', 20, y);
@@ -234,7 +262,6 @@ function renderBasicLayout(params: GerarPDFParams): string | void {
   doc.line(20, y, pageWidth - 20, y);
   y += 10;
 
-  // Itens
   if (itens.length > 0) {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -329,16 +356,17 @@ function renderBasicLayout(params: GerarPDFParams): string | void {
 // ============================================================
 
 export async function gerarPDF(params: GerarPDFParams): Promise<string | void> {
-  // 1. Se tem html_template, usar HTML renderer (mais fiel ao original)
-  if (params.brandConfig?.html_template && params.brandConfig?.product_html_template) {
-    return renderFromHtmlTemplate(params);
+  const bc = params.brandConfig;
+
+  // 1. Overlay approach: fundo original + zonas de texto
+  if (bc?.overlay_template && bc?.background_image_url) {
+    try {
+      return await renderWithOverlay(params, bc.overlay_template, bc.background_image_url);
+    } catch (err) {
+      console.error('Overlay rendering failed, falling back:', err);
+    }
   }
 
   // 2. Fallback: layout básico
   return renderBasicLayout(params);
-}
-
-// Export helper for preview HTML directly (used by MarcaConfig)
-export function getFilledHtml(params: GerarPDFParams): string {
-  return fillHtmlTemplate(params);
 }

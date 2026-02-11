@@ -129,6 +129,8 @@ export interface BrandConfig {
   pdf_template: PdfTemplate | null;
   html_template: string | null;
   product_html_template: string | null;
+  overlay_template: OverlayTemplate | null;
+  background_image_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -217,5 +219,61 @@ export interface PdfTemplate {
     email: string | null;
     address: string | null;
   };
+  validityDays: number;
+}
+
+// =============================================
+// Overlay Template (fundo do PDF original + zonas)
+// =============================================
+
+export interface OverlayEraseZone {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+}
+
+export interface OverlayTemplate {
+  erase: OverlayEraseZone[];
+  client: {
+    x: number;
+    y: number;
+    fontSize: number;
+    fontColor: string;
+    lineHeight: number;
+    labelBold: boolean;
+  };
+  products: {
+    x: number;
+    y: number;
+    w: number;
+    maxY: number;
+    fontSize: number;
+    fontColor: string;
+    titleFontSize: number;
+    titleColor: string;
+    priceColor: string;
+    itemSpacing: number;
+    lineHeight: number;
+  };
+  footer: {
+    x: number;
+    y: number;
+    w: number;
+    fontSize: number;
+    fontColor: string;
+    align: 'left' | 'center' | 'right';
+    lineHeight: number;
+  };
+  fontFamily: 'helvetica' | 'times' | 'courier';
+  company: {
+    name: string | null;
+    cnpj: string | null;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+  };
+  footerText: string | null;
   validityDays: number;
 }

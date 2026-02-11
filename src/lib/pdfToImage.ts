@@ -41,3 +41,22 @@ export async function pdfFirstPageToDataUrl(file: File): Promise<string> {
 
   return canvas.toDataURL('image/png');
 }
+
+export async function pdfFirstPageToJpegBlob(file: File, scale = 3): Promise<Blob> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const page = await pdf.getPage(1);
+
+  const viewport = page.getViewport({ scale });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const context = canvas.getContext('2d')!;
+
+  await page.render({ canvas, canvasContext: context, viewport }).promise;
+
+  return new Promise<Blob>((resolve) => {
+    canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.92);
+  });
+}
