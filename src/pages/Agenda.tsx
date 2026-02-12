@@ -249,11 +249,39 @@ export default function Agenda() {
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
+  const FOLLOWUP_MSG_CACHE_KEY = 'ai-followup-msg-cache';
+  const FOLLOWUP_MSG_TTL = 4 * 60 * 60 * 1000; // 4h cache per message
+  const FOLLOWUP_RATE_KEY = 'ai-followup-last-call';
+  const FOLLOWUP_RATE_INTERVAL = 10 * 1000; // 10s between AI calls
+
   const handleFollowUpWhatsApp = async (followUp: FollowUp) => {
     const { atendimento, stage, diasDesdeContato, valorOrcamento } = followUp;
+    const cacheId = `${atendimento.id}-${stage}`;
+
+    // Check message cache first (avoid AI call entirely)
+    try {
+      const cached = JSON.parse(localStorage.getItem(FOLLOWUP_MSG_CACHE_KEY) || '{}');
+      const entry = cached[cacheId];
+      if (entry && Date.now() - entry.ts < FOLLOWUP_MSG_TTL) {
+        openWhatsApp(atendimento.cliente_telefone, entry.msg);
+        return;
+      }
+    } catch { /* cache miss */ }
+
+    // Rate limit — 10s between AI calls
+    try {
+      const lastCall = localStorage.getItem(FOLLOWUP_RATE_KEY);
+      if (lastCall && Date.now() - Number(lastCall) < FOLLOWUP_RATE_INTERVAL) {
+        openWhatsApp(atendimento.cliente_telefone, getFollowUpMessage(atendimento, stage));
+        return;
+      }
+    } catch { /* proceed */ }
+
     setFollowUpLoading(atendimento.id);
 
     try {
+      localStorage.setItem(FOLLOWUP_RATE_KEY, String(Date.now()));
+
       const { data, error } = await supabase.functions.invoke('generate-followup-message', {
         body: {
           nome: atendimento.cliente_nome,
@@ -268,6 +296,19 @@ export default function Agenda() {
       });
 
       if (!error && data?.message) {
+        // Cache the generated message
+        try {
+          const cached = JSON.parse(localStorage.getItem(FOLLOWUP_MSG_CACHE_KEY) || '{}');
+          cached[cacheId] = { msg: data.message, ts: Date.now() };
+          // Keep cache small — max 50 entries
+          const keys = Object.keys(cached);
+          if (keys.length > 50) {
+            const oldest = keys.sort((a, b) => cached[a].ts - cached[b].ts).slice(0, keys.length - 50);
+            oldest.forEach(k => delete cached[k]);
+          }
+          localStorage.setItem(FOLLOWUP_MSG_CACHE_KEY, JSON.stringify(cached));
+        } catch { /* cache write fail ok */ }
+
         openWhatsApp(atendimento.cliente_telefone, data.message);
       } else {
         openWhatsApp(atendimento.cliente_telefone, getFollowUpMessage(atendimento, stage));
@@ -760,7 +801,7 @@ export default function Agenda() {
           `}</style>
         </div>
 
-        {/* Visitas do dia selecionado */}
+        {/* Visitas do dia selecionado — com rota e Waze */}
         <div className="border-t border-slate-100 px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
@@ -769,11 +810,19 @@ export default function Agenda() {
               </svg>
               <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">{formatSelectedLabel()}</p>
             </div>
-            {visitasDoDia.length > 0 && (
-              <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">
-                {visitasDoDia.length}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {visitasDoDia.length >= 2 && (
+                <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+                  Rota
+                </span>
+              )}
+              {visitasDoDia.length > 0 && (
+                <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">
+                  {visitasDoDia.length}
+                </span>
+              )}
+            </div>
           </div>
           {visitasDoDia.length === 0 ? (
             <p className="text-sm text-slate-400 text-center py-3">
@@ -781,24 +830,70 @@ export default function Agenda() {
             </p>
           ) : (
             <div className="space-y-1.5">
-              {visitasDoDia.map((v) => (
-                <button
-                  key={v.id}
-                  onClick={() => navigate(`/atendimentos/${v.id}`)}
-                  className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-purple-50/50 transition-colors text-left group"
+              {visitasDoDia.map((v, idx) => {
+                const fullAddress = [v.endereco, v.numero, v.bairro, v.cidade].filter(Boolean).join(', ');
+                const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(fullAddress)}&navigate=yes`;
+
+                return (
+                  <div key={v.id} className="flex items-center gap-2">
+                    {/* Route step number */}
+                    {visitasDoDia.length >= 2 && (
+                      <div className="flex flex-col items-center flex-shrink-0" style={{ width: 20 }}>
+                        <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
+                          <span className="text-[10px] font-extrabold text-blue-700">{idx + 1}</span>
+                        </div>
+                        {idx < visitasDoDia.length - 1 && (
+                          <div className="w-0.5 h-3 bg-blue-200 mt-0.5" />
+                        )}
+                      </div>
+                    )}
+                    {/* Visit card */}
+                    <button
+                      onClick={() => navigate(`/atendimentos/${v.id}`)}
+                      className="flex-1 flex items-center gap-3 p-2.5 rounded-xl hover:bg-purple-50/50 transition-colors text-left group min-w-0"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0 group-hover:bg-purple-100 transition-colors">
+                        <span className="text-xs font-bold text-purple-600 leading-none">{formatTime(v.data_visita!)}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{v.cliente_nome}</p>
+                        <p className="text-[11px] text-slate-400 truncate">{v.tipo_servico} — {v.endereco}{v.bairro ? `, ${v.bairro}` : ''}</p>
+                      </div>
+                    </button>
+                    {/* Waze button */}
+                    <a
+                      href={wazeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0 hover:bg-sky-100 transition-colors"
+                      title="Abrir no Waze"
+                    >
+                      <svg className="w-5 h-5 text-sky-600" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.54 6.63c.69 2.24.5 4.65-.61 6.78-1.09 2.08-2.97 3.58-5.19 4.2a.5.5 0 01-.42-.08.5.5 0 01-.2-.37c-.03-.55-.33-1.04-.81-1.33a1.8 1.8 0 00-1.56-.13c-.53.19-.94.6-1.12 1.14a.5.5 0 01-.3.31.5.5 0 01-.43-.02 8.57 8.57 0 01-4.26-4.72 8.42 8.42 0 01.34-6.33A8.63 8.63 0 0112.02 2c2.35.01 4.54.94 6.17 2.6a8.37 8.37 0 012.35 2.03zM9.5 10.5a1.25 1.25 0 100-2.5 1.25 1.25 0 000 2.5zm5 0a1.25 1.25 0 100-2.5 1.25 1.25 0 000 2.5zm-5.15 3.07a.75.75 0 00-1.06 1.06c1.5 1.5 4.42 1.5 5.42 0a.75.75 0 10-1.06-1.06c-.56.56-2.74.56-3.3 0z"/>
+                      </svg>
+                    </a>
+                  </div>
+                );
+              })}
+              {/* Full route button (Waze with all waypoints) */}
+              {visitasDoDia.length >= 2 && (
+                <a
+                  href={(() => {
+                    const addresses = visitasDoDia.map(v =>
+                      [v.endereco, v.numero, v.bairro, v.cidade].filter(Boolean).join(', ')
+                    );
+                    // Open first stop in Waze; user follows route
+                    return `https://waze.com/ul?q=${encodeURIComponent(addresses[0])}&navigate=yes`;
+                  })()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 w-full mt-1 py-2 rounded-xl text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0 group-hover:bg-purple-100 transition-colors">
-                    <span className="text-xs font-bold text-purple-600 leading-none">{formatTime(v.data_visita!)}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{v.cliente_nome}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{v.tipo_servico} — {v.endereco}</p>
-                  </div>
-                  <svg className="w-4 h-4 text-slate-300 flex-shrink-0 group-hover:text-purple-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              ))}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+                  Iniciar Rota ({visitasDoDia.length} paradas)
+                </a>
+              )}
             </div>
           )}
         </div>
