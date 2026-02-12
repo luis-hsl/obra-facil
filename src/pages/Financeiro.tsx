@@ -108,15 +108,15 @@ export default function Financeiro() {
       <KpiCards kpis={d.kpis} deltas={d.kpiDeltas} />
 
       {/* ── 2. Tendência + Donut lado a lado ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        <div className="lg:col-span-3">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 lg:items-stretch">
+        <div className="lg:col-span-3 lg:h-full">
           <RevenueProfitChart
             data={d.trendData}
             activeMonth={d.activeMonthFilter}
             onMonthClick={d.setActiveMonthFilter}
           />
         </div>
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 lg:h-full">
           <CostBreakdownChart data={d.costBreakdown} />
         </div>
       </div>

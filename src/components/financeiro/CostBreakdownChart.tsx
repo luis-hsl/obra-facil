@@ -46,10 +46,10 @@ export default function CostBreakdownChart({ data }: Props) {
   }).filter(a => a.value > 0);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+    <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm h-full flex flex-col">
       <p className="text-sm font-semibold text-slate-700 mb-3">Custos por Categoria</p>
 
-      <div className="flex flex-col sm:flex-row items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-center gap-4 flex-1">
         {/* Donut */}
         <div className="relative flex-shrink-0 overflow-hidden" style={{ width: 200, height: 200 }}>
           <svg viewBox="0 0 200 200" className="w-full h-full" overflow="hidden">
