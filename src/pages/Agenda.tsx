@@ -328,23 +328,23 @@ export default function Agenda() {
                   className="flex flex-col items-center py-[3px]"
                 >
                   <span className={`
-                    w-7 h-7 flex items-center justify-center text-xs rounded-full transition-all
+                    w-8 h-8 flex items-center justify-center text-xs rounded-full transition-all
                     ${isSelected
-                      ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold shadow-sm shadow-purple-500/30 scale-110'
+                      ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold shadow-md shadow-purple-500/30 scale-110'
                       : isToday
                         ? 'ring-2 ring-blue-400 ring-inset text-blue-700 font-bold'
                         : hasVisita
-                          ? 'bg-purple-50 text-purple-700 font-bold hover:bg-purple-100'
+                          ? 'bg-purple-200 text-purple-800 font-bold hover:bg-purple-300 ring-2 ring-purple-300 ring-inset'
                           : 'text-slate-500 font-medium hover:bg-slate-50'
                     }
                   `}>
                     {day}
                   </span>
-                  <div className="h-1.5 flex items-center">
-                    {hasVisita && (
-                      <div className="flex gap-[2px]">
+                  <div className="h-2 flex items-center">
+                    {hasVisita && !isSelected && (
+                      <div className="flex gap-[3px]">
                         {Array.from({ length: Math.min(count, 3) }).map((_, j) => (
-                          <div key={j} className={`w-[5px] h-[5px] rounded-full ${isSelected ? 'bg-indigo-400' : isToday ? 'bg-blue-400' : 'bg-purple-400'}`} />
+                          <div key={j} className={`w-1.5 h-1.5 rounded-full ${isToday ? 'bg-blue-500' : 'bg-purple-600'}`} />
                         ))}
                       </div>
                     )}
