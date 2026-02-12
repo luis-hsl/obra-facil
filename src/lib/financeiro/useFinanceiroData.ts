@@ -189,9 +189,7 @@ export function useFinanceiroData() {
     receita: computeDelta(kpis.receita, kpisAnterior.receita),
     custos: computeDelta(kpis.custos, kpisAnterior.custos),
     lucro: computeDelta(kpis.lucro, kpisAnterior.lucro),
-    margem: kpis.margem !== 0 || kpisAnterior.margem !== 0
-      ? { label: `${(kpis.margem - kpisAnterior.margem) >= 0 ? '↑' : '↓'}${Math.abs(kpis.margem - kpisAnterior.margem).toFixed(1)}pp`, positive: kpis.margem >= kpisAnterior.margem }
-      : null,
+    margem: computeDelta(kpis.margem, kpisAnterior.margem),
     ticketMedio: computeDelta(kpis.ticketMedio, kpisAnterior.ticketMedio),
     numProjetos: computeDelta(kpis.numProjetos, kpisAnterior.numProjetos),
   }), [kpis, kpisAnterior]);

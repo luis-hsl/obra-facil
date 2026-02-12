@@ -17,7 +17,7 @@ const PERIOD_OPTIONS: { value: Periodo; label: string }[] = [
   { value: 'semana', label: 'Semana' },
   { value: 'mes', label: 'Mês' },
   { value: 'ano', label: 'Ano' },
-  { value: 'personalizado', label: 'Personalizado' },
+  { value: 'personalizado', label: 'Custom' },
 ];
 
 export default function Financeiro() {
@@ -50,20 +50,53 @@ export default function Financeiro() {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold text-slate-900">Financeiro</h2>
-        {d.fechamentosFiltrados.length > 0 && (
-          <div className="flex gap-2">
-            <button onClick={d.exportPDF} className="px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg">
-              PDF
+    <div className="space-y-6">
+      {/* Header — title + period + export all inline */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-slate-900">Financeiro</h2>
+          {d.fechamentosFiltrados.length > 0 && (
+            <div className="flex gap-2">
+              <button onClick={d.exportPDF} className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                PDF
+              </button>
+              <button onClick={d.exportCSV} className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                CSV
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Period pills inline */}
+        <div className="flex flex-wrap items-center gap-2">
+          {PERIOD_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { d.setPeriodo(opt.value); d.setActiveMonthFilter(null); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                d.periodo === opt.value
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+              }`}
+            >
+              {opt.label}
             </button>
-            <button onClick={d.exportCSV} className="px-4 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm">
-              CSV
-            </button>
-          </div>
-        )}
+          ))}
+          {d.periodo === 'personalizado' && (
+            <>
+              <div className="flex items-center gap-1.5 ml-1">
+                <input type="date" value={d.dataInicio} onChange={e => d.setDataInicio(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <span className="text-xs text-slate-400">a</span>
+                <input type="date" value={d.dataFim} onChange={e => d.setDataFim(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              {d.dateError && <span className="text-xs text-red-500 font-semibold">Datas inválidas</span>}
+            </>
+          )}
+        </div>
       </div>
 
       {d.erro && (
@@ -72,83 +105,57 @@ export default function Financeiro() {
         </div>
       )}
 
-      {/* Period filter */}
-      <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-        <p className="text-sm font-semibold text-slate-700 mb-2">Período</p>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {PERIOD_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => { d.setPeriodo(opt.value); d.setActiveMonthFilter(null); }}
-              className={`px-3.5 py-1.5 rounded-xl text-sm font-semibold ${
-                d.periodo === opt.value
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        {d.periodo === 'personalizado' && (
-          <div className="flex flex-wrap gap-3 items-end">
-            <div>
-              <label className="block text-xs text-slate-500 mb-1 font-medium">De</label>
-              <input type="date" value={d.dataInicio} onChange={e => d.setDataInicio(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1 font-medium">Até</label>
-              <input type="date" value={d.dataFim} onChange={e => d.setDataFim(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" />
-            </div>
-            {d.dateError && <p className="text-xs text-red-500 font-semibold">Data inicial deve ser anterior à final</p>}
-          </div>
-        )}
-      </div>
-
       {/* KPIs */}
       <KpiCards kpis={d.kpis} deltas={d.kpiDeltas} />
 
-      {/* Charts grid — desktop 3 cols */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Revenue & Profit — 2/3 */}
-        <div className="md:col-span-2">
+      {/* Row 1: Revenue chart + Donut */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2">
           <RevenueProfitChart
             data={d.trendData}
             activeMonth={d.activeMonthFilter}
             onMonthClick={d.setActiveMonthFilter}
           />
         </div>
-
-        {/* Cost breakdown donut — 1/3 */}
-        <div>
+        <div className="flex flex-col gap-5">
           <CostBreakdownChart data={d.costBreakdown} />
         </div>
+      </div>
 
-        {/* Insights — 2/3 */}
-        <div className="md:col-span-2">
-          <InsightsPanel insights={insights} />
+      {/* Row 2: Insights + Revenue by service */}
+      {(insights.length > 0 || d.revenueByService.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {insights.length > 0 && (
+            <div className="lg:col-span-2">
+              <InsightsPanel insights={insights} />
+            </div>
+          )}
+          {d.revenueByService.length > 0 && (
+            <div className={insights.length === 0 ? 'lg:col-span-3' : ''}>
+              <RevenueByServiceChart data={d.revenueByService} />
+            </div>
+          )}
         </div>
+      )}
 
-        {/* Revenue by service — 1/3 */}
-        <div>
-          <RevenueByServiceChart data={d.revenueByService} />
-        </div>
-
-        {/* Profit margin chart — 2/3 */}
-        <div className="md:col-span-2">
+      {/* Row 3: Margin chart + Top clients */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2">
           <ProfitMarginChart data={d.marginTrend} />
         </div>
-
-        {/* Top clients — 1/3 */}
         <div>
           <TopClients data={d.topClients} />
         </div>
       </div>
 
-      {/* Fechamentos list */}
-      <FechamentosList fechamentos={d.fechamentosFiltrados} />
+      {/* Fechamentos */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-600 to-indigo-600" />
+          <h3 className="text-lg font-bold text-slate-900">Fechamentos</h3>
+        </div>
+        <FechamentosList fechamentos={d.fechamentosFiltrados} />
+      </div>
     </div>
   );
 }

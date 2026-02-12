@@ -107,10 +107,9 @@ export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-/** Format delta: ↑12% or ↓5% */
+/** Format delta: ↑12% or ↓5%. Returns null when comparison is not meaningful. */
 export function computeDelta(current: number, previous: number): { label: string; positive: boolean } | null {
-  if (previous === 0 && current === 0) return null;
-  if (previous === 0) return { label: current > 0 ? '↑ novo' : '↓ novo', positive: current > 0 };
+  if (previous === 0) return null;
   const delta = ((current - previous) / Math.abs(previous)) * 100;
   return {
     label: `${delta >= 0 ? '↑' : '↓'}${Math.abs(delta).toFixed(0)}%`,
