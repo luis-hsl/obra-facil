@@ -312,172 +312,177 @@ export default function AtendimentoForm() {
             Agendamento de Visita
           </legend>
 
-          {/* Calendar */}
-          <div className="rounded-xl border border-slate-100 overflow-hidden">
-            {/* Month nav */}
-            <div className="flex items-center justify-between px-3 py-2.5 bg-gradient-to-r from-purple-50 to-indigo-50">
-              <button
-                type="button"
-                onClick={() => setVisitaCalMonth(new Date(calYear, calMonth - 1, 1))}
-                className="p-1.5 rounded-lg hover:bg-white/60 transition-colors"
-              >
-                <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <span className="text-sm font-bold text-purple-800">
-                {MONTH_NAMES[calMonth]} {calYear}
-              </span>
-              <button
-                type="button"
-                onClick={() => setVisitaCalMonth(new Date(calYear, calMonth + 1, 1))}
-                className="p-1.5 rounded-lg hover:bg-white/60 transition-colors"
-              >
-                <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+          {/* Desktop: calendar left + time right | Mobile: stacked */}
+          <div className="flex flex-col md:flex-row md:gap-5">
+            {/* Calendar */}
+            <div className="rounded-xl border border-slate-100 overflow-hidden md:w-[280px] flex-shrink-0">
+              {/* Month nav */}
+              <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-purple-50 to-indigo-50">
+                <button
+                  type="button"
+                  onClick={() => setVisitaCalMonth(new Date(calYear, calMonth - 1, 1))}
+                  className="p-1 rounded-lg hover:bg-white/60 transition-colors"
+                >
+                  <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-sm font-bold text-purple-800">
+                  {MONTH_NAMES[calMonth]} {calYear}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setVisitaCalMonth(new Date(calYear, calMonth + 1, 1))}
+                  className="p-1 rounded-lg hover:bg-white/60 transition-colors"
+                >
+                  <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Grid */}
+              <div className="p-2.5">
+                {/* Week headers */}
+                <div className="grid grid-cols-7 mb-1">
+                  {WEEK_DAYS.map((d, i) => (
+                    <div key={i} className="text-center text-[10px] font-bold text-slate-300 uppercase py-0.5">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+                {/* Days */}
+                <div className="grid grid-cols-7">
+                  {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                    <div key={`e-${i}`} />
+                  ))}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const isToday = day === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
+                    const isSelected = selectedDateObj
+                      && day === selectedDateObj.getDate()
+                      && calMonth === selectedDateObj.getMonth()
+                      && calYear === selectedDateObj.getFullYear();
+                    const isPast = new Date(calYear, calMonth, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => handleSelectDay(day)}
+                        className={`
+                          w-full aspect-square flex items-center justify-center text-xs md:text-sm rounded-lg transition-all
+                          ${isSelected
+                            ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold shadow-md shadow-purple-500/25 scale-105'
+                            : isToday
+                              ? 'bg-purple-50 text-purple-700 font-bold ring-2 ring-purple-300 ring-inset'
+                              : isPast
+                                ? 'text-slate-300 hover:bg-slate-50'
+                                : 'text-slate-600 font-medium hover:bg-purple-50 hover:text-purple-700'
+                          }
+                        `}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            {/* Grid */}
-            <div className="p-3">
-              {/* Week headers */}
-              <div className="grid grid-cols-7 mb-1.5">
-                {WEEK_DAYS.map((d, i) => (
-                  <div key={i} className="text-center text-[10px] font-bold text-slate-300 uppercase py-1">
-                    {d}
-                  </div>
-                ))}
-              </div>
-              {/* Days */}
-              <div className="grid grid-cols-7 gap-y-0.5">
-                {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                  <div key={`e-${i}`} />
-                ))}
-                {Array.from({ length: daysInMonth }).map((_, i) => {
-                  const day = i + 1;
-                  const isToday = day === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
-                  const isSelected = selectedDateObj
-                    && day === selectedDateObj.getDate()
-                    && calMonth === selectedDateObj.getMonth()
-                    && calYear === selectedDateObj.getFullYear();
-                  const isPast = new Date(calYear, calMonth, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            {/* Time picker + Summary */}
+            <div className="flex-1 mt-4 md:mt-0 space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-600 mb-2 flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Horário
+                </p>
 
-                  return (
+                {/* Morning slots */}
+                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Manhã</p>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 mb-2.5">
+                  {TIME_SLOTS.filter(t => parseInt(t) < 12).map(t => (
                     <button
-                      key={day}
+                      key={t}
                       type="button"
-                      onClick={() => handleSelectDay(day)}
+                      onClick={() => handleSelectTime(t)}
                       className={`
-                        w-full aspect-square flex items-center justify-center text-sm rounded-xl transition-all
-                        ${isSelected
-                          ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold shadow-md shadow-purple-500/25 scale-105'
-                          : isToday
-                            ? 'bg-purple-50 text-purple-700 font-bold ring-2 ring-purple-300 ring-inset'
-                            : isPast
-                              ? 'text-slate-300 hover:bg-slate-50'
-                              : 'text-slate-600 font-medium hover:bg-purple-50 hover:text-purple-700'
+                        py-1.5 rounded-lg text-sm font-semibold transition-all
+                        ${selectedTime === t
+                          ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/25'
+                          : 'bg-slate-50 text-slate-600 hover:bg-purple-50 hover:text-purple-700 border border-slate-100'
                         }
                       `}
                     >
-                      {day}
+                      {t}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {/* Afternoon slots */}
+                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tarde</p>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                  {TIME_SLOTS.filter(t => parseInt(t) >= 12).map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => handleSelectTime(t)}
+                      className={`
+                        py-1.5 rounded-lg text-sm font-semibold transition-all
+                        ${selectedTime === t
+                          ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/25'
+                          : 'bg-slate-50 text-slate-600 hover:bg-purple-50 hover:text-purple-700 border border-slate-100'
+                        }
+                      `}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom time */}
+                <div className="flex items-center gap-2 mt-2.5">
+                  <span className="text-xs text-slate-400 font-medium">Outro:</span>
+                  <input
+                    type="time"
+                    value={selectedTime}
+                    onChange={(e) => handleCustomTime(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
               </div>
+
+              {/* Summary badge */}
+              {dataVisita && (
+                <div className="flex items-center justify-between bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-3 border border-purple-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-purple-800">
+                        {formatSelectedDate()} {selectedTime && `às ${selectedTime}`}
+                      </p>
+                      <p className="text-[10px] text-purple-500 font-medium">Visita agendada</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDataVisita('')}
+                    className="text-xs text-purple-400 hover:text-red-500 font-semibold transition-colors px-2 py-1 rounded-lg hover:bg-white/50"
+                  >
+                    Limpar
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Time picker */}
-          <div>
-            <p className="text-sm font-semibold text-slate-600 mb-2.5 flex items-center gap-1.5">
-              <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Horário
-            </p>
-
-            {/* Morning slots */}
-            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Manhã</p>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 mb-3">
-              {TIME_SLOTS.filter(t => parseInt(t) < 12).map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => handleSelectTime(t)}
-                  className={`
-                    py-2 rounded-lg text-sm font-semibold transition-all
-                    ${selectedTime === t
-                      ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/25'
-                      : 'bg-slate-50 text-slate-600 hover:bg-purple-50 hover:text-purple-700 border border-slate-100'
-                    }
-                  `}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {/* Afternoon slots */}
-            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tarde</p>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-              {TIME_SLOTS.filter(t => parseInt(t) >= 12).map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => handleSelectTime(t)}
-                  className={`
-                    py-2 rounded-lg text-sm font-semibold transition-all
-                    ${selectedTime === t
-                      ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/25'
-                      : 'bg-slate-50 text-slate-600 hover:bg-purple-50 hover:text-purple-700 border border-slate-100'
-                    }
-                  `}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {/* Custom time */}
-            <div className="flex items-center gap-2 mt-3">
-              <span className="text-xs text-slate-400 font-medium">Outro horário:</span>
-              <input
-                type="time"
-                value={selectedTime}
-                onChange={(e) => handleCustomTime(e.target.value)}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Summary badge */}
-          {dataVisita && (
-            <div className="flex items-center justify-between bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-3.5 border border-purple-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-purple-800">
-                    {formatSelectedDate()} {selectedTime && `às ${selectedTime}`}
-                  </p>
-                  <p className="text-[10px] text-purple-500 font-medium">Visita agendada</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDataVisita('')}
-                className="text-xs text-purple-400 hover:text-red-500 font-semibold transition-colors px-2 py-1 rounded-lg hover:bg-white/50"
-              >
-                Limpar
-              </button>
-            </div>
-          )}
-
-          {/* Observações */}
+          {/* Observações da visita */}
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1.5">Observações da Visita</label>
             <textarea
