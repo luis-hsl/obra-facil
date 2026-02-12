@@ -33,10 +33,17 @@ interface FollowUp {
   stage: FollowUpStage;
 }
 
-const STAGE_CONFIG: Record<FollowUpStage, { label: string; sublabel: string; action: string; color: string; bgColor: string; hoverBg: string }> = {
-  1: { label: '1o Follow-up', sublabel: 'Enviar WhatsApp', action: 'WhatsApp', color: 'text-green-700', bgColor: 'bg-green-50', hoverBg: 'hover:bg-green-100' },
-  2: { label: '2o Follow-up', sublabel: 'Ligar diretamente', action: 'Ligar', color: 'text-blue-700', bgColor: 'bg-blue-50', hoverBg: 'hover:bg-blue-100' },
-  3: { label: 'Último follow-up', sublabel: 'Tentativa final', action: 'WhatsApp', color: 'text-orange-700', bgColor: 'bg-orange-50', hoverBg: 'hover:bg-orange-100' },
+const STAGE_CONFIG: Record<FollowUpStage, { label: string; action: string; color: string; bgColor: string; hoverBg: string }> = {
+  1: { label: '1o Follow-up', action: 'WhatsApp', color: 'text-green-700', bgColor: 'bg-green-50', hoverBg: 'hover:bg-green-100' },
+  2: { label: '2o Follow-up', action: 'Ligar', color: 'text-blue-700', bgColor: 'bg-blue-50', hoverBg: 'hover:bg-blue-100' },
+  3: { label: 'Último follow-up', action: 'WhatsApp', color: 'text-orange-700', bgColor: 'bg-orange-50', hoverBg: 'hover:bg-orange-100' },
+};
+
+const STAGE1_SUBLABEL: Record<string, string> = {
+  iniciado: 'Agendar visita',
+  visita_tecnica: 'Enviar orçamento',
+  medicao: 'Enviar orçamento',
+  orcamento: 'Aguardando resposta',
 };
 
 export default function Agenda() {
@@ -100,12 +107,17 @@ export default function Agenda() {
     });
     setVisitasDias(diasMap);
 
-    // Follow-ups: sistema de 3 estágios
-    // Estágio 1: count=0, criado há 3+ dias, ainda em 'iniciado' → WhatsApp
-    // Estágio 2: count=1, último follow-up há 4+ dias, status ativo → Ligar
-    // Estágio 3: count=2, último follow-up há 15+ dias, status ativo → Último
+    // Follow-ups: sistema de 3 estágios com abrangência ampla
+    // Estágio 1 (count=0): qualquer status ativo parado X dias → WhatsApp
+    //   - iniciado/orcamento: 3 dias | visita_tecnica/medicao: 5 dias
+    // Estágio 2 (count=1): 4 dias após 1o follow-up → Ligar
+    // Estágio 3 (count=2): 15 dias após 2o follow-up → Último WhatsApp
+    // Reset automático via trigger quando status avança
     const atdMap = new Map(atendimentos.map(a => [a.id, a]));
     const ACTIVE_STATUSES = ['iniciado', 'visita_tecnica', 'medicao', 'orcamento'];
+    const STAGE1_DAYS: Record<string, number> = {
+      iniciado: 3, visita_tecnica: 5, medicao: 5, orcamento: 3,
+    };
     const daysSince = (dateStr: string) =>
       Math.floor((hoje.getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 
@@ -113,7 +125,8 @@ export default function Agenda() {
       .filter(a => ACTIVE_STATUSES.includes(a.status))
       .map(a => {
         const count = a.followup_count || 0;
-        if (count === 0 && a.status === 'iniciado' && daysSince(a.created_at) >= 3) {
+        const daysThreshold = STAGE1_DAYS[a.status] || 3;
+        if (count === 0 && daysSince(a.created_at) >= daysThreshold) {
           return { atendimento: a, diasDesdeContato: daysSince(a.created_at), stage: 1 as FollowUpStage };
         }
         if (count === 1 && a.ultimo_followup_at && daysSince(a.ultimo_followup_at) >= 4) {
@@ -168,14 +181,35 @@ export default function Agenda() {
     window.open(`tel:+${tel}`, '_self');
   };
 
-  const handleFollowUpWhatsApp = (atendimento: Atendimento) => {
+  const getFollowUpMessage = (atendimento: Atendimento, stage: FollowUpStage): string => {
+    const nome = atendimento.cliente_nome;
+    const servico = atendimento.tipo_servico;
+    const status = atendimento.status;
+
+    if (stage === 1) {
+      if (status === 'iniciado') {
+        return `Olá ${nome}! Tudo bem? Gostaria de saber se podemos agendar uma visita técnica para o seu projeto de ${servico}. Fico à disposição!`;
+      }
+      if (status === 'visita_tecnica' || status === 'medicao') {
+        return `Olá ${nome}! Tudo bem? Estamos preparando seu orçamento de ${servico}. Tem alguma dúvida ou preferência que gostaria de nos passar?`;
+      }
+      // orcamento
+      return `Olá ${nome}! Tudo bem? Gostaria de saber se teve a chance de analisar nosso orçamento de ${servico}. Estou à disposição para esclarecer qualquer dúvida!`;
+    }
+
+    if (stage === 3) {
+      return `Olá ${nome}! Passando para uma última verificação sobre o projeto de ${servico}. Caso tenha interesse, podemos revisar as condições. Fico no aguardo!`;
+    }
+
+    return `Olá ${nome}! Tudo bem? Gostaria de retomar nosso contato sobre o projeto de ${servico}. Fico à disposição!`;
+  };
+
+  const handleFollowUpWhatsApp = (atendimento: Atendimento, stage: FollowUpStage = 1) => {
     let tel = (atendimento.cliente_telefone || '').replace(/\D/g, '');
     if (tel.length >= 10 && tel.length <= 11 && !tel.startsWith('55')) {
       tel = '55' + tel;
     }
-    const msg = encodeURIComponent(
-      `Olá ${atendimento.cliente_nome}! Tudo bem? Gostaria de saber se tem alguma novidade sobre nosso orçamento. Fico à disposição!`
-    );
+    const msg = encodeURIComponent(getFollowUpMessage(atendimento, stage));
     window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
   };
 
@@ -521,7 +555,7 @@ export default function Agenda() {
                       <StatusBadge status={f.atendimento.status} />
                     </div>
                     <p className="text-xs text-slate-400 truncate">
-                      {f.atendimento.tipo_servico} — {cfg.sublabel}
+                      {f.atendimento.tipo_servico} — {f.stage === 1 ? STAGE1_SUBLABEL[f.atendimento.status] || 'Sem contato' : f.stage === 2 ? 'Ligar diretamente' : 'Tentativa final'}
                     </p>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${cfg.bgColor} ${cfg.color}`}>
@@ -542,7 +576,7 @@ export default function Agenda() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => handleFollowUpWhatsApp(f.atendimento)}
+                      onClick={() => handleFollowUpWhatsApp(f.atendimento, f.stage)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${cfg.bgColor} ${cfg.color} ${cfg.hoverBg} transition-colors`}
                     >
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
