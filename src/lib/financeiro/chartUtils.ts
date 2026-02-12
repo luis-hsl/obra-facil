@@ -110,7 +110,7 @@ export function formatCurrency(value: number): string {
 /** Format delta: ↑12% or ↓5% */
 export function computeDelta(current: number, previous: number): { label: string; positive: boolean } | null {
   if (previous === 0 && current === 0) return null;
-  if (previous === 0) return { label: current > 0 ? '↑∞' : '↓∞', positive: current > 0 };
+  if (previous === 0) return { label: current > 0 ? '↑ novo' : '↓ novo', positive: current > 0 };
   const delta = ((current - previous) / Math.abs(previous)) * 100;
   return {
     label: `${delta >= 0 ? '↑' : '↓'}${Math.abs(delta).toFixed(0)}%`,
