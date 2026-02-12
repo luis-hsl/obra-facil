@@ -236,13 +236,42 @@ export default function Agenda() {
     return `Olá ${nome}! Faz um tempo que conversamos sobre ${servico}. Temos novidades e condições que podem te interessar. Podemos conversar sem compromisso?`;
   };
 
-  const handleFollowUpWhatsApp = (atendimento: Atendimento, stage: FollowUpStage = 1) => {
-    let tel = (atendimento.cliente_telefone || '').replace(/\D/g, '');
+  const openWhatsApp = (phone: string, message: string) => {
+    let tel = phone.replace(/\D/g, '');
     if (tel.length >= 10 && tel.length <= 11 && !tel.startsWith('55')) {
       tel = '55' + tel;
     }
-    const msg = encodeURIComponent(getFollowUpMessage(atendimento, stage));
-    window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  const handleFollowUpWhatsApp = async (followUp: FollowUp) => {
+    const { atendimento, stage, diasDesdeContato, valorOrcamento } = followUp;
+    setFollowUpLoading(atendimento.id);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-followup-message', {
+        body: {
+          nome: atendimento.cliente_nome,
+          servico: atendimento.tipo_servico,
+          status: atendimento.status,
+          stage,
+          dias: diasDesdeContato,
+          valor: valorOrcamento,
+          bairro: atendimento.bairro || atendimento.cidade,
+          observacoes: atendimento.observacoes,
+        },
+      });
+
+      if (!error && data?.message) {
+        openWhatsApp(atendimento.cliente_telefone, data.message);
+      } else {
+        openWhatsApp(atendimento.cliente_telefone, getFollowUpMessage(atendimento, stage));
+      }
+    } catch {
+      openWhatsApp(atendimento.cliente_telefone, getFollowUpMessage(atendimento, stage));
+    }
+
+    setFollowUpLoading(null);
   };
 
   const formatTime = (iso: string) =>
@@ -614,7 +643,8 @@ export default function Agenda() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => handleFollowUpWhatsApp(f.atendimento, f.stage)}
+                      onClick={() => handleFollowUpWhatsApp(f)}
+                      disabled={followUpLoading === f.atendimento.id}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${cfg.bgColor} ${cfg.color} ${cfg.hoverBg} transition-colors`}
                     >
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
