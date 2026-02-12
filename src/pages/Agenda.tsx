@@ -34,11 +34,8 @@ export default function Agenda() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [projetosAtivos, setProjetosAtivos] = useState(0);
-  const [receitaMes, setReceitaMes] = useState(0);
-  const [taxaConversao, setTaxaConversao] = useState(0);
-  const [ticketMedio, setTicketMedio] = useState(0);
-  const [margemLucro, setMargemLucro] = useState(0);
+  const [novosNaSemana, setNovosNaSemana] = useState(0);
+  const [semAcao, setSemAcao] = useState(0);
   const [todosAtendimentos, setTodosAtendimentos] = useState<Atendimento[]>([]);
   const [orcPendentes, setOrcPendentes] = useState<Atendimento[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
@@ -58,40 +55,27 @@ export default function Agenda() {
   const loadData = async () => {
     const hoje = getDataBrasilia();
 
-    const [atdRes, fechRes, orcRes] = await Promise.all([
+    const [atdRes, orcRes] = await Promise.all([
       supabase.from('atendimentos').select('*').eq('user_id', user!.id),
-      supabase.from('fechamentos').select('valor_recebido, lucro_final, created_at'),
       supabase.from('orcamentos').select('*'),
     ]);
 
     const atendimentos: Atendimento[] = atdRes.data || [];
     const allOrcamentos = orcRes.data || [];
-    const allFechamentos = fechRes.data || [];
 
-    // KPI: Projetos ativos
-    setProjetosAtivos(atendimentos.filter(a => !['concluido', 'reprovado'].includes(a.status)).length);
+    // KPI: Novos na semana
+    const umaSemanaAtras = new Date(hoje);
+    umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7);
+    setNovosNaSemana(atendimentos.filter(a => new Date(a.created_at) >= umaSemanaAtras).length);
 
-    // KPI: Receita do mês
-    const mesAtual = hoje.getMonth();
-    const anoAtual = hoje.getFullYear();
-    setReceitaMes(allFechamentos.reduce((acc, f) => {
-      const d = new Date(f.created_at);
-      return d.getMonth() === mesAtual && d.getFullYear() === anoAtual ? acc + f.valor_recebido : acc;
-    }, 0));
-
-    // KPI: Taxa de conversão
-    const enviados = allOrcamentos.filter(o => ['enviado', 'aprovado', 'reprovado'].includes(o.status));
-    const aprovados = allOrcamentos.filter(o => o.status === 'aprovado');
-    setTaxaConversao(enviados.length > 0 ? Math.round((aprovados.length / enviados.length) * 100) : 0);
-
-    // KPI: Ticket médio
-    const totalFech = allFechamentos.length;
-    const somaRecebido = allFechamentos.reduce((acc, f) => acc + f.valor_recebido, 0);
-    setTicketMedio(totalFech > 0 ? somaRecebido / totalFech : 0);
-
-    // KPI: Margem de lucro
-    const somaLucro = allFechamentos.reduce((acc, f) => acc + (f.lucro_final || 0), 0);
-    setMargemLucro(somaRecebido > 0 ? Math.round((somaLucro / somaRecebido) * 100) : 0);
+    // KPI: Sem ação (5+ dias sem progresso)
+    const cincoDiasAtras = new Date(hoje);
+    cincoDiasAtras.setDate(cincoDiasAtras.getDate() - 5);
+    setSemAcao(atendimentos.filter(a => {
+      if (['concluido', 'reprovado'].includes(a.status)) return false;
+      const lastActivity = a.ultimo_followup_at || a.created_at;
+      return new Date(lastActivity) < cincoDiasAtras;
+    }).length);
 
     // Guardar todos atendimentos para filtrar visitas por dia selecionado
     setTodosAtendimentos(atendimentos);
@@ -167,12 +151,6 @@ export default function Agenda() {
     window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
   };
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-
-  const formatCurrencyShort = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
-
   const formatTime = (iso: string) =>
     new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: TIMEZONE });
 
@@ -195,6 +173,7 @@ export default function Agenda() {
     .filter(a => a.data_visita && isSameDay(new Date(a.data_visita), selectedDate))
     .sort((a, b) => new Date(a.data_visita!).getTime() - new Date(b.data_visita!).getTime());
 
+  const visitasHoje = todosAtendimentos.filter(a => a.data_visita && isSameDay(new Date(a.data_visita), hoje)).length;
   const isSelectedToday = isSameDay(selectedDate, hoje);
 
   const handleSelectDay = (day: number) => {
@@ -234,77 +213,71 @@ export default function Agenda() {
         </Link>
       </div>
 
-      {/* KPIs — 5 cards responsivos */}
+      {/* KPIs — 5 cards operacionais */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-        {/* Ativos */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm">
+        {/* Visitas Hoje */}
+        <div className="bg-white rounded-2xl border border-purple-100 p-3.5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Visitas Hoje</p>
+          </div>
+          <p className="text-2xl font-extrabold text-purple-700 leading-none">{visitasHoje}</p>
+        </div>
+
+        {/* Follow-ups */}
+        <div className={`bg-white rounded-2xl border p-3.5 shadow-sm ${followUps.length > 0 ? 'border-red-100' : 'border-slate-100'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${followUps.length > 0 ? 'bg-red-50' : 'bg-slate-50'}`}>
+              <svg className={`w-4 h-4 ${followUps.length > 0 ? 'text-red-500' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Follow-ups</p>
+          </div>
+          <p className={`text-2xl font-extrabold leading-none ${followUps.length > 0 ? 'text-red-600' : 'text-slate-900'}`}>{followUps.length}</p>
+        </div>
+
+        {/* Orçamentos Pendentes */}
+        <div className={`bg-white rounded-2xl border p-3.5 shadow-sm ${orcPendentes.length > 0 ? 'border-amber-100' : 'border-slate-100'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${orcPendentes.length > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}>
+              <svg className={`w-4 h-4 ${orcPendentes.length > 0 ? 'text-amber-500' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Orçamentos</p>
+          </div>
+          <p className={`text-2xl font-extrabold leading-none ${orcPendentes.length > 0 ? 'text-amber-600' : 'text-slate-900'}`}>{orcPendentes.length}</p>
+        </div>
+
+        {/* Novos na Semana */}
+        <div className="bg-white rounded-2xl border border-blue-100 p-3.5 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
               <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
             </div>
-            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Ativos</p>
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Novos/Semana</p>
           </div>
-          <p className="text-2xl font-extrabold text-slate-900 leading-none">{projetosAtivos}</p>
+          <p className="text-2xl font-extrabold text-blue-700 leading-none">{novosNaSemana}</p>
         </div>
 
-        {/* Receita Mês */}
-        <div className="bg-white rounded-2xl border border-emerald-100 p-3.5 shadow-sm">
+        {/* Sem Ação */}
+        <div className={`bg-white rounded-2xl border p-3.5 shadow-sm col-span-2 sm:col-span-1 ${semAcao > 0 ? 'border-orange-100' : 'border-slate-100'}`}>
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${semAcao > 0 ? 'bg-orange-50' : 'bg-slate-50'}`}>
+              <svg className={`w-4 h-4 ${semAcao > 0 ? 'text-orange-500' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Receita Mês</p>
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Sem Ação</p>
           </div>
-          <p className="text-lg font-extrabold text-emerald-700 leading-tight">{formatCurrency(receitaMes)}</p>
-        </div>
-
-        {/* Conversão */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Conversão</p>
-          </div>
-          <p className="text-2xl font-extrabold text-slate-900 leading-none">{taxaConversao}%</p>
-        </div>
-
-        {/* Ticket Médio */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-              </svg>
-            </div>
-            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Ticket Médio</p>
-          </div>
-          <p className="text-lg font-extrabold text-slate-900 leading-tight">{formatCurrencyShort(ticketMedio)}</p>
-        </div>
-
-        {/* Margem de Lucro */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm col-span-2 sm:col-span-1">
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-              margemLucro >= 30 ? 'bg-emerald-50' : margemLucro >= 15 ? 'bg-amber-50' : 'bg-red-50'
-            }`}>
-              <svg className={`w-4 h-4 ${
-                margemLucro >= 30 ? 'text-emerald-600' : margemLucro >= 15 ? 'text-amber-600' : 'text-red-500'
-              }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Margem</p>
-          </div>
-          <p className={`text-2xl font-extrabold leading-none ${
-            margemLucro >= 30 ? 'text-emerald-700' : margemLucro >= 15 ? 'text-amber-700' : 'text-red-600'
-          }`}>{margemLucro}%</p>
+          <p className={`text-2xl font-extrabold leading-none ${semAcao > 0 ? 'text-orange-600' : 'text-slate-900'}`}>{semAcao}</p>
         </div>
       </div>
 
