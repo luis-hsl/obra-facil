@@ -1,10 +1,13 @@
 import { formatCurrency } from './chartUtils';
+import { supabase } from '../supabase';
+import type { ConversionData } from './computeConversionData';
 
 export interface Insight {
   id: string;
   tipo: 'success' | 'warning' | 'info' | 'danger';
   titulo: string;
   descricao: string;
+  acao?: string;
 }
 
 interface InsightInput {
@@ -117,4 +120,72 @@ export function computeInsights(data: InsightInput): Insight[] {
   }
 
   return insights.slice(0, 5);
+}
+
+// ── AI Conversion Insights with cache + rate limit ──
+
+const AI_CACHE_KEY = 'ai-conversion-insights';
+const AI_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
+const AI_MIN_INTERVAL = 60 * 1000; // 1 min entre chamadas
+const AI_RATE_KEY = 'ai-conversion-last-call';
+
+interface CachedAiInsights {
+  insights: Insight[];
+  timestamp: number;
+  dataHash: string;
+}
+
+function hashConversionData(data: ConversionData): string {
+  return `${data.totalOrcamentos}-${data.taxaConversaoGeral.toFixed(1)}-${data.byServiceType.length}`;
+}
+
+export async function fetchAiInsights(data: ConversionData): Promise<Insight[]> {
+  if (data.totalOrcamentos < 5) return [];
+
+  const hash = hashConversionData(data);
+
+  // Check cache
+  try {
+    const cached = localStorage.getItem(AI_CACHE_KEY);
+    if (cached) {
+      const parsed: CachedAiInsights = JSON.parse(cached);
+      if (Date.now() - parsed.timestamp < AI_CACHE_TTL && parsed.dataHash === hash) {
+        return parsed.insights;
+      }
+    }
+  } catch { /* cache miss */ }
+
+  // Rate limit — min 1 min between calls
+  try {
+    const lastCall = localStorage.getItem(AI_RATE_KEY);
+    if (lastCall && Date.now() - Number(lastCall) < AI_MIN_INTERVAL) {
+      return []; // too soon, skip
+    }
+  } catch { /* proceed */ }
+
+  try {
+    localStorage.setItem(AI_RATE_KEY, String(Date.now()));
+
+    const { data: result, error } = await supabase.functions.invoke('analyze-conversion', {
+      body: data,
+    });
+
+    if (error || !result?.insights) return [];
+
+    const insights: Insight[] = (result.insights as any[]).map((ins, i) => ({
+      id: `ai-${i}-${ins.id || i}`,
+      tipo: (['success', 'warning', 'info', 'danger'].includes(ins.tipo) ? ins.tipo : 'info') as Insight['tipo'],
+      titulo: ins.titulo || 'Insight IA',
+      descricao: ins.descricao || '',
+      acao: ins.acao || undefined,
+    }));
+
+    // Save to cache
+    const cacheEntry: CachedAiInsights = { insights, timestamp: Date.now(), dataHash: hash };
+    localStorage.setItem(AI_CACHE_KEY, JSON.stringify(cacheEntry));
+
+    return insights;
+  } catch {
+    return [];
+  }
 }

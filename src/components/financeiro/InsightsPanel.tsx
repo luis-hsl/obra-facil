@@ -58,6 +58,11 @@ export default function InsightsPanel({ insights }: Props) {
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-semibold ${style.text}`}>{ins.titulo}</p>
                 <p className="text-xs text-slate-600 mt-0.5">{ins.descricao}</p>
+                {ins.acao && (
+                  <p className="text-xs font-semibold text-slate-700 mt-1">
+                    <span className="text-slate-400 mr-1">&rarr;</span>{ins.acao}
+                  </p>
+                )}
               </div>
             </div>
           );

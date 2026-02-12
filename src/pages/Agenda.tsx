@@ -59,6 +59,11 @@ export default function Agenda() {
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
+  // AI Scheduling
+  interface AiSuggestion { atendimento_id: string; cliente_nome: string; suggested_date: string; suggested_time: string; reason: string; group_label: string; }
+  const [aiSuggestions, setAiSuggestions] = useState<{ suggestions: AiSuggestion[]; summary: string } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     loadData();
@@ -277,6 +282,109 @@ export default function Agenda() {
   const formatTime = (iso: string) =>
     new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: TIMEZONE });
 
+  // ── AI Scheduling handlers ──
+  const SCHEDULE_RATE_KEY = 'ai-schedule-last-call';
+  const SCHEDULE_MIN_INTERVAL = 30 * 1000; // 30s rate limit
+
+  const unscheduledAtendimentos = todosAtendimentos.filter(a => {
+    if (a.status === 'concluido' || a.status === 'reprovado') return false;
+    if (!a.data_visita) return true;
+    return new Date(a.data_visita) < new Date();
+  });
+
+  const handleSuggestSchedule = async () => {
+    // Rate limit
+    try {
+      const lastCall = localStorage.getItem(SCHEDULE_RATE_KEY);
+      if (lastCall && Date.now() - Number(lastCall) < SCHEDULE_MIN_INTERVAL) {
+        return;
+      }
+    } catch { /* proceed */ }
+
+    setAiLoading(true);
+    try {
+      localStorage.setItem(SCHEDULE_RATE_KEY, String(Date.now()));
+
+      const hoje = getDataBrasilia();
+      // Next Monday as weekStart
+      const dayOfWeek = hoje.getDay();
+      const daysUntilMon = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+      const monday = new Date(hoje);
+      monday.setDate(hoje.getDate() + daysUntilMon);
+      const weekStart = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+
+      // Already scheduled this week
+      const weekEnd = new Date(monday);
+      weekEnd.setDate(monday.getDate() + 5);
+      const scheduled = todosAtendimentos
+        .filter(a => {
+          if (!a.data_visita) return false;
+          const d = new Date(a.data_visita);
+          return d >= monday && d <= weekEnd;
+        })
+        .map(a => ({
+          id: a.id,
+          cliente_nome: a.cliente_nome,
+          bairro: a.bairro,
+          cidade: a.cidade,
+          data_visita: a.data_visita!,
+        }));
+
+      const unscheduled = unscheduledAtendimentos.slice(0, 20).map(a => ({
+        id: a.id,
+        cliente_nome: a.cliente_nome,
+        endereco: a.endereco,
+        numero: a.numero,
+        bairro: a.bairro,
+        cidade: a.cidade,
+        tipo_servico: a.tipo_servico,
+      }));
+
+      const { data, error } = await supabase.functions.invoke('suggest-schedule', {
+        body: { unscheduled, scheduled, weekStart },
+      });
+
+      if (!error && data?.suggestions) {
+        setAiSuggestions(data);
+      }
+    } catch { /* silent */ }
+    setAiLoading(false);
+  };
+
+  const handleAcceptSuggestion = async (atendimentoId: string, date: string, time: string) => {
+    const [year, month, day] = date.split('-').map(Number);
+    const [hour, minute] = time.split(':').map(Number);
+    const dt = new Date(year, month - 1, day, hour, minute);
+    const isoDate = dt.toISOString();
+
+    await supabase.from('atendimentos').update({ data_visita: isoDate }).eq('id', atendimentoId);
+
+    // Update local state
+    setTodosAtendimentos(prev => prev.map(a => a.id === atendimentoId ? { ...a, data_visita: isoDate } : a));
+
+    // Update visitasDias
+    const key = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
+    setVisitasDias(prev => {
+      const next = new Map(prev);
+      next.set(key, (next.get(key) || 0) + 1);
+      return next;
+    });
+
+    // Remove from suggestions
+    setAiSuggestions(prev => {
+      if (!prev) return null;
+      const remaining = prev.suggestions.filter(s => s.atendimento_id !== atendimentoId);
+      return remaining.length > 0 ? { ...prev, suggestions: remaining } : null;
+    });
+  };
+
+  const handleAcceptAll = async () => {
+    if (!aiSuggestions) return;
+    for (const s of aiSuggestions.suggestions) {
+      await handleAcceptSuggestion(s.atendimento_id, s.suggested_date, s.suggested_time);
+    }
+  };
+
   const hoje = getDataBrasilia();
   const saudacao = hoje.getHours() < 12 ? 'Bom dia' : hoje.getHours() < 18 ? 'Boa tarde' : 'Boa noite';
 
@@ -328,12 +436,28 @@ export default function Agenda() {
             {hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TIMEZONE })}
           </p>
         </div>
-        <Link
-          to="/atendimentos/novo"
-          className="hidden md:inline-flex bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold no-underline shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]"
-        >
-          + Novo Atendimento
-        </Link>
+        <div className="hidden md:flex items-center gap-2">
+          {unscheduledAtendimentos.length > 0 && (
+            <button
+              onClick={handleSuggestSchedule}
+              disabled={aiLoading}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-violet-500/20 hover:shadow-xl hover:shadow-violet-500/30 active:scale-[0.98] disabled:opacity-60"
+            >
+              {aiLoading ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+              )}
+              {aiLoading ? 'Otimizando...' : 'Percurso Otimizado'}
+            </button>
+          )}
+          <Link
+            to="/atendimentos/novo"
+            className="inline-flex bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold no-underline shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]"
+          >
+            + Novo Atendimento
+          </Link>
+        </div>
       </div>
 
       {/* KPIs — 5 cards operacionais */}
@@ -437,6 +561,111 @@ export default function Agenda() {
           )}
         </div>
       </div>
+
+      {/* Mobile: Percurso Otimizado button */}
+      {unscheduledAtendimentos.length > 0 && (
+        <div className="md:hidden">
+          <button
+            onClick={handleSuggestSchedule}
+            disabled={aiLoading}
+            className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-violet-500/20 disabled:opacity-60"
+          >
+            {aiLoading ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+            )}
+            {aiLoading ? 'Otimizando...' : 'Percurso Otimizado'}
+          </button>
+        </div>
+      )}
+
+      {/* AI Schedule Suggestions Panel */}
+      {aiSuggestions && aiSuggestions.suggestions.length > 0 && (() => {
+        // Group suggestions by date
+        const grouped = new Map<string, AiSuggestion[]>();
+        for (const s of aiSuggestions.suggestions) {
+          const list = grouped.get(s.suggested_date) || [];
+          list.push(s);
+          grouped.set(s.suggested_date, list);
+        }
+        const sortedDays = [...grouped.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+
+        return (
+          <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-violet-800">Percurso Otimizado</p>
+                  <p className="text-xs text-violet-600">{aiSuggestions.summary}</p>
+                </div>
+              </div>
+              <button onClick={() => setAiSuggestions(null)} className="p-1.5 rounded-lg hover:bg-violet-100 transition-colors">
+                <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {sortedDays.map(([date, items]) => {
+                const [y, m, dd] = date.split('-').map(Number);
+                const dayDate = new Date(y, m - 1, dd);
+                const dayLabel = dayDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
+                const groupLabel = items[0]?.group_label;
+
+                return (
+                  <div key={date}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <p className="text-xs font-bold text-violet-700 capitalize">{dayLabel}</p>
+                      {groupLabel && <span className="text-[10px] bg-violet-100 text-violet-600 font-semibold px-2 py-0.5 rounded-full">{groupLabel}</span>}
+                    </div>
+                    <div className="space-y-1.5">
+                      {items.sort((a, b) => a.suggested_time.localeCompare(b.suggested_time)).map(s => (
+                        <div key={s.atendimento_id} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2 border border-violet-100">
+                          <span className="text-xs font-bold text-violet-600 w-11 flex-shrink-0">{s.suggested_time}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">{s.cliente_nome}</p>
+                            <p className="text-[11px] text-slate-400 truncate">{s.reason}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <button
+                              onClick={() => handleAcceptSuggestion(s.atendimento_id, s.suggested_date, s.suggested_time)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                              title="Aceitar"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                            <button
+                              onClick={() => setAiSuggestions(prev => {
+                                if (!prev) return null;
+                                const remaining = prev.suggestions.filter(x => x.atendimento_id !== s.atendimento_id);
+                                return remaining.length > 0 ? { ...prev, suggestions: remaining } : null;
+                              })}
+                              className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors"
+                              title="Ignorar"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={handleAcceptAll}
+              className="w-full mt-3 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 shadow-md shadow-violet-500/20 hover:shadow-lg active:scale-[0.98] transition-all"
+            >
+              Aceitar Todas ({aiSuggestions.suggestions.length})
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Desktop 2-column layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

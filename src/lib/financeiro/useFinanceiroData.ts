@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../supabase';
-import type { Atendimento, Fechamento } from '../../types';
+import type { Atendimento, Fechamento, Orcamento } from '../../types';
 import { useBrandConfig } from '../useBrandConfig';
 import { fetchImageAsBase64 } from '../imageUtils';
 import { gerarRelatorioFinanceiroPDF } from '../gerarRelatorioFinanceiroPDF';
@@ -117,6 +117,8 @@ export interface TrendMonth {
 
 export function useFinanceiroData() {
   const [fechamentos, setFechamentos] = useState<FechamentoComAtendimento[]>([]);
+  const [allOrcamentos, setAllOrcamentos] = useState<Orcamento[]>([]);
+  const [allAtendimentos, setAllAtendimentos] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const { config: brandConfig } = useBrandConfig();
@@ -129,13 +131,17 @@ export function useFinanceiroData() {
 
   useEffect(() => {
     (async () => {
-      const [fechRes, atdRes] = await Promise.all([
+      const [fechRes, atdRes, orcRes] = await Promise.all([
         supabase.from('fechamentos').select('*').order('created_at', { ascending: false }),
         supabase.from('atendimentos').select('*'),
+        supabase.from('orcamentos').select('*'),
       ]);
       if (fechRes.error) { setErro('Erro ao carregar dados financeiros.'); setLoading(false); return; }
+      const atdList = atdRes.data || [];
       const map: Record<string, Atendimento> = {};
-      (atdRes.data || []).forEach(a => { map[a.id] = a; });
+      atdList.forEach(a => { map[a.id] = a; });
+      setAllAtendimentos(atdList);
+      setAllOrcamentos(orcRes.data || []);
       setFechamentos((fechRes.data || []).map(f => ({ ...f, atendimento: map[f.atendimento_id] })));
       setLoading(false);
     })();
@@ -306,6 +312,7 @@ export function useFinanceiroData() {
     kpis, kpiDeltas,
     trendData, costBreakdown, revenueByService, topClients, marginTrend,
     activeMonthFilter, setActiveMonthFilter,
+    allOrcamentos, allAtendimentos,
     exportCSV, exportPDF,
     receitaAnterior: kpisAnterior.receita,
     lucroAnterior: kpisAnterior.lucro,

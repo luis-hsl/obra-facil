@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useFinanceiroData } from '../lib/financeiro/useFinanceiroData';
 import type { Periodo } from '../lib/financeiro/useFinanceiroData';
-import { computeInsights } from '../lib/financeiro/computeInsights';
+import { computeInsights, fetchAiInsights } from '../lib/financeiro/computeInsights';
+import type { Insight } from '../lib/financeiro/computeInsights';
+import { computeConversionData } from '../lib/financeiro/computeConversionData';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import KpiCards from '../components/financeiro/KpiCards';
 import RevenueProfitChart from '../components/financeiro/RevenueProfitChart';
@@ -23,7 +25,7 @@ const PERIOD_OPTIONS: { value: Periodo; label: string }[] = [
 export default function Financeiro() {
   const d = useFinanceiroData();
 
-  const insights = useMemo(() =>
+  const baseInsights = useMemo(() =>
     computeInsights({
       receita: d.kpis.receita,
       custos: d.kpis.custos,
@@ -38,6 +40,24 @@ export default function Financeiro() {
       trendData: d.trendData,
     }),
   [d.kpis, d.receitaAnterior, d.lucroAnterior, d.margemAnterior, d.topClients, d.revenueByService, d.trendData]);
+
+  // AI conversion insights (auto-fetched, cached 24h, rate-limited)
+  const [aiInsights, setAiInsights] = useState<Insight[]>([]);
+
+  const conversionData = useMemo(
+    () => computeConversionData(d.allOrcamentos, d.allAtendimentos),
+    [d.allOrcamentos, d.allAtendimentos],
+  );
+
+  useEffect(() => {
+    if (d.loading || d.allOrcamentos.length < 5) return;
+    fetchAiInsights(conversionData).then(setAiInsights);
+  }, [conversionData, d.loading, d.allOrcamentos.length]);
+
+  const insights = useMemo(
+    () => [...baseInsights, ...aiInsights],
+    [baseInsights, aiInsights],
+  );
 
   if (d.loading) {
     return (
