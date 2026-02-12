@@ -25,10 +25,19 @@ function getFirstDayOfWeek(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
+type FollowUpStage = 1 | 2 | 3;
+
 interface FollowUp {
   atendimento: Atendimento;
   diasDesdeContato: number;
+  stage: FollowUpStage;
 }
+
+const STAGE_CONFIG: Record<FollowUpStage, { label: string; sublabel: string; action: string; color: string; bgColor: string; hoverBg: string }> = {
+  1: { label: '1o Follow-up', sublabel: 'Enviar WhatsApp', action: 'WhatsApp', color: 'text-green-700', bgColor: 'bg-green-50', hoverBg: 'hover:bg-green-100' },
+  2: { label: '2o Follow-up', sublabel: 'Ligar diretamente', action: 'Ligar', color: 'text-blue-700', bgColor: 'bg-blue-50', hoverBg: 'hover:bg-blue-100' },
+  3: { label: 'Último follow-up', sublabel: 'Tentativa final', action: 'WhatsApp', color: 'text-orange-700', bgColor: 'bg-orange-50', hoverBg: 'hover:bg-orange-100' },
+};
 
 export default function Agenda() {
   const { user } = useAuth();
@@ -91,24 +100,32 @@ export default function Agenda() {
     });
     setVisitasDias(diasMap);
 
-    // Follow-ups: atendimentos ativos sem contato recente
+    // Follow-ups: sistema de 3 estágios
+    // Estágio 1: count=0, criado há 3+ dias, ainda em 'iniciado' → WhatsApp
+    // Estágio 2: count=1, último follow-up há 4+ dias, status ativo → Ligar
+    // Estágio 3: count=2, último follow-up há 15+ dias, status ativo → Último
     const atdMap = new Map(atendimentos.map(a => [a.id, a]));
-    const tresDiasAtras = new Date(hoje);
-    tresDiasAtras.setDate(tresDiasAtras.getDate() - 3);
+    const ACTIVE_STATUSES = ['iniciado', 'visita_tecnica', 'medicao', 'orcamento'];
+    const daysSince = (dateStr: string) =>
+      Math.floor((hoje.getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 
-    const FOLLOWUP_STATUSES = ['iniciado', 'visita_tecnica', 'medicao', 'orcamento'];
     const followUpList: FollowUp[] = atendimentos
-      .filter(a => {
-        if (!FOLLOWUP_STATUSES.includes(a.status)) return false;
-        if (!a.ultimo_followup_at) return true;
-        return new Date(a.ultimo_followup_at) < tresDiasAtras;
-      })
+      .filter(a => ACTIVE_STATUSES.includes(a.status))
       .map(a => {
-        const lastContact = a.ultimo_followup_at || a.created_at;
-        const dias = Math.floor((hoje.getTime() - new Date(lastContact).getTime()) / (1000 * 60 * 60 * 24));
-        return { atendimento: a, diasDesdeContato: dias };
+        const count = a.followup_count || 0;
+        if (count === 0 && a.status === 'iniciado' && daysSince(a.created_at) >= 3) {
+          return { atendimento: a, diasDesdeContato: daysSince(a.created_at), stage: 1 as FollowUpStage };
+        }
+        if (count === 1 && a.ultimo_followup_at && daysSince(a.ultimo_followup_at) >= 4) {
+          return { atendimento: a, diasDesdeContato: daysSince(a.ultimo_followup_at), stage: 2 as FollowUpStage };
+        }
+        if (count === 2 && a.ultimo_followup_at && daysSince(a.ultimo_followup_at) >= 15) {
+          return { atendimento: a, diasDesdeContato: daysSince(a.ultimo_followup_at), stage: 3 as FollowUpStage };
+        }
+        return null;
       })
-      .sort((a, b) => b.diasDesdeContato - a.diasDesdeContato)
+      .filter((f): f is FollowUp => f !== null)
+      .sort((a, b) => a.stage - b.stage || b.diasDesdeContato - a.diasDesdeContato)
       .slice(0, 10);
     setFollowUps(followUpList);
 
@@ -129,15 +146,26 @@ export default function Agenda() {
 
   const handleFollowUpDone = async (atendimentoId: string) => {
     setFollowUpLoading(atendimentoId);
+    const atd = todosAtendimentos.find(a => a.id === atendimentoId);
+    const newCount = (atd?.followup_count || 0) + 1;
+    const now = new Date().toISOString();
     await supabase
       .from('atendimentos')
-      .update({ ultimo_followup_at: new Date().toISOString() })
+      .update({ ultimo_followup_at: now, followup_count: newCount })
       .eq('id', atendimentoId);
     setFollowUps(prev => prev.filter(f => f.atendimento.id !== atendimentoId));
     setTodosAtendimentos(prev =>
-      prev.map(a => a.id === atendimentoId ? { ...a, ultimo_followup_at: new Date().toISOString() } : a)
+      prev.map(a => a.id === atendimentoId ? { ...a, ultimo_followup_at: now, followup_count: newCount } : a)
     );
     setFollowUpLoading(null);
+  };
+
+  const handleFollowUpCall = (atendimento: Atendimento) => {
+    let tel = (atendimento.cliente_telefone || '').replace(/\D/g, '');
+    if (tel.length >= 10 && tel.length <= 11 && !tel.startsWith('55')) {
+      tel = '55' + tel;
+    }
+    window.open(`tel:+${tel}`, '_self');
   };
 
   const handleFollowUpWhatsApp = (atendimento: Atendimento) => {
@@ -455,7 +483,7 @@ export default function Agenda() {
       {/* Right column: Follow-ups + Pending */}
       <div className="space-y-5">
 
-      {/* Follow-up Pendente */}
+      {/* Follow-up Pendente — 3 estágios */}
       {followUps.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -472,7 +500,9 @@ export default function Agenda() {
             </span>
           </div>
           <div className="space-y-2">
-            {followUps.map((f) => (
+            {followUps.map((f) => {
+              const cfg = STAGE_CONFIG[f.stage];
+              return (
               <div
                 key={f.atendimento.id}
                 className="bg-white rounded-xl border border-red-100 p-3 shadow-sm hover:border-red-200 hover:shadow-md transition-all"
@@ -491,24 +521,36 @@ export default function Agenda() {
                       <StatusBadge status={f.atendimento.status} />
                     </div>
                     <p className="text-xs text-slate-400 truncate">
-                      {f.atendimento.tipo_servico} — sem contato há {f.diasDesdeContato} dias
+                      {f.atendimento.tipo_servico} — {cfg.sublabel}
                     </p>
                   </div>
-                  <svg className="w-4 h-4 text-slate-300 flex-shrink-0 group-hover:text-red-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${cfg.bgColor} ${cfg.color}`}>
+                    {cfg.label}
+                  </span>
                 </button>
                 {/* Bottom row: actions */}
                 <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => handleFollowUpWhatsApp(f.atendimento)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                    </svg>
-                    WhatsApp
-                  </button>
+                  {f.stage === 2 ? (
+                    <button
+                      onClick={() => handleFollowUpCall(f.atendimento)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${cfg.bgColor} ${cfg.color} ${cfg.hoverBg} transition-colors`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      Ligar
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleFollowUpWhatsApp(f.atendimento)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${cfg.bgColor} ${cfg.color} ${cfg.hoverBg} transition-colors`}
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                      </svg>
+                      WhatsApp
+                    </button>
+                  )}
                   <button
                     onClick={() => handleFollowUpDone(f.atendimento.id)}
                     disabled={followUpLoading === f.atendimento.id}
@@ -528,7 +570,8 @@ export default function Agenda() {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

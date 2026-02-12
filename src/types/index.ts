@@ -44,6 +44,7 @@ export interface Atendimento {
   data_visita: string | null;
   observacoes_visita: string | null;
   ultimo_followup_at: string | null;
+  followup_count: number;
   created_at: string;
 }
 
