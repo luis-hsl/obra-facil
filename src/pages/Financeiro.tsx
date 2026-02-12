@@ -127,11 +127,11 @@ export default function Financeiro() {
         <TopClients data={d.topClients} />
       </div>
 
-      {/* ── 4. Insights ── */}
-      {insights.length > 0 && <InsightsPanel insights={insights} />}
-
-      {/* ── 5. Margem de lucro ── */}
+      {/* ── 4. Margem de lucro ── */}
       <ProfitMarginChart data={d.marginTrend} />
+
+      {/* ── 5. Insights ── */}
+      {insights.length > 0 && <InsightsPanel insights={insights} />}
 
       {/* ── 6. Fechamentos detalhados ── */}
       <div>
