@@ -44,11 +44,11 @@ export const PRESET_MODERN: PdfPreset = {
   label: 'Moderno',
   description: 'Cards por produto com cores e preços por item',
   header: {
-    showBackground: true,
+    showBackground: false,
     companyInfoPosition: 'right',
     titleAlignment: 'left',
     titleFontSize: 20,
-    showSeparator: false,
+    showSeparator: true,
   },
   clientSection: { style: 'card', showBorder: true, labelBold: true },
   budgetTable: {
@@ -67,7 +67,7 @@ export const PRESET_MODERN: PdfPreset = {
     position: 'per_item',
   },
   observations: { fontStyle: 'normal' },
-  footer: { style: 'bar', textAlignment: 'center' },
+  footer: { style: 'line', textAlignment: 'center' },
   sectionsOrder: ['header', 'client', 'budget_table', 'observations', 'footer'],
 };
 

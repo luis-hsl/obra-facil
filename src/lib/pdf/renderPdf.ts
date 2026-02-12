@@ -168,7 +168,7 @@ function renderHeader(
   doc.setTextColor(...colors.headerText);
   const align = preset.header.titleAlignment;
   const tx = align === 'center' ? pageW / 2 : align === 'right' ? pageW - s.margins.right : x0;
-  doc.text('ORÇAMENTO', tx, y + s.headerHeight - 8, { align });
+  doc.text('Orçamento', tx, y + s.headerHeight - 8, { align });
 
   // Separator
   if (preset.header.showSeparator) {
