@@ -5,7 +5,6 @@ import { useAuth } from '../lib/useAuth';
 import type { Atendimento } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSkeleton from '../components/LoadingSkeleton';
-import GlobalSearch from '../components/GlobalSearch';
 
 const TIMEZONE = 'America/Sao_Paulo';
 
@@ -27,7 +26,6 @@ export default function Agenda() {
   const [ticketMedio, setTicketMedio] = useState(0);
   const [visitasHoje, setVisitasHoje] = useState<Atendimento[]>([]);
   const [orcPendentes, setOrcPendentes] = useState<Atendimento[]>([]);
-  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -140,52 +138,6 @@ export default function Agenda() {
         </div>
       </div>
 
-      {/* Atalhos rápidos */}
-      <div className="grid grid-cols-4 gap-2 mb-5">
-        {[
-          { href: '/atendimentos/novo', label: 'Novo', icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          ), color: 'text-blue-600 bg-blue-50' },
-          { href: '/produtos/novo', label: 'Produto', icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-          ), color: 'text-indigo-600 bg-indigo-50' },
-          { href: '/financeiro', label: 'Financeiro', icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          ), color: 'text-emerald-600 bg-emerald-50' },
-          { href: '#buscar', label: 'Buscar', icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          ), color: 'text-slate-600 bg-slate-100' },
-        ].map((item) => (
-          item.href === '#buscar' ? (
-            <button
-              key={item.label}
-              onClick={() => setSearchOpen(true)}
-              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl ${item.color} transition-colors hover:opacity-80`}
-            >
-              {item.icon}
-              <span className="text-xs font-semibold">{item.label}</span>
-            </button>
-          ) : (
-            <Link
-              key={item.label}
-              to={item.href}
-              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl no-underline ${item.color} transition-colors hover:opacity-80`}
-            >
-              {item.icon}
-              <span className="text-xs font-semibold">{item.label}</span>
-            </Link>
-          )
-        ))}
-      </div>
-
       {/* Visitas de Hoje — widget compacto */}
       <div className="mb-5">
         <div className="flex items-center justify-between mb-2">
@@ -267,8 +219,6 @@ export default function Agenda() {
         + Novo Atendimento
       </Link>
 
-      {/* Global Search */}
-      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
