@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
 import GlobalSearch from './GlobalSearch';
 
@@ -119,9 +119,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Header mobile — gradient */}
       <header className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3.5 md:hidden shadow-md">
         <div className="flex items-center justify-between">
-          <a href="/" className="text-lg font-bold text-white no-underline tracking-tight">
+          <Link to="/" className="text-lg font-bold text-white no-underline tracking-tight">
             Obra Fácil
-          </a>
+          </Link>
           <div className="flex items-center gap-3">
             <button onClick={() => setSearchOpen(true)} className="text-blue-100 hover:text-white">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,12 +138,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar desktop */}
       <aside className="hidden md:flex fixed left-0 top-0 h-screen w-60 bg-white border-r border-slate-200/80 flex-col z-10">
         <div className="px-5 py-5 border-b border-slate-100">
-          <a href="/" className="no-underline flex items-center gap-2.5">
+          <Link to="/" className="no-underline flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-600/30">
               <span className="text-white font-bold text-sm">OF</span>
             </div>
             <span className="text-lg font-bold text-slate-900 tracking-tight">Obra Fácil</span>
-          </a>
+          </Link>
         </div>
 
         <div className="px-3 pt-3">
@@ -168,9 +168,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {group.items.map((item) => {
                 const isActive = item.match(pathname);
                 return (
-                  <a
+                  <Link
                     key={item.href}
-                    href={item.href}
+                    to={item.href}
                     className={`group flex items-center gap-3 pl-3 pr-3 py-2.5 rounded-xl text-sm font-medium no-underline mb-0.5 relative transition-all duration-150 ${
                       isActive
                         ? 'bg-gradient-to-r from-blue-50 to-indigo-50/50 text-blue-700'
@@ -187,7 +187,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       {item.icon}
                     </span>
                     {item.label}
-                  </a>
+                  </Link>
                 );
               })}
             </div>
@@ -227,9 +227,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {BOTTOM_NAV_MORE.map((item) => {
                 const isActive = item.match(pathname);
                 return (
-                  <a
+                  <Link
                     key={item.href}
-                    href={item.href}
+                    to={item.href}
                     onClick={() => setMoreOpen(false)}
                     className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium no-underline ${
                       isActive ? 'text-blue-600 bg-blue-50' : 'text-slate-700 hover:bg-slate-50'
@@ -237,7 +237,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   >
                     <span>{item.icon}</span>
                     {item.label}
-                  </a>
+                  </Link>
                 );
               })}
               <div className="border-t border-slate-100 mt-1 pt-1">
@@ -259,9 +259,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {BOTTOM_NAV_MAIN.map((item) => {
             const isActive = item.match(pathname);
             return (
-              <a
+              <Link
                 key={item.href}
-                href={item.href}
+                to={item.href}
                 className={`flex flex-col items-center py-2 px-1 min-w-0 flex-1 no-underline relative transition-colors duration-150 ${
                   isActive ? 'text-blue-600' : 'text-slate-400'
                 }`}
@@ -273,7 +273,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {item.icon}
                 </span>
                 <span className="text-xs mt-1 truncate font-medium">{item.shortLabel}</span>
-              </a>
+              </Link>
             );
           })}
           {/* Botão "Mais" */}
