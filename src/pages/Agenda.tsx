@@ -311,7 +311,7 @@ export default function Agenda() {
           {/* Days */}
           <div className="grid grid-cols-7">
             {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-              <div key={`e-${i}`} />
+              <div key={`e-${i}`} className="p-0.5" />
             ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
@@ -322,37 +322,51 @@ export default function Agenda() {
               const count = visitasDias.get(key) || 0;
 
               return (
-                <button
-                  key={day}
-                  onClick={() => handleSelectDay(day)}
-                  className="flex flex-col items-center py-[3px]"
-                >
-                  <span className={`
-                    w-8 h-8 flex items-center justify-center text-xs rounded-full transition-all
-                    ${isSelected
-                      ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold shadow-md shadow-purple-500/30 scale-110'
-                      : isToday
-                        ? 'ring-2 ring-blue-400 ring-inset text-blue-700 font-bold'
-                        : hasVisita
-                          ? 'bg-purple-200 text-purple-800 font-bold hover:bg-purple-300 ring-2 ring-purple-300 ring-inset'
-                          : 'text-slate-500 font-medium hover:bg-slate-50'
-                    }
-                  `}>
-                    {day}
-                  </span>
-                  <div className="h-2 flex items-center">
-                    {hasVisita && !isSelected && (
-                      <div className="flex gap-[3px]">
-                        {Array.from({ length: Math.min(count, 3) }).map((_, j) => (
-                          <div key={j} className={`w-1.5 h-1.5 rounded-full ${isToday ? 'bg-blue-500' : 'bg-purple-600'}`} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </button>
+                <div key={day} className="p-0.5">
+                  <button
+                    onClick={() => handleSelectDay(day)}
+                    className="w-full flex flex-col items-center"
+                  >
+                    <span
+                      className={`
+                        w-9 h-9 flex items-center justify-center text-[13px] rounded-2xl
+                        transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+                        ${isSelected
+                          ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold scale-110 shadow-lg shadow-purple-500/40'
+                          : isToday
+                            ? 'bg-blue-50 text-blue-700 font-bold ring-[1.5px] ring-blue-300'
+                            : hasVisita
+                              ? 'bg-purple-100/80 text-purple-700 font-semibold hover:bg-purple-200/80 hover:scale-105'
+                              : 'text-slate-500 font-medium hover:bg-slate-100/60 hover:scale-105'
+                        }
+                      `}
+                      style={isSelected ? { animation: 'calPop 0.35s ease-out' } : undefined}
+                    >
+                      {day}
+                    </span>
+                    <div className="h-[7px] flex items-end">
+                      {hasVisita && (
+                        <div className={`flex gap-[3px] transition-opacity duration-300 ${isSelected ? 'opacity-0' : 'opacity-100'}`}>
+                          {Array.from({ length: Math.min(count, 3) }).map((_, j) => (
+                            <div key={j} className={`w-[6px] h-[6px] rounded-full transition-all duration-300 ${isToday ? 'bg-blue-500' : 'bg-purple-500'}`} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                </div>
               );
             })}
           </div>
+
+          {/* Keyframe para animação de seleção */}
+          <style>{`
+            @keyframes calPop {
+              0% { transform: scale(0.85); opacity: 0.5; box-shadow: 0 0 0 0 rgba(147,51,234,0.5); }
+              50% { transform: scale(1.18); box-shadow: 0 8px 24px -4px rgba(147,51,234,0.45); }
+              100% { transform: scale(1.1); box-shadow: 0 4px 12px -2px rgba(147,51,234,0.4); }
+            }
+          `}</style>
         </div>
 
         {/* Visitas do dia selecionado */}
