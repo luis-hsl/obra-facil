@@ -5,6 +5,7 @@ import { useAuth } from '../lib/useAuth';
 import type { Atendimento } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import GlobalSearch from '../components/GlobalSearch';
 
 const TIMEZONE = 'America/Sao_Paulo';
 
@@ -22,8 +23,11 @@ export default function Agenda() {
   const [loading, setLoading] = useState(true);
   const [projetosAtivos, setProjetosAtivos] = useState(0);
   const [receitaMes, setReceitaMes] = useState(0);
+  const [taxaConversao, setTaxaConversao] = useState(0);
+  const [ticketMedio, setTicketMedio] = useState(0);
   const [visitasHoje, setVisitasHoje] = useState<Atendimento[]>([]);
   const [orcPendentes, setOrcPendentes] = useState<Atendimento[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -36,10 +40,12 @@ export default function Agenda() {
     const [atdRes, fechRes, orcRes] = await Promise.all([
       supabase.from('atendimentos').select('*').eq('user_id', user!.id),
       supabase.from('fechamentos').select('valor_recebido, created_at'),
-      supabase.from('orcamentos').select('*').in('status', ['rascunho', 'enviado']),
+      supabase.from('orcamentos').select('*'),
     ]);
 
     const atendimentos: Atendimento[] = atdRes.data || [];
+    const allOrcamentos = orcRes.data || [];
+    const allFechamentos = fechRes.data || [];
 
     // KPI: Projetos ativos
     setProjetosAtivos(atendimentos.filter(a => !['concluido', 'reprovado'].includes(a.status)).length);
@@ -47,10 +53,20 @@ export default function Agenda() {
     // KPI: Receita do mês
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
-    setReceitaMes((fechRes.data || []).reduce((acc, f) => {
+    setReceitaMes(allFechamentos.reduce((acc, f) => {
       const d = new Date(f.created_at);
       return d.getMonth() === mesAtual && d.getFullYear() === anoAtual ? acc + f.valor_recebido : acc;
     }, 0));
+
+    // KPI: Taxa de conversão (aprovados / (aprovados + enviados + reprovados))
+    const enviados = allOrcamentos.filter(o => ['enviado', 'aprovado', 'reprovado'].includes(o.status));
+    const aprovados = allOrcamentos.filter(o => o.status === 'aprovado');
+    setTaxaConversao(enviados.length > 0 ? Math.round((aprovados.length / enviados.length) * 100) : 0);
+
+    // KPI: Ticket médio
+    const totalFech = allFechamentos.length;
+    const somaRecebido = allFechamentos.reduce((acc, f) => acc + f.valor_recebido, 0);
+    setTicketMedio(totalFech > 0 ? somaRecebido / totalFech : 0);
 
     // Visitas de hoje
     const visitasDeHoje = atendimentos.filter(a => {
@@ -61,8 +77,9 @@ export default function Agenda() {
 
     // Orçamentos pendentes
     const atdMap = new Map(atendimentos.map(a => [a.id, a]));
-    const pendentes = (orcRes.data || [])
+    const pendentes = allOrcamentos
       .filter(o => {
+        if (!['rascunho', 'enviado'].includes(o.status)) return false;
         const atd = atdMap.get(o.atendimento_id);
         return atd && !['concluido', 'reprovado'].includes(atd.status);
       })
@@ -113,6 +130,60 @@ export default function Agenda() {
           <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Receita Mês</p>
           <p className="text-2xl font-bold text-emerald-700 mt-1">{formatCurrency(receitaMes)}</p>
         </div>
+        <div className="bg-white rounded-xl border border-blue-100 p-4 shadow-sm">
+          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Conversão</p>
+          <p className="text-3xl font-bold text-blue-700 mt-1">{taxaConversao}%</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Ticket Médio</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(ticketMedio)}</p>
+        </div>
+      </div>
+
+      {/* Atalhos rápidos */}
+      <div className="grid grid-cols-4 gap-2 mb-5">
+        {[
+          { href: '/atendimentos/novo', label: 'Novo', icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          ), color: 'text-blue-600 bg-blue-50' },
+          { href: '/produtos/novo', label: 'Produto', icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+          ), color: 'text-indigo-600 bg-indigo-50' },
+          { href: '/financeiro', label: 'Financeiro', icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ), color: 'text-emerald-600 bg-emerald-50' },
+          { href: '#buscar', label: 'Buscar', icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          ), color: 'text-slate-600 bg-slate-100' },
+        ].map((item) => (
+          item.href === '#buscar' ? (
+            <button
+              key={item.label}
+              onClick={() => setSearchOpen(true)}
+              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl ${item.color} transition-colors hover:opacity-80`}
+            >
+              {item.icon}
+              <span className="text-xs font-semibold">{item.label}</span>
+            </button>
+          ) : (
+            <Link
+              key={item.label}
+              to={item.href}
+              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl no-underline ${item.color} transition-colors hover:opacity-80`}
+            >
+              {item.icon}
+              <span className="text-xs font-semibold">{item.label}</span>
+            </Link>
+          )
+        ))}
       </div>
 
       {/* Visitas de Hoje — widget compacto */}
@@ -195,6 +266,9 @@ export default function Agenda() {
       >
         + Novo Atendimento
       </Link>
+
+      {/* Global Search */}
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
