@@ -115,7 +115,7 @@ export default function OperacionalList() {
           <EmptyState icon="busca" titulo="Nenhum resultado encontrado" />
         )
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtrados.map((a) => {
             const fechamento = fechamentos[a.id];
             const temPrecificacao = !!fechamento;

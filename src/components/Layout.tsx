@@ -208,7 +208,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Conteúdo */}
-      <main className="p-4 pb-24 max-w-lg mx-auto md:ml-60 md:max-w-none md:mx-0 md:px-8 md:py-6 md:pb-6">
+      <main className="p-4 pb-24 max-w-lg mx-auto md:ml-60 md:max-w-5xl md:mx-0 md:px-8 md:py-6 md:pb-6">
         <div className="animate-fade-in">
           {children}
         </div>
@@ -231,7 +231,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     to={item.href}
                     onClick={() => setMoreOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium no-underline ${
+                    className={`flex items-center gap-3 px-4 py-3 text-sm font-medium no-underline ${
                       isActive ? 'text-blue-600 bg-blue-50' : 'text-slate-700 hover:bg-slate-50'
                     }`}
                   >
@@ -243,7 +243,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <div className="border-t border-slate-100 mt-1 pt-1">
                 <button
                   onClick={() => { setMoreOpen(false); signOut(); }}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-500 hover:bg-slate-50 w-full"
+                  className="flex items-center gap-3 px-4 py-3 text-sm text-slate-500 hover:bg-slate-50 w-full"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -262,7 +262,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 to={item.href}
-                className={`flex flex-col items-center py-2 px-1 min-w-0 flex-1 no-underline relative transition-colors duration-150 ${
+                className={`flex flex-col items-center justify-center py-2 px-1 min-w-0 flex-1 min-h-[52px] no-underline relative transition-colors duration-150 ${
                   isActive ? 'text-blue-600' : 'text-slate-400'
                 }`}
               >
@@ -279,7 +279,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {/* Botão "Mais" */}
           <button
             onClick={() => setMoreOpen(!moreOpen)}
-            className={`flex flex-col items-center py-2 px-1 min-w-0 flex-1 relative transition-colors duration-150 ${
+            className={`flex flex-col items-center justify-center py-2 px-1 min-w-0 flex-1 min-h-[52px] relative transition-colors duration-150 ${
               isMoreActive ? 'text-blue-600' : 'text-slate-400'
             }`}
           >

@@ -94,7 +94,7 @@ export default function ProdutosList() {
       ) : filtrados.length === 0 ? (
         <EmptyState icon="busca" titulo="Nenhum produto encontrado" descricao="Tente outro termo de busca" />
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtrados.map((p) => (
             <div key={p.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm hover:shadow-md">
               <div className="flex items-start justify-between">

@@ -274,9 +274,9 @@ export default function MarcaConfig() {
   if (loading) return <p className="text-slate-500 text-center py-10">Carregando...</p>;
 
   return (
-    <div className={`transition-all ${previewOpen ? 'pb-[55vh] md:pb-0 md:pr-[420px]' : ''}`}>
+    <div className={`transition-all ${previewOpen ? 'pb-[55vh] md:pb-0 md:pr-[440px]' : ''}`}>
       {/* Page header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <h2 className="text-2xl font-bold text-slate-900">Minha Marca</h2>
         <div className="flex gap-2">
           <button type="button" onClick={() => { setTokenConfig(DEFAULT_PDF_BRAND_CONFIG); setMsg('Resetado!'); setTimeout(() => setMsg(''), 2000); }}
@@ -326,7 +326,7 @@ export default function MarcaConfig() {
           {/* Template selector */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-3">Escolha o estilo</label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {Object.values(PDF_PRESETS).map(preset => {
                 const active = tokenConfig.templateId === preset.id;
                 return (
@@ -589,8 +589,8 @@ export default function MarcaConfig() {
 
       {/* Live Preview Panel */}
       {previewOpen && (
-        <div className="fixed bottom-0 left-0 right-0 h-[50vh] bg-white border-t border-slate-200 shadow-2xl z-40
-                        md:top-0 md:bottom-0 md:left-auto md:right-0 md:w-[400px] md:h-full md:border-t-0 md:border-l">
+        <div className="fixed bottom-14 left-0 right-0 h-[50vh] bg-white border-t border-slate-200 shadow-2xl z-30
+                        md:bottom-0 md:top-0 md:left-auto md:right-0 md:w-[420px] md:h-full md:border-t-0 md:border-l">
           <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-200">
             <span className="text-sm font-semibold text-slate-700">Preview do PDF</span>
             <button onClick={() => setPreviewOpen(false)}

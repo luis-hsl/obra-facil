@@ -69,14 +69,14 @@ export default function GlobalSearch({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] md:pt-[20vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-0 sm:pt-[15vh] md:pt-[20vh]">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fade-in">
+      <div className="relative w-full h-full sm:h-auto sm:max-w-lg sm:mx-4 bg-white sm:rounded-2xl shadow-2xl sm:border border-slate-200 overflow-hidden animate-fade-in flex flex-col">
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100">
           <svg className="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -88,11 +88,12 @@ export default function GlobalSearch({ open, onClose }: Props) {
             placeholder="Buscar cliente, endereço, telefone..."
             className="flex-1 text-base text-slate-900 placeholder:text-slate-400 outline-none bg-transparent"
           />
+          <button onClick={onClose} className="sm:hidden text-sm text-slate-400 font-medium px-2 py-1">Fechar</button>
           <kbd className="hidden md:inline-flex text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono">Esc</kbd>
         </div>
 
         {/* Results */}
-        <div className="max-h-[50vh] overflow-y-auto">
+        <div className="flex-1 sm:flex-none max-h-none sm:max-h-[50vh] overflow-y-auto">
           {loading && (
             <div className="px-4 py-6 text-center">
               <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />

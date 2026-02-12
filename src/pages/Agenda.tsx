@@ -195,15 +195,23 @@ export default function Agenda() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">{saudacao}!</h2>
-        <p className="text-sm text-slate-400 mt-0.5">
-          {hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TIMEZONE })}
-        </p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">{saudacao}!</h2>
+          <p className="text-sm text-slate-400 mt-0.5">
+            {hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TIMEZONE })}
+          </p>
+        </div>
+        <Link
+          to="/atendimentos/novo"
+          className="hidden md:inline-flex bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold no-underline shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]"
+        >
+          + Novo Atendimento
+        </Link>
       </div>
 
       {/* Hero KPIs */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* Ativos */}
         <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-indigo-500 rounded-l-2xl" />
@@ -238,7 +246,7 @@ export default function Agenda() {
       </div>
 
       {/* Secondary KPIs */}
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-3 md:grid-cols-3 gap-2.5">
         {/* Conversão */}
         <div className="bg-white rounded-xl border border-slate-100 p-3 shadow-sm text-center">
           <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-1.5">
@@ -278,6 +286,9 @@ export default function Agenda() {
           <p className="text-[10px] text-slate-400 font-semibold mt-1 uppercase tracking-wider">Margem</p>
         </div>
       </div>
+
+      {/* Desktop 2-column layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
       {/* Mini Calendar + Visitas de Hoje */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -413,6 +424,9 @@ export default function Agenda() {
         </div>
       </div>
 
+      {/* Right column: Follow-ups + Pending */}
+      <div className="space-y-5">
+
       {/* Follow-up: Orçamentos sem resposta */}
       {followUps.length > 0 && (
         <div>
@@ -491,10 +505,13 @@ export default function Agenda() {
         </div>
       )}
 
-      {/* Quick action */}
+      </div>{/* end right column */}
+      </div>{/* end 2-col grid */}
+
+      {/* Quick action — mobile only (desktop has it in header) */}
       <Link
         to="/atendimentos/novo"
-        className="block w-full py-3.5 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98] no-underline"
+        className="block md:hidden w-full py-3.5 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98] no-underline"
       >
         + Novo Atendimento
       </Link>

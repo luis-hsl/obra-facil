@@ -97,23 +97,23 @@ export default function ConcluidosList() {
 
       {/* KPI Cards */}
       {atendimentos.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-white rounded-xl border border-slate-100 p-3 text-center shadow-sm">
-            <p className="text-2xl font-bold text-slate-900">{atendimentos.length}</p>
-            <p className="text-xs text-slate-500 font-medium">Projetos</p>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
+          <div className="bg-white rounded-xl border border-slate-100 p-2.5 sm:p-3 text-center shadow-sm">
+            <p className="text-xl sm:text-2xl font-bold text-slate-900">{atendimentos.length}</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Projetos</p>
           </div>
-          <div className="bg-white rounded-xl border border-blue-100 p-3 text-center shadow-sm">
-            <p className="text-lg font-bold text-blue-700">{formatCurrency(totalRecebido)}</p>
-            <p className="text-xs text-slate-500 font-medium">Recebido</p>
+          <div className="bg-white rounded-xl border border-blue-100 p-2.5 sm:p-3 text-center shadow-sm">
+            <p className="text-sm sm:text-lg font-bold text-blue-700">{formatCurrency(totalRecebido)}</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Recebido</p>
           </div>
-          <div className={`rounded-xl border p-3 text-center shadow-sm ${totalLucro >= 0 ? 'bg-white border-emerald-100' : 'bg-white border-red-100'}`}>
-            <p className={`text-lg font-bold ${totalLucro >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{formatCurrency(totalLucro)}</p>
-            <p className="text-xs text-slate-500 font-medium">Lucro</p>
+          <div className={`rounded-xl border p-2.5 sm:p-3 text-center shadow-sm ${totalLucro >= 0 ? 'bg-white border-emerald-100' : 'bg-white border-red-100'}`}>
+            <p className={`text-sm sm:text-lg font-bold ${totalLucro >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{formatCurrency(totalLucro)}</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Lucro</p>
           </div>
         </div>
       )}
 
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -129,7 +129,7 @@ export default function ConcluidosList() {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as SortOption)}
-          className="px-3 py-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+          className="w-full sm:w-auto px-3 py-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
         >
           <option value="data_desc">Mais recentes</option>
           <option value="data_asc">Mais antigos</option>

@@ -304,8 +304,9 @@ export default function Financeiro() {
       {fechamentosFiltrados.length === 0 ? (
         <EmptyState icon="financeiro" titulo="Nenhum fechamento no período" descricao="Ajuste o filtro de período ou registre novos fechamentos nos atendimentos" />
       ) : (
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-slate-600">{fechamentosFiltrados.length} fechamento(s) no período</p>
+        <div>
+          <p className="text-sm font-semibold text-slate-600 mb-3">{fechamentosFiltrados.length} fechamento(s) no período</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {fechamentosFiltrados.map((f) => {
             const isExpanded = expandedId === f.id;
             return (
@@ -316,7 +317,7 @@ export default function Financeiro() {
                       <p className="font-semibold text-slate-900">{f.atendimento?.cliente_nome || 'Cliente não encontrado'}</p>
                       <span className="text-xs text-slate-400">{formatDate(f.created_at)}</span>
                     </div>
-                    <div className="flex gap-4 text-sm mt-1">
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm mt-1">
                       <span className="text-slate-500">Recebido: <strong className="text-slate-700">{formatCurrency(f.valor_recebido)}</strong></span>
                       <span className={`font-semibold ${f.lucro_final >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Lucro: {formatCurrency(f.lucro_final)}</span>
                     </div>
@@ -348,6 +349,7 @@ export default function Financeiro() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </div>

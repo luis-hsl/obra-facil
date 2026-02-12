@@ -399,7 +399,7 @@ export default function AtendimentoForm() {
 
             {/* Morning slots */}
             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Manhã</p>
-            <div className="grid grid-cols-5 gap-1.5 mb-3">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 mb-3">
               {TIME_SLOTS.filter(t => parseInt(t) < 12).map(t => (
                 <button
                   key={t}
@@ -420,7 +420,7 @@ export default function AtendimentoForm() {
 
             {/* Afternoon slots */}
             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tarde</p>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
               {TIME_SLOTS.filter(t => parseInt(t) >= 12).map(t => (
                 <button
                   key={t}
