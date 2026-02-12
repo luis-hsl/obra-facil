@@ -71,6 +71,17 @@ input, textarea, select, [data-no-transition] {
   animation: slideUp 0.25s ease-out;
 }
 
+/* Grow-up animation for chart bars */
+@keyframes growUp {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.animate-grow-up {
+  animation: growUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transform-origin: bottom;
+}
+
 /* Focus ring for accessibility */
 :focus-visible {
   outline: 2px solid #3b82f6;
