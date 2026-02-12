@@ -51,7 +51,7 @@ export default function Financeiro() {
 
   return (
     <div className="space-y-6">
-      {/* Header — title + period + export all inline */}
+      {/* ── Header ── */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-slate-900">Financeiro</h2>
@@ -69,7 +69,6 @@ export default function Financeiro() {
           )}
         </div>
 
-        {/* Period pills inline */}
         <div className="flex flex-wrap items-center gap-2">
           {PERIOD_OPTIONS.map(opt => (
             <button
@@ -105,50 +104,32 @@ export default function Financeiro() {
         </div>
       )}
 
-      {/* KPIs */}
+      {/* ── 1. KPIs: resumo financeiro ── */}
       <KpiCards kpis={d.kpis} deltas={d.kpiDeltas} />
 
-      {/* Row 1: Revenue chart + Donut */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2">
-          <RevenueProfitChart
-            data={d.trendData}
-            activeMonth={d.activeMonthFilter}
-            onMonthClick={d.setActiveMonthFilter}
-          />
-        </div>
-        <div className="flex flex-col gap-5">
-          <CostBreakdownChart data={d.costBreakdown} />
-        </div>
+      {/* ── 2. Tendência: gráfico principal full width ── */}
+      <RevenueProfitChart
+        data={d.trendData}
+        activeMonth={d.activeMonthFilter}
+        onMonthClick={d.setActiveMonthFilter}
+      />
+
+      {/* ── 3. Breakdown: de onde vem / para onde vai ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <CostBreakdownChart data={d.costBreakdown} />
+        <RevenueByServiceChart data={d.revenueByService} />
       </div>
 
-      {/* Row 2: Insights + Revenue by service */}
-      {(insights.length > 0 || d.revenueByService.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {insights.length > 0 && (
-            <div className="lg:col-span-2">
-              <InsightsPanel insights={insights} />
-            </div>
-          )}
-          {d.revenueByService.length > 0 && (
-            <div className={insights.length === 0 ? 'lg:col-span-3' : ''}>
-              <RevenueByServiceChart data={d.revenueByService} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Row 3: Margin chart + Top clients */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2">
-          <ProfitMarginChart data={d.marginTrend} />
-        </div>
-        <div>
-          <TopClients data={d.topClients} />
-        </div>
+      {/* ── 4. Clientes & Insights ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <TopClients data={d.topClients} />
+        {insights.length > 0 && <InsightsPanel insights={insights} />}
       </div>
 
-      {/* Fechamentos */}
+      {/* ── 5. Margem de lucro ── */}
+      <ProfitMarginChart data={d.marginTrend} />
+
+      {/* ── 6. Fechamentos detalhados ── */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-600 to-indigo-600" />
