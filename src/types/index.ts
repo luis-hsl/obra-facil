@@ -41,6 +41,8 @@ export interface Atendimento {
   tipo_servico: string;
   status: AtendimentoStatus;
   observacoes: string | null;
+  data_visita: string | null;
+  observacoes_visita: string | null;
   created_at: string;
 }
 

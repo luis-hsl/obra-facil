@@ -13,6 +13,8 @@ import Precificacao from './pages/Precificacao';
 import ProdutosList from './pages/ProdutosList';
 import ProdutoForm from './pages/ProdutoForm';
 import MarcaConfig from './pages/MarcaConfig';
+import Agenda from './pages/Agenda';
+import Dashboard from './pages/Dashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -58,8 +60,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
 
-        {/* Clientes (home) */}
-        <Route path="/" element={<ProtectedRoute><ClientesList /></ProtectedRoute>} />
+        {/* Dashboard (home) */}
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/clientes" element={<ProtectedRoute><ClientesList /></ProtectedRoute>} />
 
         {/* Em Andamento */}
@@ -71,6 +73,9 @@ export default function App() {
 
         {/* Concluídos */}
         <Route path="/concluidos" element={<ProtectedRoute><ConcluidosList /></ProtectedRoute>} />
+
+        {/* Agenda */}
+        <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
 
         {/* Financeiro */}
         <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />

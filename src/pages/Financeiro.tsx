@@ -4,6 +4,9 @@ import { supabase } from '../lib/supabase';
 import type { Atendimento, Fechamento } from '../types';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import { gerarRelatorioFinanceiroPDF } from '../lib/gerarRelatorioFinanceiroPDF';
+import { useBrandConfig } from '../lib/useBrandConfig';
+import { fetchImageAsBase64 } from '../lib/imageUtils';
 
 interface FechamentoComAtendimento extends Fechamento {
   atendimento?: Atendimento;
@@ -69,6 +72,7 @@ export default function Financeiro() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { config: brandConfig } = useBrandConfig();
   const [periodo, setPeriodo] = useState<Periodo>('mes');
   const hoje = getDataBrasilia();
   const [dataInicio, setDataInicio] = useState(formatDateInput(new Date(hoje.getFullYear(), hoje.getMonth(), 1)));
@@ -145,6 +149,29 @@ export default function Financeiro() {
     URL.revokeObjectURL(url);
   };
 
+  const exportPDF = async () => {
+    let logoBase64: string | null = null;
+    if (brandConfig?.logo_url) {
+      try { logoBase64 = await fetchImageAsBase64(brandConfig.logo_url); } catch { /* ignore */ }
+    }
+
+    const periodoLabels: Record<Periodo, string> = {
+      hoje: 'Hoje',
+      semana: 'Semana Atual',
+      mes: getDataBrasilia().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: TIMEZONE }),
+      ano: `Ano ${getDataBrasilia().getFullYear()}`,
+      personalizado: `${dataInicio.split('-').reverse().join('/')} a ${dataFim.split('-').reverse().join('/')}`,
+    };
+
+    gerarRelatorioFinanceiroPDF({
+      periodo: periodoLabels[periodo],
+      fechamentos: fechamentosFiltrados,
+      totais: { recebido: totalRecebido, custos: totalCustos, lucro: totalLucro },
+      brandConfig,
+      logoBase64,
+    });
+  };
+
   if (loading) {
     return (
       <div>
@@ -160,9 +187,14 @@ export default function Financeiro() {
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-2xl font-bold text-slate-900">Financeiro</h2>
         {fechamentosFiltrados.length > 0 && (
-          <button onClick={exportCSV} className="px-4 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm">
-            Exportar CSV
-          </button>
+          <div className="flex gap-2">
+            <button onClick={exportPDF} className="px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg">
+              PDF
+            </button>
+            <button onClick={exportCSV} className="px-4 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm">
+              CSV
+            </button>
+          </div>
         )}
       </div>
 

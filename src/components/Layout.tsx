@@ -1,13 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
+import GlobalSearch from './GlobalSearch';
 
 const navItems = [
   {
     href: '/',
+    label: 'Home',
+    shortLabel: 'Home',
+    match: (p: string) => p === '/',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/clientes',
     label: 'Clientes',
     shortLabel: 'Clientes',
-    match: (p: string) => p === '/' || p === '/clientes',
+    match: (p: string) => p === '/clientes',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -38,13 +50,13 @@ const navItems = [
     ),
   },
   {
-    href: '/concluidos',
-    label: 'Concluídos',
-    shortLabel: 'Concluídos',
-    match: (p: string) => p === '/concluidos',
+    href: '/agenda',
+    label: 'Agenda',
+    shortLabel: 'Agenda',
+    match: (p: string) => p === '/agenda',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
     ),
   },
@@ -83,10 +95,10 @@ const navItems = [
   },
 ];
 
-// Grupos do sidebar
+// Grupos do sidebar: CRM (Home, Clientes, Andamento, Operacional, Agenda) | Configurar (Financeiro, Produtos, Marca)
 const SIDEBAR_GROUPS = [
-  { label: 'CRM', items: navItems.slice(0, 4) },
-  { label: 'Configurar', items: navItems.slice(4) },
+  { label: 'CRM', items: navItems.slice(0, 5) },
+  { label: 'Configurar', items: navItems.slice(5) },
 ];
 
 // Bottom nav: 4 itens principais + "Mais"
@@ -97,6 +109,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { signOut } = useAuth();
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Ctrl+K shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const isMoreActive = BOTTOM_NAV_MORE.some(item => item.match(pathname));
 
@@ -108,12 +133,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <a href="/" className="text-lg font-bold text-white no-underline tracking-tight">
             Obra Fácil
           </a>
-          <button
-            onClick={signOut}
-            className="text-sm text-blue-100 hover:text-white font-medium"
-          >
-            Sair
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSearchOpen(true)} className="text-blue-100 hover:text-white">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+            <button onClick={signOut} className="text-sm text-blue-100 hover:text-white font-medium">
+              Sair
+            </button>
+          </div>
         </div>
       </header>
 
@@ -126,6 +155,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="text-lg font-bold text-slate-900 tracking-tight">Obra Fácil</span>
           </a>
+        </div>
+
+        <div className="px-3 pt-3">
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-slate-400 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span>Buscar...</span>
+            <kbd className="ml-auto text-[10px] bg-white px-1.5 py-0.5 rounded border border-slate-200 font-mono text-slate-400">Ctrl K</kbd>
+          </button>
         </div>
 
         <nav className="flex-1 px-3 pt-4 overflow-y-auto">
@@ -182,6 +224,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      {/* Global Search Modal */}
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* Bottom Navigation Mobile */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 md:hidden z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">

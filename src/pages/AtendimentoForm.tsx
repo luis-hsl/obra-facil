@@ -43,6 +43,8 @@ export default function AtendimentoForm() {
   const [tipoServico, setTipoServico] = useState('');
   const [tipoServicoCustom, setTipoServicoCustom] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [dataVisita, setDataVisita] = useState('');
+  const [observacoesVisita, setObservacoesVisita] = useState('');
   const [status, setStatus] = useState('iniciado');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
@@ -64,6 +66,12 @@ export default function AtendimentoForm() {
           setBairro(data.bairro || '');
           setCidade(data.cidade || '');
           setObservacoes(data.observacoes || '');
+          if (data.data_visita) {
+            const dt = new Date(data.data_visita);
+            const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            setDataVisita(local);
+          }
+          setObservacoesVisita(data.observacoes_visita || '');
           setStatus(data.status);
           if (TIPOS_SERVICO.includes(data.tipo_servico)) {
             setTipoServico(data.tipo_servico);
@@ -96,6 +104,8 @@ export default function AtendimentoForm() {
       cidade: cidade.trim() || null,
       tipo_servico: tipoFinal,
       observacoes: observacoes.trim() || null,
+      data_visita: dataVisita ? new Date(dataVisita).toISOString() : null,
+      observacoes_visita: observacoesVisita.trim() || null,
       status,
     };
 
@@ -217,6 +227,30 @@ export default function AtendimentoForm() {
               onChange={(e) => setObservacoes(e.target.value)}
               rows={3}
               placeholder="Ex: Cliente prefere horário pela manhã"
+              className={inputClass}
+            />
+          </div>
+        </fieldset>
+
+        {/* Agendamento de Visita */}
+        <fieldset className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm space-y-3">
+          <legend className="text-sm font-bold text-slate-700 px-1">Agendamento de Visita</legend>
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">Data e Hora</label>
+            <input
+              type="datetime-local"
+              value={dataVisita}
+              onChange={(e) => setDataVisita(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">Observações da Visita</label>
+            <textarea
+              value={observacoesVisita}
+              onChange={(e) => setObservacoesVisita(e.target.value)}
+              rows={2}
+              placeholder="Ex: Levar trena laser, portão azul"
               className={inputClass}
             />
           </div>

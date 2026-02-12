@@ -6,6 +6,7 @@ import ConfirmModal from './ConfirmModal';
 import { gerarPDF } from '../lib/gerarPDF';
 import { useBrandConfig } from '../lib/useBrandConfig';
 import { fetchImageAsBase64 } from '../lib/imageUtils';
+import { useAuth } from '../lib/useAuth';
 
 interface Props {
   atendimentoId: string;
@@ -43,6 +44,7 @@ const OPCOES_TAXA_MAQUINA = [
 ];
 
 export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, areaMedicao, perdaMedicao, onSave }: Props) {
+  const { user } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [produtosMap, setProdutosMap] = useState<Record<string, Produto>>({});
   const [loading, setLoading] = useState(false);
@@ -50,6 +52,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
   const [erro, setErro] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [whatsappLoadingId, setWhatsappLoadingId] = useState<string | null>(null);
 
   // Brand config para PDF personalizado
   const { config: brandConfig } = useBrandConfig();
@@ -284,6 +287,53 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
     });
   };
 
+  const handleShareWhatsApp = async (orcamento: Orcamento) => {
+    setWhatsappLoadingId(orcamento.id);
+    try {
+      const itensDoOrcamento = orcamentoItens[orcamento.id] || [];
+      const produto = orcamento.produto_id ? produtosMap[orcamento.produto_id] : null;
+      const blobUrl = await gerarPDF({
+        atendimento,
+        orcamento,
+        produto,
+        itens: itensDoOrcamento,
+        produtosMap,
+        numeroParcelas: orcamento.numero_parcelas || 12,
+        taxaJuros: orcamento.taxa_juros_mensal || 2,
+        brandConfig,
+        logoBase64,
+        preview: true,
+      });
+
+      if (!blobUrl) throw new Error('Falha ao gerar PDF');
+
+      // Convert blob URL to File
+      const response = await fetch(blobUrl);
+      const blob = await response.blob();
+      const path = `${user!.id}/${orcamento.id}_${Date.now()}.pdf`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('orcamentos')
+        .upload(path, blob, { contentType: 'application/pdf', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('orcamentos').getPublicUrl(path);
+      const publicUrl = urlData.publicUrl;
+
+      // Format phone number
+      let tel = atendimento.cliente_telefone.replace(/\D/g, '');
+      if (tel.length === 11 || tel.length === 10) tel = '55' + tel;
+
+      const msg = `Olá ${atendimento.cliente_nome}! Segue o orçamento:\n${publicUrl}`;
+      window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+    } catch {
+      setErro('Erro ao enviar pelo WhatsApp.');
+    }
+    setWhatsappLoadingId(null);
+  };
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -381,6 +431,13 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                   )}
                   <button onClick={() => handleGerarPDF(o)} className="text-sm text-purple-600 font-medium">
                     PDF
+                  </button>
+                  <button
+                    onClick={() => handleShareWhatsApp(o)}
+                    disabled={whatsappLoadingId === o.id}
+                    className="text-sm text-green-600 font-medium disabled:opacity-50"
+                  >
+                    {whatsappLoadingId === o.id ? 'Enviando...' : 'WhatsApp'}
                   </button>
                   <button onClick={() => setConfirmDeleteId(o.id)} disabled={deletingId === o.id} className="text-sm text-gray-400 ml-auto disabled:opacity-50">
                     {deletingId === o.id ? '...' : 'Excluir'}
