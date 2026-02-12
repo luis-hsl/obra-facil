@@ -77,7 +77,7 @@ const navItems = [
     match: (p: string) => p === '/marca',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 4h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zm14 4h2a2 2 0 012 2v1a1 1 0 01-1 1h-1v0a1 1 0 00-1 1v7a2 2 0 01-4 0v-7a1 1 0 00-1-1v0a1 1 0 01-1-1v-1a2 2 0 012-2h3z" />
       </svg>
     ),
   },
