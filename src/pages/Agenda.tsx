@@ -210,80 +210,77 @@ export default function Agenda() {
         </Link>
       </div>
 
-      {/* Hero KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* KPIs — 5 cards responsivos */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
         {/* Ativos */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-indigo-500 rounded-l-2xl" />
-          <div className="flex items-center gap-3 pl-1">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
-            <div>
-              <p className="text-2xl font-extrabold text-slate-900 leading-none">{projetosAtivos}</p>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Projetos Ativos</p>
-            </div>
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Ativos</p>
           </div>
+          <p className="text-2xl font-extrabold text-slate-900 leading-none">{projetosAtivos}</p>
         </div>
 
         {/* Receita Mês */}
-        <div className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-400 to-emerald-600 rounded-l-2xl" />
-          <div className="flex items-center gap-3 pl-1">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-white rounded-2xl border border-emerald-100 p-3.5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <div className="min-w-0">
-              <p className="text-lg font-extrabold text-emerald-700 leading-none truncate">{formatCurrency(receitaMes)}</p>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Receita do Mês</p>
-            </div>
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Receita Mês</p>
           </div>
+          <p className="text-lg font-extrabold text-emerald-700 leading-tight">{formatCurrency(receitaMes)}</p>
         </div>
-      </div>
 
-      {/* Secondary KPIs */}
-      <div className="grid grid-cols-3 md:grid-cols-3 gap-2.5">
         {/* Conversão */}
-        <div className="bg-white rounded-xl border border-slate-100 p-3 shadow-sm text-center">
-          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-1.5">
-            <svg className="w-[18px] h-[18px] text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
+        <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Conversão</p>
           </div>
-          <p className="text-xl font-extrabold text-slate-900 leading-none">{taxaConversao}%</p>
-          <p className="text-[10px] text-slate-400 font-semibold mt-1 uppercase tracking-wider">Conversão</p>
+          <p className="text-2xl font-extrabold text-slate-900 leading-none">{taxaConversao}%</p>
         </div>
 
         {/* Ticket Médio */}
-        <div className="bg-white rounded-xl border border-slate-100 p-3 shadow-sm text-center">
-          <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-1.5">
-            <svg className="w-[18px] h-[18px] text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-            </svg>
+        <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Ticket Médio</p>
           </div>
-          <p className="text-base font-extrabold text-slate-900 leading-none truncate px-0.5">{formatCurrencyShort(ticketMedio)}</p>
-          <p className="text-[10px] text-slate-400 font-semibold mt-1 uppercase tracking-wider">Ticket Médio</p>
+          <p className="text-lg font-extrabold text-slate-900 leading-tight">{formatCurrencyShort(ticketMedio)}</p>
         </div>
 
         {/* Margem de Lucro */}
-        <div className="bg-white rounded-xl border border-slate-100 p-3 shadow-sm text-center">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center mx-auto mb-1.5 ${
-            margemLucro >= 30 ? 'bg-emerald-50' : margemLucro >= 15 ? 'bg-amber-50' : 'bg-red-50'
-          }`}>
-            <svg className={`w-[18px] h-[18px] ${
-              margemLucro >= 30 ? 'text-emerald-600' : margemLucro >= 15 ? 'text-amber-600' : 'text-red-500'
-            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
+        <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm col-span-2 sm:col-span-1">
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              margemLucro >= 30 ? 'bg-emerald-50' : margemLucro >= 15 ? 'bg-amber-50' : 'bg-red-50'
+            }`}>
+              <svg className={`w-4 h-4 ${
+                margemLucro >= 30 ? 'text-emerald-600' : margemLucro >= 15 ? 'text-amber-600' : 'text-red-500'
+              }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Margem</p>
           </div>
-          <p className={`text-xl font-extrabold leading-none ${
+          <p className={`text-2xl font-extrabold leading-none ${
             margemLucro >= 30 ? 'text-emerald-700' : margemLucro >= 15 ? 'text-amber-700' : 'text-red-600'
           }`}>{margemLucro}%</p>
-          <p className="text-[10px] text-slate-400 font-semibold mt-1 uppercase tracking-wider">Margem</p>
         </div>
       </div>
 
