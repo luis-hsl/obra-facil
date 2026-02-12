@@ -39,7 +39,7 @@ export default function RevenueProfitChart({ data, activeMonth, onMonthClick }: 
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+    <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm h-full">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-semibold text-slate-700">Receita & Lucro (12 meses)</p>
         <div className="flex gap-3">

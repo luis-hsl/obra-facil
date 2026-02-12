@@ -22,7 +22,7 @@ export default function CostBreakdownChart({ data }: Props) {
   const total = data.distribuidor + data.instalador + data.extras;
   if (total === 0) {
     return (
-      <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+      <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm h-full">
         <p className="text-sm font-semibold text-slate-700 mb-3">Custos por Categoria</p>
         <p className="text-sm text-slate-400 text-center py-8">Sem dados no período</p>
       </div>
