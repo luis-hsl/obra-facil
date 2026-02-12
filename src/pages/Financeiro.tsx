@@ -107,18 +107,22 @@ export default function Financeiro() {
       {/* ── 1. KPIs: resumo financeiro ── */}
       <KpiCards kpis={d.kpis} deltas={d.kpiDeltas} />
 
-      {/* ── 2. Tendência: gráfico principal full width ── */}
-      <RevenueProfitChart
-        data={d.trendData}
-        activeMonth={d.activeMonthFilter}
-        onMonthClick={d.setActiveMonthFilter}
-      />
-
-      {/* ── 3. Breakdown: de onde vem / para onde vai ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <CostBreakdownChart data={d.costBreakdown} />
-        <RevenueByServiceChart data={d.revenueByService} />
+      {/* ── 2. Tendência + Donut lado a lado ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="lg:col-span-3">
+          <RevenueProfitChart
+            data={d.trendData}
+            activeMonth={d.activeMonthFilter}
+            onMonthClick={d.setActiveMonthFilter}
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <CostBreakdownChart data={d.costBreakdown} />
+        </div>
       </div>
+
+      {/* ── 3. Receita por serviço ── */}
+      <RevenueByServiceChart data={d.revenueByService} />
 
       {/* ── 4. Clientes & Insights ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
