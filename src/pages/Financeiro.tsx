@@ -88,7 +88,6 @@ export default function Financeiro() {
     setLoading(false);
   };
 
-  // Validate dates
   const dateError = periodo === 'personalizado' && dataInicio && dataFim && dataInicio > dataFim;
 
   const fechamentosFiltrados = useMemo(() => {
@@ -110,7 +109,6 @@ export default function Financeiro() {
   const totalCustos = fechamentosFiltrados.reduce((acc, f) => acc + f.custo_distribuidor + f.custo_instalador + f.custo_extras, 0);
   const totalLucro = fechamentosFiltrados.reduce((acc, f) => acc + f.lucro_final, 0);
 
-  // Monthly trend data (last 6 months)
   const trendData = useMemo(() => {
     const now = getDataBrasilia();
     const months: { label: string; recebido: number; lucro: number }[] = [];
@@ -131,7 +129,6 @@ export default function Financeiro() {
 
   const trendMax = Math.max(...trendData.map(m => Math.max(m.recebido, Math.abs(m.lucro))), 1);
 
-  // CSV Export
   const exportCSV = () => {
     const header = 'Cliente,Serviço,Data,Recebido,Distribuidor,Instalador,Extras,Lucro\n';
     const rows = fechamentosFiltrados.map(f => {
@@ -151,7 +148,7 @@ export default function Financeiro() {
   if (loading) {
     return (
       <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Financeiro</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-5">Financeiro</h2>
         <LoadingSkeleton type="kpi" />
         <div className="mt-4"><LoadingSkeleton count={3} /></div>
       </div>
@@ -160,20 +157,20 @@ export default function Financeiro() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Financeiro</h2>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-2xl font-bold text-slate-900">Financeiro</h2>
         {fechamentosFiltrados.length > 0 && (
-          <button onClick={exportCSV} className="px-3 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          <button onClick={exportCSV} className="px-4 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm">
             Exportar CSV
           </button>
         )}
       </div>
 
-      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+      {erro && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4"><p className="text-red-600 text-sm">{erro}</p></div>}
 
       {/* Period filter */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-        <p className="text-sm font-medium text-gray-700 mb-2">Período</p>
+      <div className="bg-white rounded-xl border border-slate-100 p-4 mb-5 shadow-sm">
+        <p className="text-sm font-semibold text-slate-700 mb-2">Período</p>
         <div className="flex flex-wrap gap-2 mb-3">
           {[
             { value: 'hoje', label: 'Hoje' }, { value: 'semana', label: 'Semana' },
@@ -181,8 +178,10 @@ export default function Financeiro() {
             { value: 'personalizado', label: 'Personalizado' },
           ].map((opt) => (
             <button key={opt.value} onClick={() => setPeriodo(opt.value as Periodo)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                periodo === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              className={`px-3.5 py-1.5 rounded-xl text-sm font-semibold ${
+                periodo === opt.value
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
+                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
               }`}
             >{opt.label}</button>
           ))}
@@ -190,54 +189,54 @@ export default function Financeiro() {
         {periodo === 'personalizado' && (
           <div className="flex flex-wrap gap-3 items-end">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">De</label>
+              <label className="block text-xs text-slate-500 mb-1 font-medium">De</label>
               <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Até</label>
+              <label className="block text-xs text-slate-500 mb-1 font-medium">Até</label>
               <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" />
             </div>
-            {dateError && <p className="text-xs text-red-500 font-medium">A data inicial deve ser anterior à final</p>}
+            {dateError && <p className="text-xs text-red-500 font-semibold">A data inicial deve ser anterior à final</p>}
           </div>
         )}
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-sm text-gray-500">Total Recebido</p>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalRecebido)}</p>
+        <div className="bg-white rounded-xl border border-blue-100 p-4 shadow-sm">
+          <p className="text-sm text-slate-500 font-medium">Total Recebido</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(totalRecebido)}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-sm text-gray-500">Total Custos</p>
-          <p className="text-2xl font-bold text-red-600">{formatCurrency(totalCustos)}</p>
+        <div className="bg-white rounded-xl border border-red-100 p-4 shadow-sm">
+          <p className="text-sm text-slate-500 font-medium">Total Custos</p>
+          <p className="text-2xl font-bold text-red-600 mt-1">{formatCurrency(totalCustos)}</p>
         </div>
-        <div className={`rounded-lg border p-4 ${totalLucro >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-          <p className="text-sm text-gray-500">Lucro Total</p>
-          <p className={`text-2xl font-bold ${totalLucro >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatCurrency(totalLucro)}</p>
+        <div className={`rounded-xl border p-4 shadow-sm ${totalLucro >= 0 ? 'bg-white border-emerald-100' : 'bg-white border-red-100'}`}>
+          <p className="text-sm text-slate-500 font-medium">Lucro Total</p>
+          <p className={`text-2xl font-bold mt-1 ${totalLucro >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{formatCurrency(totalLucro)}</p>
         </div>
       </div>
 
       {/* Summary chart */}
       {fechamentosFiltrados.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-          <p className="text-sm font-medium text-gray-700 mb-3">Resumo Visual</p>
+        <div className="bg-white rounded-xl border border-slate-100 p-4 mb-6 shadow-sm">
+          <p className="text-sm font-semibold text-slate-700 mb-3">Resumo Visual</p>
           <div className="space-y-3">
             {[
-              { label: 'Recebido', value: totalRecebido, color: 'bg-blue-500', max: Math.max(totalRecebido, totalCustos, Math.abs(totalLucro)) },
-              { label: 'Custos', value: totalCustos, color: 'bg-red-400', max: Math.max(totalRecebido, totalCustos, Math.abs(totalLucro)) },
-              { label: 'Lucro', value: totalLucro, color: totalLucro >= 0 ? 'bg-green-500' : 'bg-red-500', max: Math.max(totalRecebido, totalCustos, Math.abs(totalLucro)) },
+              { label: 'Recebido', value: totalRecebido, color: 'bg-gradient-to-r from-blue-500 to-blue-400', max: Math.max(totalRecebido, totalCustos, Math.abs(totalLucro)) },
+              { label: 'Custos', value: totalCustos, color: 'bg-gradient-to-r from-red-400 to-red-300', max: Math.max(totalRecebido, totalCustos, Math.abs(totalLucro)) },
+              { label: 'Lucro', value: totalLucro, color: totalLucro >= 0 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-red-500 to-red-400', max: Math.max(totalRecebido, totalCustos, Math.abs(totalLucro)) },
             ].map((bar) => (
               <div key={bar.label}>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">{bar.label}</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(bar.value)}</span>
+                  <span className="text-slate-600 font-medium">{bar.label}</span>
+                  <span className="font-bold text-slate-900">{formatCurrency(bar.value)}</span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-3">
-                  <div className={`h-3 rounded-full transition-all duration-500 ${bar.color}`}
-                    style={{ width: bar.max > 0 ? `${(Math.abs(bar.value) / bar.max) * 100}%` : '0%' }} />
+                <div className="w-full bg-slate-100 rounded-full h-3">
+                  <div className={`h-3 rounded-full ${bar.color}`}
+                    style={{ width: bar.max > 0 ? `${(Math.abs(bar.value) / bar.max) * 100}%` : '0%', transition: 'width 0.5s ease-out' }} />
                 </div>
               </div>
             ))}
@@ -247,24 +246,24 @@ export default function Financeiro() {
 
       {/* Monthly trend */}
       {fechamentos.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-          <p className="text-sm font-medium text-gray-700 mb-3">Tendência (6 meses)</p>
+        <div className="bg-white rounded-xl border border-slate-100 p-4 mb-6 shadow-sm">
+          <p className="text-sm font-semibold text-slate-700 mb-3">Tendência (6 meses)</p>
           <div className="flex items-end gap-2 h-32">
             {trendData.map((m, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-1">
                 <div className="w-full flex flex-col items-center justify-end h-24">
                   <div className="w-full flex gap-0.5 items-end justify-center h-full">
-                    <div className="w-1/2 bg-blue-400 rounded-t" style={{ height: trendMax > 0 ? `${(m.recebido / trendMax) * 100}%` : '0%', minHeight: m.recebido > 0 ? '4px' : '0' }} />
-                    <div className={`w-1/2 rounded-t ${m.lucro >= 0 ? 'bg-green-400' : 'bg-red-400'}`} style={{ height: trendMax > 0 ? `${(Math.abs(m.lucro) / trendMax) * 100}%` : '0%', minHeight: m.lucro !== 0 ? '4px' : '0' }} />
+                    <div className="w-1/2 bg-blue-400 rounded-t-sm" style={{ height: trendMax > 0 ? `${(m.recebido / trendMax) * 100}%` : '0%', minHeight: m.recebido > 0 ? '4px' : '0' }} />
+                    <div className={`w-1/2 rounded-t-sm ${m.lucro >= 0 ? 'bg-emerald-400' : 'bg-red-400'}`} style={{ height: trendMax > 0 ? `${(Math.abs(m.lucro) / trendMax) * 100}%` : '0%', minHeight: m.lucro !== 0 ? '4px' : '0' }} />
                   </div>
                 </div>
-                <span className="text-[10px] text-gray-500 capitalize">{m.label}</span>
+                <span className="text-[10px] text-slate-500 capitalize font-medium">{m.label}</span>
               </div>
             ))}
           </div>
-          <div className="flex justify-center gap-4 mt-2">
-            <span className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-blue-400" />Recebido</span>
-            <span className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-green-400" />Lucro</span>
+          <div className="flex justify-center gap-4 mt-3">
+            <span className="flex items-center gap-1.5 text-xs text-slate-500 font-medium"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400" />Recebido</span>
+            <span className="flex items-center gap-1.5 text-xs text-slate-500 font-medium"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-400" />Lucro</span>
           </div>
         </div>
       )}
@@ -274,43 +273,43 @@ export default function Financeiro() {
         <EmptyState icon="financeiro" titulo="Nenhum fechamento no período" descricao="Ajuste o filtro de período ou registre novos fechamentos nos atendimentos" />
       ) : (
         <div className="space-y-3">
-          <p className="text-sm font-medium text-gray-600">{fechamentosFiltrados.length} fechamento(s) no período</p>
+          <p className="text-sm font-semibold text-slate-600">{fechamentosFiltrados.length} fechamento(s) no período</p>
           {fechamentosFiltrados.map((f) => {
             const isExpanded = expandedId === f.id;
             return (
-              <div key={f.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <button onClick={() => setExpandedId(isExpanded ? null : f.id)} className="w-full flex items-center justify-between px-4 py-3 text-left">
+              <div key={f.id} className="bg-white rounded-xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md">
+                <button onClick={() => setExpandedId(isExpanded ? null : f.id)} className="w-full flex items-center justify-between px-4 py-3.5 text-left">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900">{f.atendimento?.cliente_nome || 'Cliente não encontrado'}</p>
-                      <span className="text-xs text-gray-400">{formatDate(f.created_at)}</span>
+                      <p className="font-semibold text-slate-900">{f.atendimento?.cliente_nome || 'Cliente não encontrado'}</p>
+                      <span className="text-xs text-slate-400">{formatDate(f.created_at)}</span>
                     </div>
                     <div className="flex gap-4 text-sm mt-1">
-                      <span className="text-gray-500">Recebido: <strong className="text-gray-700">{formatCurrency(f.valor_recebido)}</strong></span>
-                      <span className={f.lucro_final >= 0 ? 'text-green-600' : 'text-red-600'}>Lucro: <strong>{formatCurrency(f.lucro_final)}</strong></span>
+                      <span className="text-slate-500">Recebido: <strong className="text-slate-700">{formatCurrency(f.valor_recebido)}</strong></span>
+                      <span className={`font-semibold ${f.lucro_final >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Lucro: {formatCurrency(f.lucro_final)}</span>
                     </div>
                   </div>
-                  <span className={`text-gray-400 text-lg transition-transform ${isExpanded ? 'rotate-90' : ''}`}>›</span>
+                  <span className={`text-slate-400 text-lg ${isExpanded ? 'rotate-90' : ''}`}>›</span>
                 </button>
                 {isExpanded && (
-                  <div className="px-4 pb-4 border-t border-gray-100 pt-3">
-                    <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 space-y-1">
+                  <div className="px-4 pb-4 border-t border-slate-100 pt-3 animate-fade-in">
+                    <div className="bg-slate-50 rounded-xl p-3.5 text-sm text-slate-600 space-y-1">
                       {f.atendimento && (
                         <>
-                          <p>{f.atendimento.tipo_servico}</p>
-                          <p className="text-gray-400">{[f.atendimento.endereco, f.atendimento.numero, f.atendimento.bairro, f.atendimento.cidade].filter(Boolean).join(', ')}</p>
+                          <p className="font-medium text-slate-700">{f.atendimento.tipo_servico}</p>
+                          <p className="text-slate-400">{[f.atendimento.endereco, f.atendimento.numero, f.atendimento.bairro, f.atendimento.cidade].filter(Boolean).join(', ')}</p>
                         </>
                       )}
-                      <div className="pt-2 mt-2 border-t border-gray-200">
-                        <p className="font-semibold text-gray-700">Custos:</p>
+                      <div className="pt-2 mt-2 border-t border-slate-200">
+                        <p className="font-semibold text-slate-700">Custos:</p>
                         <p>Distribuidor: {formatCurrency(f.custo_distribuidor)}</p>
                         <p>Instalador: {formatCurrency(f.custo_instalador)}</p>
                         <p>Extras: {formatCurrency(f.custo_extras)}</p>
-                        {f.observacoes_extras && <p className="mt-2 text-gray-500">Obs: {f.observacoes_extras}</p>}
+                        {f.observacoes_extras && <p className="mt-2 text-slate-500">Obs: {f.observacoes_extras}</p>}
                       </div>
                     </div>
                     {f.atendimento && (
-                      <Link to={`/atendimentos/${f.atendimento_id}`} className="block mt-3 text-sm text-blue-600 font-medium no-underline">Ver atendimento →</Link>
+                      <Link to={`/atendimentos/${f.atendimento_id}`} className="block mt-3 text-sm text-blue-600 font-semibold no-underline">Ver atendimento →</Link>
                     )}
                   </div>
                 )}

@@ -81,7 +81,6 @@ export default function ConcluidosList() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-  // KPIs
   const totalRecebido = atendimentos.reduce((acc, a) => acc + (a.fechamento?.valor_recebido || 0), 0);
   const totalLucro = atendimentos.reduce((acc, a) => acc + (a.fechamento?.lucro_final || 0), 0);
 
@@ -89,43 +88,48 @@ export default function ConcluidosList() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Concluídos</h2>
-        <span className="text-sm text-gray-500">{atendimentos.length} atendimento(s)</span>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-2xl font-bold text-slate-900">Concluídos</h2>
+        <span className="text-sm text-slate-500 font-medium">{atendimentos.length} atendimento(s)</span>
       </div>
 
-      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+      {erro && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4"><p className="text-red-600 text-sm">{erro}</p></div>}
 
       {/* KPI Cards */}
       {atendimentos.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className="bg-white rounded-lg border border-gray-200 p-3 text-center">
-            <p className="text-lg font-bold text-gray-900">{atendimentos.length}</p>
-            <p className="text-xs text-gray-500">Projetos</p>
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="bg-white rounded-xl border border-slate-100 p-3 text-center shadow-sm">
+            <p className="text-2xl font-bold text-slate-900">{atendimentos.length}</p>
+            <p className="text-xs text-slate-500 font-medium">Projetos</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-3 text-center">
-            <p className="text-lg font-bold text-gray-900">{formatCurrency(totalRecebido)}</p>
-            <p className="text-xs text-gray-500">Recebido</p>
+          <div className="bg-white rounded-xl border border-blue-100 p-3 text-center shadow-sm">
+            <p className="text-lg font-bold text-blue-700">{formatCurrency(totalRecebido)}</p>
+            <p className="text-xs text-slate-500 font-medium">Recebido</p>
           </div>
-          <div className={`rounded-lg border p-3 text-center ${totalLucro >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-            <p className={`text-lg font-bold ${totalLucro >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatCurrency(totalLucro)}</p>
-            <p className="text-xs text-gray-500">Lucro</p>
+          <div className={`rounded-xl border p-3 text-center shadow-sm ${totalLucro >= 0 ? 'bg-white border-emerald-100' : 'bg-white border-red-100'}`}>
+            <p className={`text-lg font-bold ${totalLucro >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{formatCurrency(totalLucro)}</p>
+            <p className="text-xs text-slate-500 font-medium">Lucro</p>
           </div>
         </div>
       )}
 
       <div className="flex gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Buscar..."
-          value={filtro}
-          onChange={(e) => setFiltro(e.target.value)}
-          className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <div className="relative flex-1">
+          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Buscar..."
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm placeholder:text-slate-300"
+          />
+        </div>
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as SortOption)}
-          className="px-3 py-3 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
         >
           <option value="data_desc">Mais recentes</option>
           <option value="data_asc">Mais antigos</option>
@@ -146,47 +150,47 @@ export default function ConcluidosList() {
           {filtrados.map((a) => {
             const isExpanded = expandedId === a.id;
             return (
-              <div key={a.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div key={a.id} className="bg-white rounded-xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md">
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : a.id)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-left"
+                  className="w-full flex items-center justify-between px-4 py-3.5 text-left"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900">{a.cliente_nome}</p>
-                    <p className="text-sm text-gray-500 mt-1">{a.tipo_servico}</p>
+                    <p className="font-semibold text-slate-900">{a.cliente_nome}</p>
+                    <p className="text-sm text-slate-500 mt-0.5">{a.tipo_servico}</p>
                     {a.fechamento && (
                       <div className="flex gap-4 mt-1 text-sm">
-                        <span className="text-gray-500">{formatCurrency(a.fechamento.valor_recebido)}</span>
-                        <span className={a.fechamento.lucro_final >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                        <span className="text-slate-500">{formatCurrency(a.fechamento.valor_recebido)}</span>
+                        <span className={`font-semibold ${a.fechamento.lucro_final >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                           Lucro: {formatCurrency(a.fechamento.lucro_final)}
                         </span>
                       </div>
                     )}
                   </div>
-                  <span className={`text-gray-400 text-lg transition-transform ${isExpanded ? 'rotate-90' : ''}`}>›</span>
+                  <span className={`text-slate-400 text-lg ${isExpanded ? 'rotate-90' : ''}`}>›</span>
                 </button>
 
                 {isExpanded && (
-                  <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
-                    <div className="bg-gray-50 rounded-lg p-3 text-sm">
-                      <p className="font-semibold text-gray-700 mb-1">Cliente</p>
-                      <p className="text-gray-600">{a.cliente_nome}</p>
-                      <p className="text-gray-500">{a.cliente_telefone}</p>
-                      <p className="text-gray-500">
+                  <div className="px-4 pb-4 border-t border-slate-100 pt-3 space-y-3 animate-fade-in">
+                    <div className="bg-slate-50 rounded-xl p-3.5 text-sm">
+                      <p className="font-semibold text-slate-700 mb-1">Cliente</p>
+                      <p className="text-slate-600">{a.cliente_nome}</p>
+                      <p className="text-slate-500">{a.cliente_telefone}</p>
+                      <p className="text-slate-500">
                         {[a.endereco, a.numero, a.complemento, a.bairro, a.cidade].filter(Boolean).join(', ')}
                       </p>
-                      {a.observacoes && <p className="text-gray-400 mt-1 italic">Obs: {a.observacoes}</p>}
+                      {a.observacoes && <p className="text-slate-400 mt-1 italic">Obs: {a.observacoes}</p>}
                     </div>
 
                     {a.medicao && (
-                      <div className="bg-yellow-50 rounded-lg p-3 text-sm">
-                        <p className="font-semibold text-yellow-800 mb-1">Medição</p>
-                        <p className="text-yellow-700">Área: {a.medicao.area_total} m²</p>
+                      <div className="bg-amber-50 rounded-xl p-3.5 text-sm">
+                        <p className="font-semibold text-amber-800 mb-1">Medição</p>
+                        <p className="text-amber-700">Área: {a.medicao.area_total} m²</p>
                       </div>
                     )}
 
                     {a.orcamento && (
-                      <div className="bg-blue-50 rounded-lg p-3 text-sm">
+                      <div className="bg-blue-50 rounded-xl p-3.5 text-sm">
                         <p className="font-semibold text-blue-800 mb-1">Orçamento</p>
                         <p className="text-blue-700">Total: {formatCurrency(a.orcamento.valor_total)}</p>
                         {a.orcamento.forma_pagamento === 'parcelado' && a.orcamento.valor_parcela && (
@@ -196,14 +200,14 @@ export default function ConcluidosList() {
                     )}
 
                     {a.execucao && (
-                      <div className="bg-orange-50 rounded-lg p-3 text-sm">
+                      <div className="bg-orange-50 rounded-xl p-3.5 text-sm">
                         <p className="font-semibold text-orange-800 mb-1">Execução</p>
                         {a.execucao.observacoes && <p className="text-orange-700">Obs: {a.execucao.observacoes}</p>}
                         {a.execucao.foto_final_url && (
                           <img
                             src={a.execucao.foto_final_url}
                             alt="Foto final"
-                            className="mt-2 w-full max-h-40 object-cover rounded cursor-pointer hover:opacity-90 transition-opacity"
+                            className="mt-2 w-full max-h-40 object-cover rounded-xl cursor-pointer hover:opacity-90"
                             onClick={() => setLightboxUrl(a.execucao!.foto_final_url)}
                           />
                         )}
@@ -211,14 +215,14 @@ export default function ConcluidosList() {
                     )}
 
                     {a.fechamento && (
-                      <div className={`rounded-lg p-3 text-sm ${a.fechamento.lucro_final >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                        <p className={`font-semibold mb-1 ${a.fechamento.lucro_final >= 0 ? 'text-green-800' : 'text-red-800'}`}>Fechamento</p>
-                        <p className="text-gray-600">Recebido: {formatCurrency(a.fechamento.valor_recebido)}</p>
-                        <p className="text-gray-500">Distribuidor: {formatCurrency(a.fechamento.custo_distribuidor)}</p>
-                        <p className="text-gray-500">Instalador: {formatCurrency(a.fechamento.custo_instalador)}</p>
-                        <p className="text-gray-500">Extras: {formatCurrency(a.fechamento.custo_extras)}</p>
-                        {a.fechamento.observacoes_extras && <p className="text-gray-500 mt-1">Obs: {a.fechamento.observacoes_extras}</p>}
-                        <p className={`font-bold mt-2 ${a.fechamento.lucro_final >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      <div className={`rounded-xl p-3.5 text-sm ${a.fechamento.lucro_final >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                        <p className={`font-semibold mb-1 ${a.fechamento.lucro_final >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>Fechamento</p>
+                        <p className="text-slate-600">Recebido: {formatCurrency(a.fechamento.valor_recebido)}</p>
+                        <p className="text-slate-500">Distribuidor: {formatCurrency(a.fechamento.custo_distribuidor)}</p>
+                        <p className="text-slate-500">Instalador: {formatCurrency(a.fechamento.custo_instalador)}</p>
+                        <p className="text-slate-500">Extras: {formatCurrency(a.fechamento.custo_extras)}</p>
+                        {a.fechamento.observacoes_extras && <p className="text-slate-500 mt-1">Obs: {a.fechamento.observacoes_extras}</p>}
+                        <p className={`font-bold mt-2 text-lg ${a.fechamento.lucro_final >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                           Lucro: {formatCurrency(a.fechamento.lucro_final)}
                         </p>
                       </div>
@@ -226,7 +230,7 @@ export default function ConcluidosList() {
 
                     <Link
                       to={`/atendimentos/${a.id}`}
-                      className="block text-center py-2 text-sm text-blue-600 font-medium no-underline border border-blue-200 rounded-lg"
+                      className="block text-center py-2.5 text-sm text-blue-600 font-semibold no-underline border border-blue-200 rounded-xl hover:bg-blue-50"
                     >Ver detalhes completos</Link>
                   </div>
                 )}
@@ -239,17 +243,17 @@ export default function ConcluidosList() {
       {/* Lightbox */}
       {lightboxUrl && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setLightboxUrl(null)}
         >
           <button
             onClick={() => setLightboxUrl(null)}
-            className="absolute top-4 right-4 text-white text-3xl font-light hover:text-gray-300"
+            className="absolute top-4 right-4 text-white/80 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xl"
           >×</button>
           <img
             src={lightboxUrl}
             alt="Foto ampliada"
-            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            className="max-w-full max-h-[90vh] object-contain rounded-2xl animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           />
         </div>

@@ -56,26 +56,31 @@ export default function ProdutosList() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Produtos</h2>
-          <p className="text-sm text-gray-500 mt-1">{produtos.length} produto(s)</p>
+          <h2 className="text-2xl font-bold text-slate-900">Produtos</h2>
+          <p className="text-sm text-slate-500 mt-0.5">{produtos.length} produto(s)</p>
         </div>
-        <Link to="/produtos/novo" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold no-underline">
+        <Link to="/produtos/novo" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold no-underline shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]">
           + Novo Produto
         </Link>
       </div>
 
-      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+      {erro && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4"><p className="text-red-600 text-sm">{erro}</p></div>}
 
       {produtos.length > 0 && (
-        <input
-          type="text"
-          placeholder="Buscar por fabricante ou linha..."
-          value={filtro}
-          onChange={(e) => setFiltro(e.target.value)}
-          className="w-full px-4 py-3 rounded-lg border border-gray-300 mb-4 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <div className="relative mb-4">
+          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Buscar por fabricante ou linha..."
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm placeholder:text-slate-300"
+          />
+        </div>
       )}
 
       {produtos.length === 0 ? (
@@ -91,15 +96,15 @@ export default function ProdutosList() {
       ) : (
         <div className="space-y-3">
           {filtrados.map((p) => (
-            <div key={p.id} className="bg-white rounded-lg border border-gray-200 p-4">
+            <div key={p.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm hover:shadow-md">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-semibold text-gray-900">{p.fabricante} — {p.linha}</p>
-                  <p className="text-sm text-gray-500 mt-1">{formatCurrency(p.preco_por_m2)}/m²</p>
+                  <p className="font-semibold text-slate-900">{p.fabricante} — {p.linha}</p>
+                  <p className="text-sm text-slate-500 mt-1">{formatCurrency(p.preco_por_m2)}/m²</p>
                 </div>
                 <div className="flex gap-3">
-                  <Link to={`/produtos/${p.id}/editar`} className="text-sm text-blue-600 font-medium no-underline">Editar</Link>
-                  <button onClick={() => setConfirmDeleteId(p.id)} className="text-sm text-red-500 font-medium">Excluir</button>
+                  <Link to={`/produtos/${p.id}/editar`} className="text-sm text-blue-600 font-semibold no-underline hover:text-blue-700">Editar</Link>
+                  <button onClick={() => setConfirmDeleteId(p.id)} className="text-sm text-red-500 font-semibold hover:text-red-600">Excluir</button>
                 </div>
               </div>
             </div>

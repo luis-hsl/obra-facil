@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/useAuth';
 
+const inputClass = 'w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm placeholder:text-slate-300';
+
 export default function ProdutoForm() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -73,71 +75,73 @@ export default function ProdutoForm() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-900 mb-4">
+      <h2 className="text-2xl font-bold text-slate-900 mb-5">
         {isEditing ? 'Editar Produto' : 'Cadastrar Produto'}
       </h2>
 
-      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+      {erro && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4"><p className="text-red-600 text-sm">{erro}</p></div>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Fabricante *
-          </label>
-          <input
-            type="text"
-            value={fabricante}
-            onChange={(e) => setFabricante(e.target.value)}
-            required
-            placeholder="Ex: Durafloor"
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+        <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              Fabricante *
+            </label>
+            <input
+              type="text"
+              value={fabricante}
+              onChange={(e) => setFabricante(e.target.value)}
+              required
+              placeholder="Ex: Durafloor"
+              className={inputClass}
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Linha *
-          </label>
-          <input
-            type="text"
-            value={linha}
-            onChange={(e) => setLinha(e.target.value)}
-            required
-            placeholder="Ex: New Way"
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              Linha *
+            </label>
+            <input
+              type="text"
+              value={linha}
+              onChange={(e) => setLinha(e.target.value)}
+              required
+              placeholder="Ex: New Way"
+              className={inputClass}
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Valor do m² (R$) *
-          </label>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0.01"
-            value={precoPorM2}
-            onChange={(e) => setPrecoPorM2(e.target.value)}
-            required
-            placeholder="Ex: 120.00"
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="text-xs text-gray-400 mt-1">Preço por metro quadrado do produto</p>
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              Valor do m² (R$) *
+            </label>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0.01"
+              value={precoPorM2}
+              onChange={(e) => setPrecoPorM2(e.target.value)}
+              required
+              placeholder="Ex: 120.00"
+              className={inputClass}
+            />
+            <p className="text-xs text-slate-400 mt-1.5">Preço por metro quadrado do produto</p>
+          </div>
         </div>
 
         <div className="flex gap-3">
           <button
             type="button"
             onClick={() => navigate('/produtos')}
-            className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 font-semibold"
+            className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-700 font-semibold bg-white shadow-sm hover:bg-slate-50 active:scale-[0.98]"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50"
+            className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold disabled:opacity-50 shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]"
           >
             {loading ? 'Salvando...' : 'Salvar'}
           </button>
@@ -146,9 +150,9 @@ export default function ProdutoForm() {
 
       {/* Resumo do produto */}
       {fabricante && linha && preco > 0 && (
-        <div className="mt-6 bg-green-100 rounded-lg p-4 space-y-1">
-          <p className="text-sm font-semibold text-green-800">{fabricante} — {linha}</p>
-          <p className="text-sm text-green-800">{formatCurrency(preco)}/m²</p>
+        <div className="mt-6 bg-emerald-50 rounded-xl border border-emerald-200 p-4 space-y-1">
+          <p className="text-sm font-bold text-emerald-800">{fabricante} — {linha}</p>
+          <p className="text-sm text-emerald-700">{formatCurrency(preco)}/m²</p>
         </div>
       )}
     </div>

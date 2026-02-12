@@ -51,7 +51,7 @@ function TemplatePreviewIcon({ preset, color, active }: { preset: PdfPreset; col
   const style = preset.budgetTable.style;
   return (
     <div className={`w-full aspect-[3/4] rounded-md border-2 p-1.5 flex flex-col gap-0.5 transition-all ${
-      active ? 'border-blue-500 shadow-sm' : 'border-gray-200'
+      active ? 'border-blue-500 shadow-sm' : 'border-slate-200'
     }`}>
       {/* header bar */}
       <div className="h-1.5 rounded-sm" style={{ backgroundColor: preset.header.showBackground ? color : 'transparent', border: preset.header.showBackground ? 'none' : `1px solid ${color}` }} />
@@ -59,29 +59,29 @@ function TemplatePreviewIcon({ preset, color, active }: { preset: PdfPreset; col
       {style === 'table' && (
         <>
           <div className="h-1 rounded-sm mt-0.5" style={{ backgroundColor: color, opacity: 0.7 }} />
-          <div className="h-0.5 bg-gray-200 rounded-sm" />
-          <div className="h-0.5 bg-gray-100 rounded-sm" />
-          <div className="h-0.5 bg-gray-200 rounded-sm" />
-          <div className="h-0.5 bg-gray-100 rounded-sm" />
+          <div className="h-0.5 bg-slate-200 rounded-sm" />
+          <div className="h-0.5 bg-slate-100 rounded-sm" />
+          <div className="h-0.5 bg-slate-200 rounded-sm" />
+          <div className="h-0.5 bg-slate-100 rounded-sm" />
         </>
       )}
       {style === 'cards' && (
         <>
-          <div className="flex-1 rounded-sm border border-gray-200 mt-0.5">
+          <div className="flex-1 rounded-sm border border-slate-200 mt-0.5">
             <div className="h-1 rounded-t-sm" style={{ backgroundColor: color }} />
           </div>
-          <div className="flex-1 rounded-sm border border-gray-200">
+          <div className="flex-1 rounded-sm border border-slate-200">
             <div className="h-1 rounded-t-sm" style={{ backgroundColor: color }} />
           </div>
         </>
       )}
       {style === 'list' && (
         <>
-          <div className="h-0.5 bg-gray-300 rounded-sm mt-1 w-3/4" />
-          <div className="h-0.5 bg-gray-200 rounded-sm w-1/2 ml-1" />
-          <div className="h-px bg-gray-100 my-0.5" />
-          <div className="h-0.5 bg-gray-300 rounded-sm w-3/4" />
-          <div className="h-0.5 bg-gray-200 rounded-sm w-1/2 ml-1" />
+          <div className="h-0.5 bg-slate-300 rounded-sm mt-1 w-3/4" />
+          <div className="h-0.5 bg-slate-200 rounded-sm w-1/2 ml-1" />
+          <div className="h-px bg-slate-100 my-0.5" />
+          <div className="h-0.5 bg-slate-300 rounded-sm w-3/4" />
+          <div className="h-0.5 bg-slate-200 rounded-sm w-1/2 ml-1" />
         </>
       )}
       {/* footer line */}
@@ -271,43 +271,47 @@ export default function MarcaConfig() {
     setTimeout(() => setMsg(''), 3000);
   };
 
-  if (loading) return <p className="text-gray-500 text-center py-10">Carregando...</p>;
+  if (loading) return <p className="text-slate-500 text-center py-10">Carregando...</p>;
 
   return (
     <div className={`transition-all ${previewOpen ? 'pb-[55vh] md:pb-0 md:pr-[420px]' : ''}`}>
       {/* Page header */}
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-xl font-bold text-gray-900">Minha Marca</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Minha Marca</h2>
         <div className="flex gap-2">
           <button type="button" onClick={() => { setTokenConfig(DEFAULT_PDF_BRAND_CONFIG); setMsg('Resetado!'); setTimeout(() => setMsg(''), 2000); }}
-            className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors">
+            className="px-3 py-2 rounded-xl text-sm font-medium border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
             Resetar
           </button>
           <button type="button" onClick={() => setPreviewOpen(p => !p)}
-            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-              previewOpen ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+            className={`px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
+              previewOpen ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}>
             {previewOpen ? 'Fechar' : 'Preview'}
           </button>
           <button type="button" onClick={handleSave} disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition-colors">
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98] transition-all">
             {saving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
       </div>
-      {msg && <p className={`text-sm mb-4 ${msg.includes('Erro') ? 'text-red-600' : 'text-green-600'}`}>{msg}</p>}
+      {msg && (
+        <div className={`rounded-xl px-4 py-3 mb-4 ${msg.includes('Erro') ? 'bg-red-50 border border-red-200' : 'bg-emerald-50 border border-emerald-200'}`}>
+          <p className={`text-sm font-medium ${msg.includes('Erro') ? 'text-red-600' : 'text-emerald-700'}`}>{msg}</p>
+        </div>
+      )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-6">
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6">
         <button onClick={() => setActiveTab('template')}
-          className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'template' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'template' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           }`}>
           Design do PDF
         </button>
         <button onClick={() => setActiveTab('empresa')}
-          className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'empresa' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'empresa' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           }`}>
           Dados da Empresa
         </button>
@@ -321,7 +325,7 @@ export default function MarcaConfig() {
 
           {/* Template selector */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">Escolha o estilo</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-3">Escolha o estilo</label>
             <div className="grid grid-cols-3 gap-3">
               {Object.values(PDF_PRESETS).map(preset => {
                 const active = tokenConfig.templateId === preset.id;
@@ -329,13 +333,13 @@ export default function MarcaConfig() {
                   <button key={preset.id} type="button"
                     onClick={() => setTokenConfig(t => ({ ...t, templateId: preset.id }))}
                     className={`rounded-xl border-2 p-3 text-center transition-all ${
-                      active ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      active ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-slate-200 hover:border-slate-200 hover:bg-slate-50'
                     }`}>
                     <div className="w-12 mx-auto mb-2">
                       <TemplatePreviewIcon preset={preset} color={tokenConfig.colors.primary} active={active} />
                     </div>
-                    <div className={`text-sm font-semibold ${active ? 'text-blue-700' : 'text-gray-800'}`}>{preset.label}</div>
-                    <div className="text-[11px] text-gray-500 mt-0.5 leading-tight">{preset.description}</div>
+                    <div className={`text-sm font-semibold ${active ? 'text-blue-700' : 'text-slate-800'}`}>{preset.label}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">{preset.description}</div>
                   </button>
                 );
               })}
@@ -343,33 +347,33 @@ export default function MarcaConfig() {
           </div>
 
           {/* Cores */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Cores</h3>
+          <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Cores</h3>
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
               <div className="flex items-center gap-2.5">
                 <input type="color" value={tokenConfig.colors.primary} onChange={e => updateColor('primary', e.target.value)}
-                  className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer p-0" />
-                <span className="text-sm text-gray-600">Principal</span>
+                  className="w-8 h-8 rounded-md border border-slate-200 cursor-pointer p-0" />
+                <span className="text-sm text-slate-600">Principal</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <input type="color" value={tokenConfig.colors.secondary} onChange={e => updateColor('secondary', e.target.value)}
-                  className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer p-0" />
-                <span className="text-sm text-gray-600">Destaque</span>
+                  className="w-8 h-8 rounded-md border border-slate-200 cursor-pointer p-0" />
+                <span className="text-sm text-slate-600">Destaque</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <input type="color" value={tokenConfig.colors.text} onChange={e => updateColor('text', e.target.value)}
-                  className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer p-0" />
-                <span className="text-sm text-gray-600">Texto</span>
+                  className="w-8 h-8 rounded-md border border-slate-200 cursor-pointer p-0" />
+                <span className="text-sm text-slate-600">Texto</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <input type="color" value={tokenConfig.colors.muted} onChange={e => updateColor('muted', e.target.value)}
-                  className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer p-0" />
-                <span className="text-sm text-gray-600">Sutil</span>
+                  className="w-8 h-8 rounded-md border border-slate-200 cursor-pointer p-0" />
+                <span className="text-sm text-slate-600">Sutil</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <input type="color" value={tokenConfig.colors.border} onChange={e => updateColor('border', e.target.value)}
-                  className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer p-0" />
-                <span className="text-sm text-gray-600">Bordas</span>
+                  className="w-8 h-8 rounded-md border border-slate-200 cursor-pointer p-0" />
+                <span className="text-sm text-slate-600">Bordas</span>
               </div>
             </div>
             {/* Barra de preview das cores */}
@@ -383,27 +387,27 @@ export default function MarcaConfig() {
           </div>
 
           {/* Tipografia e Densidade */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700">Tipografia</h3>
+          <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm space-y-4">
+            <h3 className="text-sm font-semibold text-slate-700">Tipografia</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-gray-500 mb-1.5">Fonte</label>
+                <label className="block text-xs text-slate-500 mb-1.5">Fonte</label>
                 <select value={tokenConfig.typography.fontFamily}
                   onChange={e => updateTypo('fontFamily', e.target.value as PdfBrandConfig['typography']['fontFamily'])}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white shadow-sm">
                   <option value="helvetica">Helvetica</option>
                   <option value="times">Times</option>
                   <option value="courier">Courier</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1.5">Titulo</label>
+                <label className="block text-xs text-slate-500 mb-1.5">Titulo</label>
                 <div className="flex gap-1.5">
                   {(['bold', 'normal'] as const).map(w => (
                     <button key={w} type="button" onClick={() => updateTypo('headingWeight', w)}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                         tokenConfig.typography.headingWeight === w
-                          ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                       }`}>
                       {w === 'bold' ? 'Negrito' : 'Normal'}
                     </button>
@@ -412,7 +416,7 @@ export default function MarcaConfig() {
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5">Densidade do layout</label>
+              <label className="block text-xs text-slate-500 mb-1.5">Densidade do layout</label>
               <div className="flex gap-1.5">
                 {([
                   { v: 'compact' as const, l: 'Compacto' },
@@ -422,7 +426,7 @@ export default function MarcaConfig() {
                   <button key={d.v} type="button" onClick={() => updateLayout('density', d.v)}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                       tokenConfig.layout.density === d.v
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                     }`}>
                     {d.l}
                   </button>
@@ -432,31 +436,31 @@ export default function MarcaConfig() {
           </div>
 
           {/* Observações e rodapé */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700">Observações e Rodapé</h3>
+          <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm space-y-3">
+            <h3 className="text-sm font-semibold text-slate-700">Observações e Rodapé</h3>
             <textarea value={footerText} onChange={e => setFooterText(e.target.value)}
               rows={2} placeholder="Ex: Orçamento válido por 15 dias..."
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none" />
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm shadow-sm resize-none" />
             <div className="flex items-center gap-3">
-              <label className="text-sm text-gray-600">Validade:</label>
+              <label className="text-sm text-slate-600">Validade:</label>
               <div className="flex items-center gap-1.5">
                 <input type="number" value={validityDays}
                   onChange={e => setValidityDays(Math.max(1, Math.min(90, Number(e.target.value))))}
-                  min={1} max={90} className="w-16 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-center" />
-                <span className="text-sm text-gray-500">dias</span>
+                  min={1} max={90} className="w-16 px-2 py-1.5 border border-slate-200 rounded-xl text-sm text-center shadow-sm" />
+                <span className="text-sm text-slate-500">dias</span>
               </div>
             </div>
             <div className="flex gap-4">
-              <label className="flex items-center gap-2 text-sm text-gray-600">
+              <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" checked={tokenConfig.layout.showNotes}
                   onChange={e => updateLayout('showNotes', e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600" />
+                  className="rounded border-slate-200 text-blue-600" />
                 Observações
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-600">
+              <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" checked={tokenConfig.layout.showFooter}
                   onChange={e => updateLayout('showFooter', e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600" />
+                  className="rounded border-slate-200 text-blue-600" />
                 Rodapé
               </label>
             </div>
@@ -471,29 +475,29 @@ export default function MarcaConfig() {
         <div className="space-y-6">
 
           {/* Logo */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700">Logo da empresa</h3>
+          <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm space-y-4">
+            <h3 className="text-sm font-semibold text-slate-700">Logo da empresa</h3>
             <div className="flex items-start gap-4">
               {logoPreview ? (
-                <img src={logoPreview} alt="Logo" className="h-16 w-24 object-contain rounded-lg border border-gray-200 bg-gray-50 p-1" />
+                <img src={logoPreview} alt="Logo" className="h-16 w-24 object-contain rounded-lg border border-slate-200 bg-slate-50 p-1" />
               ) : (
-                <div className="h-16 w-24 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="h-16 w-24 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
               )}
               <div className="flex-1">
-                <label className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+                <label className="inline-block px-3 py-1.5 bg-slate-100 text-slate-700 text-sm font-medium rounded-xl cursor-pointer hover:bg-slate-200 transition-colors">
                   Enviar logo
                   <input type="file" accept="image/png,image/jpeg" onChange={handleLogoUpload} className="hidden" />
                 </label>
-                <p className="text-xs text-gray-400 mt-1.5">PNG ou JPEG</p>
+                <p className="text-xs text-slate-400 mt-1.5">PNG ou JPEG</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Posição no PDF</label>
+                <label className="block text-xs text-slate-500 mb-1">Posição no PDF</label>
                 <div className="flex gap-1.5">
                   {([
                     { v: 'left' as const, l: 'Esq.' },
@@ -503,7 +507,7 @@ export default function MarcaConfig() {
                     <button key={p.v} type="button" onClick={() => updateLogo('alignment', p.v)}
                       className={`flex-1 py-1.5 rounded-md text-xs font-medium border transition-colors ${
                         tokenConfig.logo.alignment === p.v
-                          ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                       }`}>
                       {p.l}
                     </button>
@@ -511,7 +515,7 @@ export default function MarcaConfig() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Tamanho</label>
+                <label className="block text-xs text-slate-500 mb-1">Tamanho</label>
                 <div className="flex gap-1.5">
                   {([
                     { v: 'small' as const, l: 'Pequeno' },
@@ -520,7 +524,7 @@ export default function MarcaConfig() {
                     <button key={s.v} type="button" onClick={() => updateLogo('size', s.v)}
                       className={`flex-1 py-1.5 rounded-md text-xs font-medium border transition-colors ${
                         tokenConfig.logo.size === s.v
-                          ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                       }`}>
                       {s.l}
                     </button>
@@ -531,53 +535,53 @@ export default function MarcaConfig() {
           </div>
 
           {/* Dados da empresa */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700">Informações</h3>
+          <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm space-y-3">
+            <h3 className="text-sm font-semibold text-slate-700">Informações</h3>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Nome da empresa</label>
+              <label className="block text-xs text-slate-500 mb-1">Nome da empresa</label>
               <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)}
                 placeholder="Ex: João Pisos & Revestimentos"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">CNPJ / CPF</label>
+                <label className="block text-xs text-slate-500 mb-1">CNPJ / CPF</label>
                 <input type="text" value={companyCnpj} onChange={e => setCompanyCnpj(e.target.value)}
                   placeholder="00.000.000/0000-00"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Telefone</label>
+                <label className="block text-xs text-slate-500 mb-1">Telefone</label>
                 <input type="tel" value={companyPhone} onChange={e => setCompanyPhone(e.target.value)}
                   placeholder="(00) 00000-0000"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Email</label>
+              <label className="block text-xs text-slate-500 mb-1">Email</label>
               <input type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)}
                 placeholder="contato@empresa.com"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Endereço</label>
+              <label className="block text-xs text-slate-500 mb-1">Endereço</label>
               <input type="text" value={companyAddress} onChange={e => setCompanyAddress(e.target.value)}
                 placeholder="Rua, número, bairro — cidade/UF"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
             </div>
           </div>
 
           {/* Resumo visual */}
           {companyName && (
-            <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
-              <p className="text-xs text-gray-400 mb-2 uppercase tracking-wider">Dados que aparecem no PDF</p>
-              <p className="text-sm font-semibold text-gray-800">{companyName}</p>
-              {companyCnpj && <p className="text-xs text-gray-500">{companyCnpj}</p>}
+            <div className="bg-slate-50 rounded-xl border border-slate-100 p-4">
+              <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider">Dados que aparecem no PDF</p>
+              <p className="text-sm font-semibold text-slate-800">{companyName}</p>
+              {companyCnpj && <p className="text-xs text-slate-500">{companyCnpj}</p>}
               <div className="flex gap-4 mt-1">
-                {companyPhone && <p className="text-xs text-gray-500">{companyPhone}</p>}
-                {companyEmail && <p className="text-xs text-gray-500">{companyEmail}</p>}
+                {companyPhone && <p className="text-xs text-slate-500">{companyPhone}</p>}
+                {companyEmail && <p className="text-xs text-slate-500">{companyEmail}</p>}
               </div>
-              {companyAddress && <p className="text-xs text-gray-500 mt-0.5">{companyAddress}</p>}
+              {companyAddress && <p className="text-xs text-slate-500 mt-0.5">{companyAddress}</p>}
             </div>
           )}
         </div>
@@ -585,22 +589,22 @@ export default function MarcaConfig() {
 
       {/* Live Preview Panel */}
       {previewOpen && (
-        <div className="fixed bottom-0 left-0 right-0 h-[50vh] bg-white border-t border-gray-200 shadow-2xl z-40
+        <div className="fixed bottom-0 left-0 right-0 h-[50vh] bg-white border-t border-slate-200 shadow-2xl z-40
                         md:top-0 md:bottom-0 md:left-auto md:right-0 md:w-[400px] md:h-full md:border-t-0 md:border-l">
-          <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-            <span className="text-sm font-semibold text-gray-700">Preview do PDF</span>
+          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+            <span className="text-sm font-semibold text-slate-700">Preview do PDF</span>
             <button onClick={() => setPreviewOpen(false)}
-              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div className="h-[calc(100%-42px)] bg-gray-100">
+          <div className="h-[calc(100%-42px)] bg-slate-100">
             {previewUrl ? (
               <iframe src={previewUrl} className="w-full h-full" title="PDF Preview" />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+              <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
                 <svg className="w-8 h-8 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />

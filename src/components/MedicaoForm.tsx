@@ -244,22 +244,22 @@ export default function MedicaoForm({ atendimentoId, medicoes, currentStatus, on
       {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
 
       {!showForm && medicao ? (
-        <div className="bg-green-50 rounded-lg border border-green-200 p-4">
+        <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-4">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-semibold text-green-800">Medição registrada</p>
+            <p className="text-sm font-bold text-emerald-800">Medição registrada</p>
             <button onClick={startEdit} className="text-sm text-blue-600 font-medium">
               Editar
             </button>
           </div>
-          <p className="text-2xl font-bold text-green-900">{medicao.area_total} m²</p>
-          <p className="text-sm text-green-700">Perda: {medicao.perda_percentual || 10}%</p>
-          <p className="text-sm text-green-600">
+          <p className="text-2xl font-bold text-emerald-900">{medicao.area_total} m²</p>
+          <p className="text-sm text-emerald-700">Perda: {medicao.perda_percentual || 10}%</p>
+          <p className="text-sm text-emerald-600">
             Área final: {(medicao.area_total * (1 + (medicao.perda_percentual || 10) / 100)).toFixed(2)} m²
           </p>
           {renderVisualizacao()}
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-100 p-4 space-y-4 shadow-sm">
           {/* Cômodos */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -277,7 +277,7 @@ export default function MedicaoForm({ atendimentoId, medicoes, currentStatus, on
               {comodos.map((comodo, index) => {
                 const area = calcularAreaComodo(comodo);
                 return (
-                  <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div key={index} className="bg-slate-50 rounded-xl p-3 border border-slate-200">
                     {/* Nome e remover */}
                     <div className="flex items-center gap-2 mb-2">
                       <input
@@ -286,7 +286,7 @@ export default function MedicaoForm({ atendimentoId, medicoes, currentStatus, on
                         value={comodo.nome}
                         onChange={(e) => atualizarComodo(index, 'nome', e.target.value)}
                         placeholder="ex: Sala"
-                        className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                       />
                       {comodos.length > 1 && (
                         <button
@@ -400,7 +400,7 @@ export default function MedicaoForm({ atendimentoId, medicoes, currentStatus, on
 
           {/* Total em tempo real */}
           {areaTotal > 0 && (
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
               <p className="text-sm text-blue-600 font-medium">Área total medida:</p>
               <p className="text-3xl font-bold text-blue-900">{areaTotal.toFixed(2)} m²</p>
             </div>
@@ -428,9 +428,9 @@ export default function MedicaoForm({ atendimentoId, medicoes, currentStatus, on
 
           {/* Área final com perda */}
           {areaTotal > 0 && (
-            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-              <p className="text-sm text-green-600 font-medium">Área final (com {perda}% perda):</p>
-              <p className="text-3xl font-bold text-green-900">{areaComPerda.toFixed(2)} m²</p>
+            <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-200">
+              <p className="text-sm text-emerald-600 font-medium">Área final (com {perda}% perda):</p>
+              <p className="text-3xl font-bold text-emerald-900">{areaComPerda.toFixed(2)} m²</p>
             </div>
           )}
 
@@ -439,7 +439,7 @@ export default function MedicaoForm({ atendimentoId, medicoes, currentStatus, on
               <button
                 type="button"
                 onClick={() => { setEditing(false); setErro(''); setComodos([criarComodoVazio()]); }}
-                className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium"
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-700 font-semibold bg-white shadow-sm hover:bg-slate-50"
               >
                 Cancelar
               </button>
@@ -447,7 +447,7 @@ export default function MedicaoForm({ atendimentoId, medicoes, currentStatus, on
             <button
               type="submit"
               disabled={loading || areaTotal <= 0}
-              className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50"
+              className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold disabled:opacity-50 shadow-lg shadow-blue-500/20"
             >
               {loading ? 'Salvando...' : 'Salvar Medição'}
             </button>

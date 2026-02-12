@@ -60,23 +60,37 @@ export default function Login() {
     setLoading(false);
   };
 
-  const inputClass = 'w-full px-4 py-3 rounded-lg border border-gray-300 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
+  const inputClass = 'w-full px-4 py-3 rounded-xl border border-slate-200 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm placeholder:text-slate-300';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-bold text-center text-gray-900 mb-2">
-          Obra Fácil
-        </h1>
-        <p className="text-center text-gray-500 mb-8">
-          {isSignUp ? 'Crie sua conta' : 'Gerencie suas obras de forma simples'}
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 flex items-center justify-center p-4">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full" />
+        <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-white/5 rounded-full" />
+        <div className="absolute top-1/3 left-10 w-32 h-32 bg-white/5 rounded-full" />
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {isSignUp && (
-            <>
+      <div className="w-full max-w-sm relative animate-fade-in">
+        {/* Brand header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-sm mb-4 shadow-lg">
+            <span className="text-white font-bold text-2xl">OF</span>
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">
+            Obra Fácil
+          </h1>
+          <p className="text-blue-100 text-sm">
+            {isSignUp ? 'Crie sua conta para começar' : 'Gerencie suas obras de forma simples'}
+          </p>
+        </div>
+
+        {/* Form card */}
+        <div className="bg-white rounded-2xl shadow-2xl p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Nome completo *
                 </label>
                 <input
@@ -88,125 +102,134 @@ export default function Login() {
                   className={inputClass}
                 />
               </div>
-            </>
-          )}
-
-          <div>
-            {isSignUp && (
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email *
-              </label>
             )}
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className={inputClass}
-            />
-          </div>
 
-          {isSignUp && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Telefone / WhatsApp *
-                </label>
-                <input
-                  type="tel"
-                  placeholder="(00) 00000-0000"
-                  value={telefone}
-                  onChange={(e) => setTelefone(formatTelefone(e.target.value))}
-                  required
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Empresa
-                </label>
-                <input
-                  type="text"
-                  placeholder="Nome da empresa (opcional)"
-                  value={empresa}
-                  onChange={(e) => setEmpresa(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  CPF ou CNPJ
-                </label>
-                <input
-                  type="text"
-                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                  value={cpfCnpj}
-                  onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))}
-                  className={inputClass}
-                />
-              </div>
-            </>
-          )}
-
-          <div>
-            {isSignUp && (
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Senha *
-              </label>
-            )}
-            <input
-              type="password"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className={inputClass}
-            />
-          </div>
-
-          {isSignUp && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Confirmar senha *
-              </label>
+              {isSignUp && (
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Email *
+                </label>
+              )}
+              <input
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className={inputClass}
+              />
+            </div>
+
+            {isSignUp && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Telefone / WhatsApp *
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="(00) 00000-0000"
+                    value={telefone}
+                    onChange={(e) => setTelefone(formatTelefone(e.target.value))}
+                    required
+                    className={inputClass}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Empresa
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Nome da empresa (opcional)"
+                    value={empresa}
+                    onChange={(e) => setEmpresa(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    CPF ou CNPJ
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                    value={cpfCnpj}
+                    onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))}
+                    className={inputClass}
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              {isSignUp && (
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Senha *
+                </label>
+              )}
               <input
                 type="password"
-                placeholder="Digite a senha novamente"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
                 className={inputClass}
               />
             </div>
-          )}
 
-          {error && (
-            <p className="text-red-600 text-sm">{error}</p>
-          )}
+            {isSignUp && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Confirmar senha *
+                </label>
+                <input
+                  type="password"
+                  placeholder="Digite a senha novamente"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className={inputClass}
+                />
+              </div>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold disabled:opacity-50"
-          >
-            {loading ? 'Aguarde...' : isSignUp ? 'Criar conta' : 'Entrar'}
-          </button>
-        </form>
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
 
-        <button
-          onClick={() => {
-            setIsSignUp(!isSignUp);
-            setError('');
-          }}
-          className="w-full mt-4 text-blue-600 text-sm"
-        >
-          {isSignUp ? 'Já tenho conta' : 'Criar nova conta'}
-        </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-base font-semibold disabled:opacity-50 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]"
+            >
+              {loading ? 'Aguarde...' : isSignUp ? 'Criar conta' : 'Entrar'}
+            </button>
+          </form>
+
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <button
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError('');
+              }}
+              className="w-full text-center text-blue-600 text-sm font-medium hover:text-blue-700"
+            >
+              {isSignUp ? 'Já tenho conta' : 'Criar nova conta'}
+            </button>
+          </div>
+        </div>
+
+        {/* Trust signal */}
+        <p className="text-center text-blue-200/60 text-xs mt-6">
+          Seus dados estão seguros e criptografados
+        </p>
       </div>
     </div>
   );

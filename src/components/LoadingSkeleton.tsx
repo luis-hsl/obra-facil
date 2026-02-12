@@ -5,14 +5,14 @@ interface LoadingSkeletonProps {
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
+    <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="h-4 bg-gray-200 rounded w-40 mb-2" />
-          <div className="h-3 bg-gray-100 rounded w-56 mb-1" />
-          <div className="h-3 bg-gray-100 rounded w-24" />
+          <div className="h-4 animate-shimmer rounded-lg w-40 mb-2.5" />
+          <div className="h-3 animate-shimmer rounded-lg w-56 mb-1.5" />
+          <div className="h-3 animate-shimmer rounded-lg w-24" />
         </div>
-        <div className="h-6 bg-gray-200 rounded-full w-20" />
+        <div className="h-6 animate-shimmer rounded-lg w-20" />
       </div>
     </div>
   );
@@ -20,9 +20,9 @@ function SkeletonCard() {
 
 function SkeletonKpi() {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
-      <div className="h-3 bg-gray-100 rounded w-24 mb-2" />
-      <div className="h-7 bg-gray-200 rounded w-32" />
+    <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+      <div className="h-3 animate-shimmer rounded-lg w-24 mb-2.5" />
+      <div className="h-7 animate-shimmer rounded-lg w-32" />
     </div>
   );
 }

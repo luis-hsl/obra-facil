@@ -21,6 +21,8 @@ function formatPhone(value: string): string {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
+const inputClass = 'w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm placeholder:text-slate-300';
+
 export default function AtendimentoForm() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -63,7 +65,6 @@ export default function AtendimentoForm() {
           setCidade(data.cidade || '');
           setObservacoes(data.observacoes || '');
           setStatus(data.status);
-          // Set tipo_servico: check if it's a predefined or custom value
           if (TIPOS_SERVICO.includes(data.tipo_servico)) {
             setTipoServico(data.tipo_servico);
           } else {
@@ -110,88 +111,87 @@ export default function AtendimentoForm() {
         .single();
 
       if (error || !data) { setErro('Erro ao salvar atendimento.'); setLoading(false); return; }
-      // Redirect to the new atendimento detail so user sees next steps
       navigate(`/atendimentos/${data.id}?novo=1`);
     }
   };
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-900 mb-4">
+      <h2 className="text-2xl font-bold text-slate-900 mb-5">
         {isEditing ? 'Editar Atendimento' : 'Novo Atendimento'}
       </h2>
 
-      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+      {erro && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4"><p className="text-red-600 text-sm">{erro}</p></div>}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Cliente */}
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold text-gray-700 mb-1">Cliente</legend>
+        <fieldset className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm space-y-3">
+          <legend className="text-sm font-bold text-slate-700 px-1">Cliente</legend>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">Nome *</label>
             <input
               type="text"
               value={clienteNome}
               onChange={(e) => setClienteNome(e.target.value)}
               placeholder="Nome do cliente"
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Telefone / WhatsApp *</label>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">Telefone / WhatsApp *</label>
             <input
               type="tel"
               value={clienteTelefone}
               onChange={(e) => setClienteTelefone(formatPhone(e.target.value))}
               placeholder="(00) 00000-0000"
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
             />
           </div>
         </fieldset>
 
         {/* Endereço */}
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold text-gray-700 mb-1">Endereço da Obra</legend>
+        <fieldset className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm space-y-3">
+          <legend className="text-sm font-bold text-slate-700 px-1">Endereço da Obra</legend>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Endereço *</label>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">Endereço *</label>
             <input type="text" value={endereco} onChange={(e) => setEndereco(e.target.value)} placeholder="Rua, Avenida..."
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className={inputClass} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1.5">Número</label>
               <input type="text" value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="123"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1.5">Complemento</label>
               <input type="text" value={complemento} onChange={(e) => setComplemento(e.target.value)} placeholder="Apto 12, Bloco B"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className={inputClass} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1.5">Bairro</label>
               <input type="text" value={bairro} onChange={(e) => setBairro(e.target.value)} placeholder="Bairro"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1.5">Cidade</label>
               <input type="text" value={cidade} onChange={(e) => setCidade(e.target.value)} placeholder="Cidade"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className={inputClass} />
             </div>
           </div>
         </fieldset>
 
         {/* Serviço */}
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold text-gray-700 mb-1">Serviço</legend>
+        <fieldset className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm space-y-3">
+          <legend className="text-sm font-bold text-slate-700 px-1">Serviço</legend>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Serviço *</label>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">Tipo de Serviço *</label>
             <select
               value={tipoServico}
               onChange={(e) => { setTipoServico(e.target.value); if (e.target.value !== 'outro') setTipoServicoCustom(''); }}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
             >
               <option value="">Selecione...</option>
               {TIPOS_SERVICO.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -200,35 +200,35 @@ export default function AtendimentoForm() {
           </div>
           {tipoServico === 'outro' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Especifique o serviço *</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1.5">Especifique o serviço *</label>
               <input
                 type="text"
                 value={tipoServicoCustom}
                 onChange={(e) => setTipoServicoCustom(e.target.value)}
                 placeholder="Ex: Instalação de persianas"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputClass}
               />
             </div>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">Observações</label>
             <textarea
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
               rows={3}
               placeholder="Ex: Cliente prefere horário pela manhã"
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
             />
           </div>
         </fieldset>
 
         {isEditing && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">Status</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
             >
               <option value="iniciado">Iniciado</option>
               <option value="visita_tecnica">Visita Técnica</option>
@@ -244,11 +244,11 @@ export default function AtendimentoForm() {
 
         <div className="flex gap-3">
           <button type="button" onClick={() => navigate(-1)}
-            className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 font-semibold">
+            className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-700 font-semibold bg-white shadow-sm hover:bg-slate-50 active:scale-[0.98]">
             Cancelar
           </button>
           <button type="submit" disabled={loading}
-            className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50">
+            className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold disabled:opacity-50 shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]">
             {loading ? 'Salvando...' : 'Salvar'}
           </button>
         </div>

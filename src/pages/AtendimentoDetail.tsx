@@ -14,7 +14,6 @@ type SectionId = 'medicao' | 'orcamento' | 'fechamento';
 
 const SECTION_STORAGE_KEY = 'atd-sections-';
 
-// Workflow hints per status
 const WORKFLOW_HINTS: Record<string, { message: string; section?: SectionId }> = {
   visita_tecnica: { message: 'Adicione a medição dos cômodos para continuar.', section: 'medicao' },
   medicao: { message: 'Gere um orçamento com os produtos disponíveis.', section: 'orcamento' },
@@ -63,7 +62,6 @@ export default function AtendimentoDetail() {
 
   useEffect(() => { loadData(); }, [id]);
 
-  // Dismiss new hint after 5s
   useEffect(() => {
     if (showNewHint) {
       const t = setTimeout(() => setShowNewHint(false), 5000);
@@ -110,17 +108,24 @@ export default function AtendimentoDetail() {
 
   return (
     <div>
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 mb-4 text-sm font-medium">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-slate-500 hover:text-slate-700 mb-4 text-sm font-semibold">
         <span className="text-lg">←</span> Voltar
       </button>
 
-      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+      {erro && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4"><p className="text-red-600 text-sm">{erro}</p></div>}
 
       {/* New atendimento success hint */}
       {showNewHint && (
-        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
-          <p className="text-sm text-green-700 font-medium">Atendimento criado com sucesso!</p>
-          <button onClick={() => setShowNewHint(false)} className="text-green-600 text-lg leading-none">×</button>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-4 flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </span>
+            <p className="text-sm text-emerald-700 font-semibold">Atendimento criado com sucesso!</p>
+          </div>
+          <button onClick={() => setShowNewHint(false)} className="text-emerald-600 text-lg leading-none hover:text-emerald-800">×</button>
         </div>
       )}
 
@@ -129,12 +134,12 @@ export default function AtendimentoDetail() {
 
       {/* Workflow hint */}
       {hint && atendimento.status !== 'concluido' && atendimento.status !== 'reprovado' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
           <p className="text-sm text-blue-700">
-            <span className="font-medium">Próximo passo:</span> {hint.message}
+            <span className="font-bold">Próximo passo:</span> {hint.message}
           </p>
           {hint.section && !expandedSections.has(hint.section) && (
-            <button onClick={() => toggleSection(hint.section!)} className="text-sm text-blue-600 font-medium mt-1">
+            <button onClick={() => toggleSection(hint.section!)} className="text-sm text-blue-600 font-semibold mt-1 hover:text-blue-700">
               Abrir seção →
             </button>
           )}
@@ -142,22 +147,22 @@ export default function AtendimentoDetail() {
       )}
 
       {/* Header card */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+      <div className="bg-white rounded-xl border border-slate-100 p-4 mb-4 shadow-sm">
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
-            <p className="text-xl font-bold text-gray-900">{atendimento.cliente_nome}</p>
-            <p className="text-sm text-gray-500 mt-1">{atendimento.cliente_telefone}</p>
-            <p className="text-sm text-gray-500 mt-1">{formatEndereco(atendimento)}</p>
-            <p className="text-sm text-gray-400 mt-1">{atendimento.tipo_servico}</p>
+            <p className="text-xl font-bold text-slate-900">{atendimento.cliente_nome}</p>
+            <p className="text-sm text-slate-500 mt-1">{atendimento.cliente_telefone}</p>
+            <p className="text-sm text-slate-500 mt-0.5">{formatEndereco(atendimento)}</p>
+            <p className="text-sm text-slate-400 mt-0.5">{atendimento.tipo_servico}</p>
           </div>
           <StatusBadge status={atendimento.status} />
         </div>
 
-        {atendimento.observacoes && <p className="text-sm text-gray-400 mt-2">{atendimento.observacoes}</p>}
+        {atendimento.observacoes && <p className="text-sm text-slate-400 mt-2 italic">{atendimento.observacoes}</p>}
 
-        <div className="flex items-center gap-4 mt-3">
-          <Link to={`/atendimentos/${id}/editar`} className="text-sm text-blue-600 font-medium no-underline">Editar</Link>
-          <button onClick={() => setShowDeleteConfirm(true)} className="text-sm text-red-500 font-medium">Excluir</button>
+        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
+          <Link to={`/atendimentos/${id}/editar`} className="text-sm text-blue-600 font-semibold no-underline hover:text-blue-700">Editar</Link>
+          <button onClick={() => setShowDeleteConfirm(true)} className="text-sm text-red-500 font-semibold hover:text-red-600">Excluir</button>
         </div>
       </div>
 
@@ -166,20 +171,20 @@ export default function AtendimentoDetail() {
         {sections.map((section) => {
           const isExpanded = expandedSections.has(section.id);
           return (
-            <div key={section.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <button onClick={() => toggleSection(section.id)} className="w-full flex items-center justify-between px-4 py-3 text-left">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${section.hasData ? 'bg-green-500' : 'bg-gray-300'}`} />
-                  <span className="font-semibold text-gray-900">{section.label}</span>
+            <div key={section.id} className="bg-white rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+              <button onClick={() => toggleSection(section.id)} className="w-full flex items-center justify-between px-4 py-3.5 text-left">
+                <div className="flex items-center gap-2.5">
+                  <span className={`w-2.5 h-2.5 rounded-full ${section.hasData ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-300'}`} />
+                  <span className="font-bold text-slate-900">{section.label}</span>
                   {section.id === 'medicao' && medicoes.length > 1 && (
-                    <span className="text-xs text-gray-400">({medicoes.length} registros)</span>
+                    <span className="text-xs text-slate-400 font-medium">({medicoes.length} registros)</span>
                   )}
                 </div>
-                <span className={`text-gray-400 text-lg transition-transform ${isExpanded ? 'rotate-90' : ''}`}>›</span>
+                <span className={`text-slate-400 text-lg ${isExpanded ? 'rotate-90' : ''}`}>›</span>
               </button>
 
               {isExpanded && (
-                <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+                <div className="px-4 pb-4 border-t border-slate-100 pt-3">
                   {section.id === 'medicao' && (
                     <MedicaoForm atendimentoId={atendimento.id} medicoes={medicoes} currentStatus={atendimento.status} onSave={loadData} />
                   )}

@@ -53,47 +53,51 @@ export default function AndamentoList() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Em Andamento</h2>
-          <p className="text-sm text-gray-500 mt-1">{atendimentos.length} atendimento(s)</p>
+          <h2 className="text-2xl font-bold text-slate-900">Em Andamento</h2>
+          <p className="text-sm text-slate-500 mt-0.5">{atendimentos.length} atendimento(s)</p>
         </div>
         <Link
           to="/atendimentos/novo"
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold no-underline"
+          className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold no-underline shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]"
         >
           + Novo
         </Link>
       </div>
 
-      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+      {erro && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4"><p className="text-red-600 text-sm">{erro}</p></div>}
 
-      <input
-        type="text"
-        placeholder="Buscar por cliente, endereço ou serviço..."
-        value={filtro}
-        onChange={(e) => setFiltro(e.target.value)}
-        className="w-full px-4 py-3 rounded-lg border border-gray-300 mb-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      <div className="relative mb-3">
+        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Buscar por cliente, endereço ou serviço..."
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm placeholder:text-slate-300"
+        />
+      </div>
 
       <div className="flex gap-2 mb-4 flex-wrap">
-        <button
-          onClick={() => setStatusFiltro('')}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-            !statusFiltro ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
-          }`}
-        >
-          Todos
-        </button>
-        {ANDAMENTO_STATUSES.map((s) => (
+        {[
+          { value: '' as const, label: 'Todos' },
+          { value: 'visita_tecnica' as AtendimentoStatus, label: 'Visita' },
+          { value: 'medicao' as AtendimentoStatus, label: 'Medição' },
+          { value: 'orcamento' as AtendimentoStatus, label: 'Orçamento' },
+        ].map((opt) => (
           <button
-            key={s}
-            onClick={() => setStatusFiltro(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-              statusFiltro === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
+            key={opt.value}
+            onClick={() => setStatusFiltro(opt.value)}
+            className={`px-3.5 py-1.5 rounded-xl text-sm font-semibold ${
+              statusFiltro === opt.value
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 shadow-sm'
             }`}
           >
-            {s === 'visita_tecnica' ? 'Visita' : s === 'medicao' ? 'Medição' : 'Orçamento'}
+            {opt.label}
           </button>
         ))}
       </div>
@@ -116,17 +120,17 @@ export default function AndamentoList() {
             <Link
               key={a.id}
               to={`/atendimentos/${a.id}`}
-              className="block bg-white rounded-lg border border-gray-200 p-4 no-underline"
+              className="block bg-white rounded-xl border border-slate-100 p-4 no-underline shadow-sm hover:shadow-md"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900">{a.cliente_nome}</p>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="font-semibold text-slate-900">{a.cliente_nome}</p>
+                  <p className="text-sm text-slate-500 mt-1">
                     {[a.endereco, a.numero, a.bairro, a.cidade].filter(Boolean).join(', ')}
                   </p>
-                  <div className="flex items-center gap-3 mt-1">
-                    <p className="text-sm text-gray-400">{a.tipo_servico}</p>
-                    <span className="text-xs text-gray-400">{formatDate(a.created_at)}</span>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <p className="text-sm text-slate-400">{a.tipo_servico}</p>
+                    <span className="text-xs text-slate-400">{formatDate(a.created_at)}</span>
                   </div>
                 </div>
                 <StatusBadge status={a.status} />

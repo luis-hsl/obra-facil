@@ -304,7 +304,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
             const prodLegado = o.produto_id ? produtosMap[o.produto_id] : null;
 
             return (
-              <div key={o.id} className={`rounded-lg border p-4 ${o.status === 'aprovado' ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200'}`}>
+              <div key={o.id} className={`rounded-xl border p-4 shadow-sm ${o.status === 'aprovado' ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <p className="font-semibold text-gray-700">
                     {temItens ? `${itensDoOrc.length} ${itensDoOrc.length === 1 ? 'opção' : 'opções'}` : 'Orçamento'}
@@ -321,7 +321,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                       const { totalComTaxa, parcela } = calcularParcelamento(item.valor_total, o.taxa_juros_mensal || 0, o.numero_parcelas || 12);
 
                       return (
-                        <div key={item.id} className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <div key={item.id} className="bg-blue-50 rounded-xl p-3 border border-blue-200">
                           <p className="text-xs text-blue-600 font-medium">Opção {idx + 1}</p>
                           <p className="font-semibold text-gray-900">
                             {prod ? `${prod.fabricante} — ${prod.linha}` : 'Produto removido'}
@@ -394,11 +394,11 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
 
       {/* Botão para criar novo orçamento */}
       {!showForm ? (
-        <button onClick={() => setShowForm(true)} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium">
+        <button onClick={() => setShowForm(true)} className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-semibold hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600">
           + Gerar Orçamento
         </button>
       ) : (
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-100 p-4 space-y-4 shadow-sm">
           {produtos.length === 0 ? (
             <p className="text-sm text-gray-500">
               Nenhum produto cadastrado.{' '}
@@ -412,7 +412,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                 <select
                   value={produtoSelecionado}
                   onChange={(e) => handleProdutoSelect(e.target.value)}
-                  className="w-full px-3 py-3 rounded-lg border border-gray-300 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-3 rounded-xl border border-slate-200 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                 >
                   <option value="">{itens.length > 0 ? '+ Adicionar outro produto...' : 'Escolha um produto...'}</option>
                   {produtosDisponiveis.map((p) => (
@@ -426,7 +426,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
 
               {/* Taxa da máquina */}
               {itens.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
                   <p className="text-sm font-medium text-gray-700 mb-2">Taxa da máquina (parcelamento):</p>
                   <div className="flex items-center gap-2 flex-wrap">
                     <select
@@ -483,7 +483,7 @@ export default function OrcamentoForm({ atendimentoId, atendimento, orcamentos, 
                     const taxaCobrada = totalComTaxa - item.valorTotal;
 
                     return (
-                      <div key={item.produtoId} className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <div key={item.produtoId} className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                         <div className="flex items-start justify-between mb-2">
                           <div>
                             <p className="text-xs text-blue-600 font-medium mb-1">Opção {index + 1}</p>

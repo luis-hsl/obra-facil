@@ -67,37 +67,42 @@ export default function OperacionalList() {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-bold text-gray-900">Operacional</h2>
-        <span className="text-sm text-gray-500">{atendimentos.length} atendimento(s)</span>
+        <h2 className="text-2xl font-bold text-slate-900">Operacional</h2>
+        <span className="text-sm text-slate-500 font-medium">{atendimentos.length} atendimento(s)</span>
       </div>
 
-      <p className="text-sm text-gray-500 mb-4">
+      <p className="text-sm text-slate-500 mb-4">
         Controle de custos dos projetos aprovados e em execução.
       </p>
 
       {/* Mini KPIs */}
       {atendimentos.length > 0 && (
         <div className="flex gap-3 mb-4">
-          <div className="flex-1 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-center">
-            <p className="text-lg font-bold text-orange-700">{pendentes}</p>
-            <p className="text-xs text-orange-600">Pendentes</p>
+          <div className="flex-1 bg-white rounded-xl border border-orange-100 px-3 py-3 text-center shadow-sm">
+            <p className="text-2xl font-bold text-orange-600">{pendentes}</p>
+            <p className="text-xs text-slate-500 font-medium">Pendentes</p>
           </div>
-          <div className="flex-1 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-center">
-            <p className="text-lg font-bold text-green-700">{preenchidos}</p>
-            <p className="text-xs text-green-600">Custos OK</p>
+          <div className="flex-1 bg-white rounded-xl border border-emerald-100 px-3 py-3 text-center shadow-sm">
+            <p className="text-2xl font-bold text-emerald-600">{preenchidos}</p>
+            <p className="text-xs text-slate-500 font-medium">Custos OK</p>
           </div>
         </div>
       )}
 
-      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
+      {erro && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4"><p className="text-red-600 text-sm">{erro}</p></div>}
 
-      <input
-        type="text"
-        placeholder="Buscar por cliente, endereço ou serviço..."
-        value={filtro}
-        onChange={(e) => setFiltro(e.target.value)}
-        className="w-full px-4 py-3 rounded-lg border border-gray-300 mb-4 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      <div className="relative mb-4">
+        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Buscar por cliente, endereço ou serviço..."
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm placeholder:text-slate-300"
+        />
+      </div>
 
       {filtrados.length === 0 ? (
         atendimentos.length === 0 ? (
@@ -118,36 +123,38 @@ export default function OperacionalList() {
               <Link
                 key={a.id}
                 to={`/atendimentos/${a.id}`}
-                className="block bg-white rounded-lg border border-gray-200 p-4 no-underline"
+                className={`block rounded-xl border p-4 no-underline shadow-sm hover:shadow-md ${
+                  temPrecificacao ? 'bg-white border-emerald-100' : 'bg-white border-slate-100'
+                }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900">{a.cliente_nome}</p>
-                      <span className="text-xs text-gray-400">{formatDate(a.created_at)}</span>
+                      <p className="font-semibold text-slate-900">{a.cliente_nome}</p>
+                      <span className="text-xs text-slate-400">{formatDate(a.created_at)}</span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-slate-500 mt-1">
                       {[a.endereco, a.numero, a.bairro, a.cidade].filter(Boolean).join(', ')}
                     </p>
-                    <p className="text-sm text-gray-400 mt-1">{a.tipo_servico}</p>
+                    <p className="text-sm text-slate-400 mt-1">{a.tipo_servico}</p>
 
                     {fechamento ? (
                       <div className="flex gap-3 mt-2 text-sm">
-                        <span className="text-gray-500">
-                          Dist: <strong className="text-gray-700">{formatCurrency(fechamento.custo_distribuidor)}</strong>
+                        <span className="text-slate-500">
+                          Dist: <strong className="text-slate-700">{formatCurrency(fechamento.custo_distribuidor)}</strong>
                         </span>
-                        <span className="text-gray-500">
-                          Inst: <strong className="text-gray-700">{formatCurrency(fechamento.custo_instalador)}</strong>
+                        <span className="text-slate-500">
+                          Inst: <strong className="text-slate-700">{formatCurrency(fechamento.custo_instalador)}</strong>
                         </span>
                       </div>
                     ) : (
-                      <p className="text-sm text-orange-500 font-medium mt-2">Preencher custos →</p>
+                      <p className="text-sm text-orange-500 font-semibold mt-2">Preencher custos →</p>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <StatusBadge status={a.status} />
                     {temPrecificacao && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
+                      <span className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg font-semibold ring-1 ring-inset ring-emerald-200">
                         Custos OK
                       </span>
                     )}
