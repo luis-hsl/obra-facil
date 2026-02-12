@@ -51,8 +51,8 @@ export default function CostBreakdownChart({ data }: Props) {
 
       <div className="flex flex-col sm:flex-row items-center gap-4">
         {/* Donut */}
-        <div className="relative flex-shrink-0" style={{ width: 200, height: 200 }}>
-          <svg viewBox="0 0 200 200" className="w-full h-full">
+        <div className="relative flex-shrink-0 overflow-hidden" style={{ width: 200, height: 200 }}>
+          <svg viewBox="0 0 200 200" className="w-full h-full" overflow="hidden">
             {arcs.map((arc, i) => (
               <path
                 key={arc.key}
