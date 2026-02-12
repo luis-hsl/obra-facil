@@ -25,25 +25,21 @@ function getFirstDayOfWeek(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
-type FollowUpStage = 1 | 2 | 3;
+type FollowUpStage = 1 | 2 | 3 | 4 | 5;
 
 interface FollowUp {
   atendimento: Atendimento;
   diasDesdeContato: number;
   stage: FollowUpStage;
+  valorOrcamento: number | null;
 }
 
-const STAGE_CONFIG: Record<FollowUpStage, { label: string; action: string; color: string; bgColor: string; hoverBg: string }> = {
-  1: { label: '1o Follow-up', action: 'WhatsApp', color: 'text-green-700', bgColor: 'bg-green-50', hoverBg: 'hover:bg-green-100' },
-  2: { label: '2o Follow-up', action: 'Ligar', color: 'text-blue-700', bgColor: 'bg-blue-50', hoverBg: 'hover:bg-blue-100' },
-  3: { label: 'Último follow-up', action: 'WhatsApp', color: 'text-orange-700', bgColor: 'bg-orange-50', hoverBg: 'hover:bg-orange-100' },
-};
-
-const STAGE1_SUBLABEL: Record<string, string> = {
-  iniciado: 'Agendar visita',
-  visita_tecnica: 'Enviar orçamento',
-  medicao: 'Enviar orçamento',
-  orcamento: 'Aguardando resposta',
+const STAGE_CONFIG: Record<FollowUpStage, { label: string; sublabel: string; action: 'whatsapp' | 'call'; color: string; bgColor: string; hoverBg: string }> = {
+  1: { label: '1o Contato', sublabel: 'Apresentação + processo', action: 'whatsapp', color: 'text-green-700', bgColor: 'bg-green-50', hoverBg: 'hover:bg-green-100' },
+  2: { label: '2o Contato', sublabel: 'Ligar diretamente', action: 'call', color: 'text-blue-700', bgColor: 'bg-blue-50', hoverBg: 'hover:bg-blue-100' },
+  3: { label: '3o Contato', sublabel: 'Condição especial', action: 'whatsapp', color: 'text-violet-700', bgColor: 'bg-violet-50', hoverBg: 'hover:bg-violet-100' },
+  4: { label: 'Última tentativa', sublabel: 'Última oportunidade', action: 'whatsapp', color: 'text-orange-700', bgColor: 'bg-orange-50', hoverBg: 'hover:bg-orange-100' },
+  5: { label: 'Re-engajamento', sublabel: 'Retomar contato', action: 'whatsapp', color: 'text-purple-700', bgColor: 'bg-purple-50', hoverBg: 'hover:bg-purple-100' },
 };
 
 export default function Agenda() {
@@ -107,11 +103,12 @@ export default function Agenda() {
     });
     setVisitasDias(diasMap);
 
-    // Follow-ups: sistema de 3 estágios com abrangência ampla
-    // Estágio 1 (count=0): qualquer status ativo parado X dias → WhatsApp
-    //   - iniciado/orcamento: 3 dias | visita_tecnica/medicao: 5 dias
-    // Estágio 2 (count=1): 4 dias após 1o follow-up → Ligar
-    // Estágio 3 (count=2): 15 dias após 2o follow-up → Último WhatsApp
+    // Follow-ups: 5 estágios + prioridade por valor de orçamento
+    // Estágio 1 (count=0): 3 dias parado → WhatsApp (apresentação + processo)
+    // Estágio 2 (count=1): +3 dias → Ligação direta
+    // Estágio 3 (count=2): +6 dias → WhatsApp (condição especial)
+    // Estágio 4 (count=3): +13 dias → WhatsApp (última oportunidade)
+    // Estágio 5: reprovado há 45+ dias → Re-engajamento
     // Reset automático via trigger quando status avança
     const atdMap = new Map(atendimentos.map(a => [a.id, a]));
     const ACTIVE_STATUSES = ['iniciado', 'visita_tecnica', 'medicao', 'orcamento'];
@@ -121,25 +118,51 @@ export default function Agenda() {
     const daysSince = (dateStr: string) =>
       Math.floor((hoje.getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 
-    const followUpList: FollowUp[] = atendimentos
+    // Mapa de valor máximo de orçamento por atendimento (para prioridade)
+    const valorMap = new Map<string, number>();
+    allOrcamentos.forEach(o => {
+      if (o.valor_total > 0) {
+        const cur = valorMap.get(o.atendimento_id) || 0;
+        if (o.valor_total > cur) valorMap.set(o.atendimento_id, o.valor_total);
+      }
+    });
+
+    const activeFollowUps: FollowUp[] = atendimentos
       .filter(a => ACTIVE_STATUSES.includes(a.status))
       .map(a => {
         const count = a.followup_count || 0;
+        const valor = valorMap.get(a.id) || null;
         const daysThreshold = STAGE1_DAYS[a.status] || 3;
         if (count === 0 && daysSince(a.created_at) >= daysThreshold) {
-          return { atendimento: a, diasDesdeContato: daysSince(a.created_at), stage: 1 as FollowUpStage };
+          return { atendimento: a, diasDesdeContato: daysSince(a.created_at), stage: 1 as FollowUpStage, valorOrcamento: valor };
         }
-        if (count === 1 && a.ultimo_followup_at && daysSince(a.ultimo_followup_at) >= 4) {
-          return { atendimento: a, diasDesdeContato: daysSince(a.ultimo_followup_at), stage: 2 as FollowUpStage };
+        if (count === 1 && a.ultimo_followup_at && daysSince(a.ultimo_followup_at) >= 3) {
+          return { atendimento: a, diasDesdeContato: daysSince(a.ultimo_followup_at), stage: 2 as FollowUpStage, valorOrcamento: valor };
         }
-        if (count === 2 && a.ultimo_followup_at && daysSince(a.ultimo_followup_at) >= 15) {
-          return { atendimento: a, diasDesdeContato: daysSince(a.ultimo_followup_at), stage: 3 as FollowUpStage };
+        if (count === 2 && a.ultimo_followup_at && daysSince(a.ultimo_followup_at) >= 6) {
+          return { atendimento: a, diasDesdeContato: daysSince(a.ultimo_followup_at), stage: 3 as FollowUpStage, valorOrcamento: valor };
+        }
+        if (count === 3 && a.ultimo_followup_at && daysSince(a.ultimo_followup_at) >= 13) {
+          return { atendimento: a, diasDesdeContato: daysSince(a.ultimo_followup_at), stage: 4 as FollowUpStage, valorOrcamento: valor };
         }
         return null;
       })
-      .filter((f): f is FollowUp => f !== null)
-      .sort((a, b) => a.stage - b.stage || b.diasDesdeContato - a.diasDesdeContato)
-      .slice(0, 10);
+      .filter((f): f is FollowUp => f !== null);
+
+    // Re-engajamento: reprovados há 45+ dias
+    const reengajamentos: FollowUp[] = atendimentos
+      .filter(a => a.status === 'reprovado' && (a.followup_count || 0) === 0 && daysSince(a.created_at) >= 45)
+      .map(a => ({
+        atendimento: a,
+        diasDesdeContato: daysSince(a.created_at),
+        stage: 5 as FollowUpStage,
+        valorOrcamento: valorMap.get(a.id) || null,
+      }));
+
+    // Ordenar: prioridade (valor desc) dentro de cada estágio
+    const followUpList = [...activeFollowUps, ...reengajamentos]
+      .sort((a, b) => a.stage - b.stage || (b.valorOrcamento || 0) - (a.valorOrcamento || 0) || b.diasDesdeContato - a.diasDesdeContato)
+      .slice(0, 15);
     setFollowUps(followUpList);
 
     // Orçamentos pendentes
@@ -188,20 +211,29 @@ export default function Agenda() {
 
     if (stage === 1) {
       if (status === 'iniciado') {
-        return `Olá ${nome}! Tudo bem? Gostaria de saber se podemos agendar uma visita técnica para o seu projeto de ${servico}. Fico à disposição!`;
+        return `Olá ${nome}! Tudo bem? Somos especialistas em ${servico}. Nosso processo é simples: visita gratuita → medição → orçamento sem compromisso. Podemos agendar uma visita?`;
       }
       if (status === 'visita_tecnica' || status === 'medicao') {
-        return `Olá ${nome}! Tudo bem? Estamos preparando seu orçamento de ${servico}. Tem alguma dúvida ou preferência que gostaria de nos passar?`;
+        return `Olá ${nome}! Tudo bem? Estamos finalizando os detalhes do seu projeto de ${servico}. Lembrando: nosso orçamento é sem compromisso e inclui tudo detalhado. Tem alguma dúvida?`;
       }
-      // orcamento
-      return `Olá ${nome}! Tudo bem? Gostaria de saber se teve a chance de analisar nosso orçamento de ${servico}. Estou à disposição para esclarecer qualquer dúvida!`;
+      return `Olá ${nome}! Tudo bem? Gostaria de saber se teve a chance de analisar nosso orçamento de ${servico}. Nosso processo é transparente e sem surpresas. Qualquer dúvida, estou à disposição!`;
+    }
+
+    // Stage 2 é ligação, mas caso precise de mensagem
+    if (stage === 2) {
+      return `Olá ${nome}! Tentei te ligar sobre o projeto de ${servico}. Podemos conversar? Estou à disposição!`;
     }
 
     if (stage === 3) {
-      return `Olá ${nome}! Passando para uma última verificação sobre o projeto de ${servico}. Caso tenha interesse, podemos revisar as condições. Fico no aguardo!`;
+      return `Olá ${nome}! Tenho uma condição especial para seu projeto de ${servico} por tempo limitado. Posso te explicar os detalhes? Aproveite!`;
     }
 
-    return `Olá ${nome}! Tudo bem? Gostaria de retomar nosso contato sobre o projeto de ${servico}. Fico à disposição!`;
+    if (stage === 4) {
+      return `Olá ${nome}! Esta é minha última mensagem sobre o projeto de ${servico}. Caso mude de ideia, estarei sempre à disposição. Obrigado pela atenção!`;
+    }
+
+    // Stage 5: re-engajamento
+    return `Olá ${nome}! Faz um tempo que conversamos sobre ${servico}. Temos novidades e condições que podem te interessar. Podemos conversar sem compromisso?`;
   };
 
   const handleFollowUpWhatsApp = (atendimento: Atendimento, stage: FollowUpStage = 1) => {
@@ -517,7 +549,7 @@ export default function Agenda() {
       {/* Right column: Follow-ups + Pending */}
       <div className="space-y-5">
 
-      {/* Follow-up Pendente — 3 estágios */}
+      {/* Follow-up Pendente — 5 estágios */}
       {followUps.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -536,26 +568,32 @@ export default function Agenda() {
           <div className="space-y-2">
             {followUps.map((f) => {
               const cfg = STAGE_CONFIG[f.stage];
+              const formatVal = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v);
               return (
               <div
                 key={f.atendimento.id}
-                className="bg-white rounded-xl border border-red-100 p-3 shadow-sm hover:border-red-200 hover:shadow-md transition-all"
+                className={`bg-white rounded-xl border p-3 shadow-sm hover:shadow-md transition-all ${f.stage === 5 ? 'border-purple-100 hover:border-purple-200' : 'border-red-100 hover:border-red-200'}`}
               >
                 {/* Top row: info */}
                 <button
                   onClick={() => navigate(`/atendimentos/${f.atendimento.id}`)}
                   className="w-full flex items-center gap-3 text-left group"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0 group-hover:bg-red-100 transition-colors">
-                    <span className="text-xs font-extrabold text-red-600">{f.diasDesdeContato}d</span>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${f.stage === 5 ? 'bg-purple-50 group-hover:bg-purple-100' : 'bg-red-50 group-hover:bg-red-100'}`}>
+                    <span className={`text-xs font-extrabold ${f.stage === 5 ? 'text-purple-600' : 'text-red-600'}`}>{f.diasDesdeContato}d</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-slate-900 text-sm truncate">{f.atendimento.cliente_nome}</p>
                       <StatusBadge status={f.atendimento.status} />
+                      {f.valorOrcamento && (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                          {formatVal(f.valorOrcamento)}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-400 truncate">
-                      {f.atendimento.tipo_servico} — {f.stage === 1 ? STAGE1_SUBLABEL[f.atendimento.status] || 'Sem contato' : f.stage === 2 ? 'Ligar diretamente' : 'Tentativa final'}
+                      {f.atendimento.tipo_servico} — {cfg.sublabel}
                     </p>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${cfg.bgColor} ${cfg.color}`}>
@@ -564,7 +602,7 @@ export default function Agenda() {
                 </button>
                 {/* Bottom row: actions */}
                 <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100">
-                  {f.stage === 2 ? (
+                  {cfg.action === 'call' ? (
                     <button
                       onClick={() => handleFollowUpCall(f.atendimento)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${cfg.bgColor} ${cfg.color} ${cfg.hoverBg} transition-colors`}
