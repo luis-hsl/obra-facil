@@ -43,6 +43,7 @@ export interface Atendimento {
   observacoes: string | null;
   data_visita: string | null;
   observacoes_visita: string | null;
+  ultimo_followup_at: string | null;
   created_at: string;
 }
 
