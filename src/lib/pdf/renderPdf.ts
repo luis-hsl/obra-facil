@@ -3,6 +3,8 @@ import type { Orcamento, OrcamentoItem, Produto, Atendimento, BrandConfig } from
 import type { PdfBrandConfig, ResolvedPdfStyle } from '../../types/pdfTokens';
 import { resolveTokens } from './resolveTokens';
 import { DEFAULT_PDF_BRAND_CONFIG } from './defaults';
+import { loadFont } from './fontLoader';
+import type { FontFamily } from './fontLoader';
 
 // ============================================================
 // Helpers
@@ -615,6 +617,12 @@ export async function gerarPDF(params: GerarPDFParams): Promise<string | void> {
   };
 
   const doc = new jsPDF('p', 'mm', 'a4');
+
+  // Load custom font if needed (fetches from CDN + caches in IndexedDB)
+  const fontKey = tokenConfig.typography.fontFamily as FontFamily;
+  const resolvedFontFamily = await loadFont(doc, fontKey);
+  style.fontFamily = resolvedFontFamily;
+
   const pageW = doc.internal.pageSize.getWidth();
   const contentW = pageW - style.margins.left - style.margins.right;
   const x0 = style.margins.left;

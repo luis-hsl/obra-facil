@@ -8,6 +8,7 @@ import { PDF_PRESETS } from '../lib/pdf/presets';
 import type { BrandConfig, PdfBrandConfig } from '../types';
 import type { PdfPreset } from '../types/pdfTokens';
 import type { Orcamento, OrcamentoItem } from '../types';
+import { FONT_OPTIONS } from '../lib/pdf/fontLoader';
 
 // ============================================================
 // Mock data para preview
@@ -395,9 +396,17 @@ export default function MarcaConfig() {
                 <select value={tokenConfig.typography.fontFamily}
                   onChange={e => updateTypo('fontFamily', e.target.value as PdfBrandConfig['typography']['fontFamily'])}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white shadow-sm">
-                  <option value="helvetica">Helvetica</option>
-                  <option value="times">Times</option>
-                  <option value="courier">Courier</option>
+                  {(() => {
+                    const groups = FONT_OPTIONS.reduce<Record<string, typeof FONT_OPTIONS>>((acc, f) => {
+                      (acc[f.category] ??= []).push(f);
+                      return acc;
+                    }, {});
+                    return Object.entries(groups).map(([cat, fonts]) => (
+                      <optgroup key={cat} label={cat}>
+                        {fonts.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                      </optgroup>
+                    ));
+                  })()}
                 </select>
               </div>
               <div>

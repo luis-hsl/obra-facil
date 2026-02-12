@@ -14,7 +14,7 @@ export interface PdfBrandConfig {
     border: string;
   };
   typography: {
-    fontFamily: 'helvetica' | 'times' | 'courier';
+    fontFamily: string;
     headingWeight: 'bold' | 'normal';
     bodyWeight: 'normal' | 'light';
   };
