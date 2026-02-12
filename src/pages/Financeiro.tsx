@@ -121,14 +121,14 @@ export default function Financeiro() {
         </div>
       </div>
 
-      {/* ── 3. Receita por serviço ── */}
-      <RevenueByServiceChart data={d.revenueByService} />
-
-      {/* ── 4. Clientes & Insights ── */}
+      {/* ── 3. Receita por serviço + Top clientes ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <RevenueByServiceChart data={d.revenueByService} />
         <TopClients data={d.topClients} />
-        {insights.length > 0 && <InsightsPanel insights={insights} />}
       </div>
+
+      {/* ── 4. Insights ── */}
+      {insights.length > 0 && <InsightsPanel insights={insights} />}
 
       {/* ── 5. Margem de lucro ── */}
       <ProfitMarginChart data={d.marginTrend} />
