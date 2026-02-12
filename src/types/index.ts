@@ -129,7 +129,7 @@ export interface BrandConfig {
   company_address: string | null;
   footer_text: string | null;
   validity_days: number;
-  layout_style: 'classic' | 'modern' | 'minimal';
+  layout_style: 'classic' | 'modern' | 'bold';
   font_family: 'helvetica' | 'times' | 'courier';
   pdf_template: PdfBrandConfig | DocumentTemplate | null;
   created_at: string;

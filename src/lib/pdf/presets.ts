@@ -71,24 +71,31 @@ export const PRESET_MODERN: PdfPreset = {
   sectionsOrder: ['header', 'client', 'budget_table', 'observations', 'footer'],
 };
 
-export const PRESET_MINIMAL: PdfPreset = {
-  id: 'minimal',
-  label: 'Minimalista',
-  description: 'Lista limpa, espaçoso, sem cores de fundo',
+export const PRESET_BOLD: PdfPreset = {
+  id: 'bold',
+  label: 'Impacto',
+  description: 'Visual marcante com destaque nos valores e preços',
   header: {
     showBackground: false,
-    companyInfoPosition: 'below-logo',
+    companyInfoPosition: 'right',
     titleAlignment: 'left',
-    titleFontSize: 16,
-    showSeparator: false,
+    titleFontSize: 24,
+    showSeparator: true,
   },
-  clientSection: { style: 'inline', showBorder: false, labelBold: false },
+  clientSection: { style: 'card', showBorder: true, labelBold: true },
   budgetTable: {
-    style: 'list',
-    columns: [],
-    showHeader: false,
-    showBorders: false,
-    showAlternatingRows: false,
+    style: 'table',
+    columns: [
+      { key: 'option_number', label: '#', widthPercent: 6, align: 'center' },
+      { key: 'product_name', label: 'Produto', widthPercent: 30, align: 'left' },
+      { key: 'area', label: 'Área', widthPercent: 12, align: 'right' },
+      { key: 'unit_price', label: 'R$/m²', widthPercent: 14, align: 'right' },
+      { key: 'discount_price', label: 'À Vista', widthPercent: 20, align: 'right' },
+      { key: 'installment_price', label: 'Parcelado', widthPercent: 18, align: 'right' },
+    ],
+    showHeader: true,
+    showBorders: true,
+    showAlternatingRows: true,
   },
   totals: {
     showDiscount: true,
@@ -98,13 +105,13 @@ export const PRESET_MINIMAL: PdfPreset = {
     installmentLabel: 'Parcelado:',
     position: 'summary_bottom',
   },
-  observations: { fontStyle: 'italic' },
-  footer: { style: 'minimal', textAlignment: 'left' },
+  observations: { fontStyle: 'normal' },
+  footer: { style: 'bar', textAlignment: 'center' },
   sectionsOrder: ['header', 'client', 'budget_table', 'totals', 'observations', 'footer'],
 };
 
 export const PDF_PRESETS: Record<string, PdfPreset> = {
   classic: PRESET_CLASSIC,
   modern: PRESET_MODERN,
-  minimal: PRESET_MINIMAL,
+  bold: PRESET_BOLD,
 };
