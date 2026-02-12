@@ -71,20 +71,20 @@ export const PRESET_MODERN: PdfPreset = {
   sectionsOrder: ['header', 'client', 'budget_table', 'observations', 'footer'],
 };
 
-export const PRESET_BOLD: PdfPreset = {
-  id: 'bold',
-  label: 'Impacto',
-  description: 'Header colorido, cards compactos e totais em destaque',
+export const PRESET_MINIMAL: PdfPreset = {
+  id: 'minimal',
+  label: 'Minimalista',
+  description: 'Lista limpa e espaçosa com visual leve',
   header: {
-    showBackground: true,
-    companyInfoPosition: 'right',
+    showBackground: false,
+    companyInfoPosition: 'below-logo',
     titleAlignment: 'left',
-    titleFontSize: 24,
-    showSeparator: false,
+    titleFontSize: 18,
+    showSeparator: true,
   },
-  clientSection: { style: 'card', showBorder: true, labelBold: true },
+  clientSection: { style: 'inline', showBorder: false, labelBold: true },
   budgetTable: {
-    style: 'cards',
+    style: 'list',
     columns: [],
     showHeader: false,
     showBorders: false,
@@ -98,13 +98,13 @@ export const PRESET_BOLD: PdfPreset = {
     installmentLabel: 'Parcelado:',
     position: 'summary_bottom',
   },
-  observations: { fontStyle: 'normal' },
-  footer: { style: 'bar', textAlignment: 'center' },
+  observations: { fontStyle: 'italic' },
+  footer: { style: 'line', textAlignment: 'left' },
   sectionsOrder: ['header', 'client', 'budget_table', 'totals', 'observations', 'footer'],
 };
 
 export const PDF_PRESETS: Record<string, PdfPreset> = {
   classic: PRESET_CLASSIC,
   modern: PRESET_MODERN,
-  bold: PRESET_BOLD,
+  minimal: PRESET_MINIMAL,
 };

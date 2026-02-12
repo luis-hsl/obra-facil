@@ -5,7 +5,7 @@
 /** Tokens visuais controlados pelo usuário. Salvo no Supabase como brand_configs.pdf_template */
 export interface PdfBrandConfig {
   version: 3;
-  templateId: 'classic' | 'modern' | 'bold';
+  templateId: 'classic' | 'modern' | 'minimal';
   colors: {
     primary: string;
     secondary: string;
@@ -32,7 +32,7 @@ export interface PdfBrandConfig {
 
 /** Preset de template — estrutura fixa, hardcoded */
 export interface PdfPreset {
-  id: 'classic' | 'modern' | 'bold';
+  id: 'classic' | 'modern' | 'minimal';
   label: string;
   description: string;
   header: {
