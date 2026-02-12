@@ -39,10 +39,11 @@ export default function Agenda() {
   const [taxaConversao, setTaxaConversao] = useState(0);
   const [ticketMedio, setTicketMedio] = useState(0);
   const [margemLucro, setMargemLucro] = useState(0);
-  const [visitasHoje, setVisitasHoje] = useState<Atendimento[]>([]);
+  const [todosAtendimentos, setTodosAtendimentos] = useState<Atendimento[]>([]);
   const [orcPendentes, setOrcPendentes] = useState<Atendimento[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [visitasDias, setVisitasDias] = useState<Map<string, number>>(new Map());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => getDataBrasilia());
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = getDataBrasilia();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -91,12 +92,8 @@ export default function Agenda() {
     const somaLucro = allFechamentos.reduce((acc, f) => acc + (f.lucro_final || 0), 0);
     setMargemLucro(somaRecebido > 0 ? Math.round((somaLucro / somaRecebido) * 100) : 0);
 
-    // Visitas de hoje
-    const visitasDeHoje = atendimentos.filter(a => {
-      if (!a.data_visita) return false;
-      return isSameDay(new Date(a.data_visita), hoje);
-    }).sort((a, b) => new Date(a.data_visita!).getTime() - new Date(b.data_visita!).getTime());
-    setVisitasHoje(visitasDeHoje);
+    // Guardar todos atendimentos para filtrar visitas por dia selecionado
+    setTodosAtendimentos(atendimentos);
 
     // Map: dia -> contagem de visitas (para dots no calendário)
     const diasMap = new Map<string, number>();
@@ -168,6 +165,22 @@ export default function Agenda() {
 
   const prevMonth = () => setCalendarMonth(new Date(calYear, calMonth - 1, 1));
   const nextMonth = () => setCalendarMonth(new Date(calYear, calMonth + 1, 1));
+
+  // Visitas do dia selecionado (derivado)
+  const visitasDoDia = todosAtendimentos
+    .filter(a => a.data_visita && isSameDay(new Date(a.data_visita), selectedDate))
+    .sort((a, b) => new Date(a.data_visita!).getTime() - new Date(b.data_visita!).getTime());
+
+  const isSelectedToday = isSameDay(selectedDate, hoje);
+
+  const handleSelectDay = (day: number) => {
+    setSelectedDate(new Date(calYear, calMonth, day));
+  };
+
+  const formatSelectedLabel = () => {
+    if (isSelectedToday) return 'Visitas de Hoje';
+    return `Visitas em ${selectedDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}`;
+  };
 
   if (loading) {
     return (
@@ -303,19 +316,26 @@ export default function Agenda() {
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const isToday = day === hoje.getDate() && calMonth === hoje.getMonth() && calYear === hoje.getFullYear();
+              const isSelected = day === selectedDate.getDate() && calMonth === selectedDate.getMonth() && calYear === selectedDate.getFullYear();
               const key = `${calYear}-${calMonth}-${day}`;
               const hasVisita = visitasDias.has(key);
               const count = visitasDias.get(key) || 0;
 
               return (
-                <div key={day} className="flex flex-col items-center py-[3px]">
+                <button
+                  key={day}
+                  onClick={() => handleSelectDay(day)}
+                  className="flex flex-col items-center py-[3px]"
+                >
                   <span className={`
                     w-7 h-7 flex items-center justify-center text-xs rounded-full transition-all
-                    ${isToday
-                      ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold shadow-sm shadow-blue-500/30'
-                      : hasVisita
-                        ? 'bg-purple-50 text-purple-700 font-bold'
-                        : 'text-slate-500 font-medium'
+                    ${isSelected
+                      ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold shadow-sm shadow-purple-500/30 scale-110'
+                      : isToday
+                        ? 'ring-2 ring-blue-400 ring-inset text-blue-700 font-bold'
+                        : hasVisita
+                          ? 'bg-purple-50 text-purple-700 font-bold hover:bg-purple-100'
+                          : 'text-slate-500 font-medium hover:bg-slate-50'
                     }
                   `}>
                     {day}
@@ -324,37 +344,39 @@ export default function Agenda() {
                     {hasVisita && (
                       <div className="flex gap-[2px]">
                         {Array.from({ length: Math.min(count, 3) }).map((_, j) => (
-                          <div key={j} className={`w-[5px] h-[5px] rounded-full ${isToday ? 'bg-blue-400' : 'bg-purple-400'}`} />
+                          <div key={j} className={`w-[5px] h-[5px] rounded-full ${isSelected ? 'bg-indigo-400' : isToday ? 'bg-blue-400' : 'bg-purple-400'}`} />
                         ))}
                       </div>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
         </div>
 
-        {/* Visitas de Hoje — inline */}
+        {/* Visitas do dia selecionado */}
         <div className="border-t border-slate-100 px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Visitas de Hoje</p>
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">{formatSelectedLabel()}</p>
             </div>
-            {visitasHoje.length > 0 && (
+            {visitasDoDia.length > 0 && (
               <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">
-                {visitasHoje.length}
+                {visitasDoDia.length}
               </span>
             )}
           </div>
-          {visitasHoje.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-3">Nenhuma visita agendada para hoje</p>
+          {visitasDoDia.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-3">
+              {isSelectedToday ? 'Nenhuma visita agendada para hoje' : 'Nenhuma visita neste dia'}
+            </p>
           ) : (
             <div className="space-y-1.5">
-              {visitasHoje.map((v) => (
+              {visitasDoDia.map((v) => (
                 <button
                   key={v.id}
                   onClick={() => navigate(`/atendimentos/${v.id}`)}
