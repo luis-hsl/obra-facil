@@ -8,7 +8,7 @@ import { PDF_PRESETS } from '../lib/pdf/presets';
 import type { BrandConfig, PdfBrandConfig } from '../types';
 import type { PdfPreset } from '../types/pdfTokens';
 import type { Orcamento, OrcamentoItem } from '../types';
-import { FONT_OPTIONS } from '../lib/pdf/fontLoader';
+import { FONT_OPTIONS, GOOGLE_FONTS_URL } from '../lib/pdf/fontLoader';
 
 // ============================================================
 // Mock data para preview
@@ -123,6 +123,30 @@ export default function MarcaConfig() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const prevUrlRef = useRef<string | null>(null);
+  const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
+  const fontDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Load Google Fonts for preview
+  useEffect(() => {
+    if (!document.querySelector('link[data-font-preview]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = GOOGLE_FONTS_URL;
+      link.setAttribute('data-font-preview', 'true');
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  // Close font dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (fontDropdownRef.current && !fontDropdownRef.current.contains(e.target as Node)) {
+        setFontDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // Load saved config
   useEffect(() => {
@@ -391,23 +415,48 @@ export default function MarcaConfig() {
           <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm space-y-4">
             <h3 className="text-sm font-semibold text-slate-700">Tipografia</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="col-span-2">
                 <label className="block text-xs text-slate-500 mb-1.5">Fonte</label>
-                <select value={tokenConfig.typography.fontFamily}
-                  onChange={e => updateTypo('fontFamily', e.target.value as PdfBrandConfig['typography']['fontFamily'])}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white shadow-sm">
-                  {(() => {
-                    const groups = FONT_OPTIONS.reduce<Record<string, typeof FONT_OPTIONS>>((acc, f) => {
-                      (acc[f.category] ??= []).push(f);
-                      return acc;
-                    }, {});
-                    return Object.entries(groups).map(([cat, fonts]) => (
-                      <optgroup key={cat} label={cat}>
-                        {fonts.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                      </optgroup>
-                    ));
-                  })()}
-                </select>
+                <div className="relative" ref={fontDropdownRef}>
+                  <button type="button" onClick={() => setFontDropdownOpen(p => !p)}
+                    className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white shadow-sm hover:border-slate-300 transition-colors">
+                    <span style={{ fontFamily: FONT_OPTIONS.find(f => f.value === tokenConfig.typography.fontFamily)?.cssFamily }}>
+                      {FONT_OPTIONS.find(f => f.value === tokenConfig.typography.fontFamily)?.label || 'Helvetica'}
+                    </span>
+                    <svg className={`w-4 h-4 text-slate-400 transition-transform ${fontDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {fontDropdownOpen && (
+                    <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
+                      {(() => {
+                        const groups = FONT_OPTIONS.reduce<Record<string, typeof FONT_OPTIONS>>((acc, f) => {
+                          (acc[f.category] ??= []).push(f);
+                          return acc;
+                        }, {});
+                        return Object.entries(groups).map(([cat, fonts]) => (
+                          <div key={cat}>
+                            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 sticky top-0">{cat}</div>
+                            {fonts.map(f => (
+                              <button key={f.value} type="button"
+                                onClick={() => { updateTypo('fontFamily', f.value as PdfBrandConfig['typography']['fontFamily']); setFontDropdownOpen(false); }}
+                                className={`w-full text-left px-3 py-2.5 text-sm hover:bg-blue-50 transition-colors flex items-center justify-between ${
+                                  tokenConfig.typography.fontFamily === f.value ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
+                                }`}>
+                                <span style={{ fontFamily: f.cssFamily, fontSize: '15px' }}>{f.label}</span>
+                                {tokenConfig.typography.fontFamily === f.value && (
+                                  <svg className="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1.5">Titulo</label>

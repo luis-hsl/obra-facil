@@ -183,18 +183,26 @@ export async function loadFont(doc: jsPDF, fontKey: FontFamily): Promise<string>
 }
 
 /** All font options for the UI select */
-export const FONT_OPTIONS: { value: FontFamily; label: string; category: string }[] = [
-  { value: 'helvetica', label: 'Helvetica', category: 'Clássicas' },
-  { value: 'times', label: 'Times', category: 'Clássicas' },
-  { value: 'courier', label: 'Courier', category: 'Clássicas' },
-  { value: 'roboto', label: 'Roboto', category: 'Sans-serif' },
-  { value: 'opensans', label: 'Open Sans', category: 'Sans-serif' },
-  { value: 'lato', label: 'Lato', category: 'Sans-serif' },
-  { value: 'montserrat', label: 'Montserrat', category: 'Sans-serif' },
-  { value: 'poppins', label: 'Poppins', category: 'Sans-serif' },
-  { value: 'raleway', label: 'Raleway', category: 'Sans-serif' },
-  { value: 'nunito', label: 'Nunito', category: 'Sans-serif' },
-  { value: 'inter', label: 'Inter', category: 'Sans-serif' },
-  { value: 'playfair', label: 'Playfair Display', category: 'Serifadas' },
-  { value: 'merriweather', label: 'Merriweather', category: 'Serifadas' },
+export const FONT_OPTIONS: { value: FontFamily; label: string; category: string; cssFamily: string }[] = [
+  { value: 'helvetica', label: 'Helvetica', category: 'Clássicas', cssFamily: 'Helvetica, Arial, sans-serif' },
+  { value: 'times', label: 'Times', category: 'Clássicas', cssFamily: '"Times New Roman", Times, serif' },
+  { value: 'courier', label: 'Courier', category: 'Clássicas', cssFamily: '"Courier New", Courier, monospace' },
+  { value: 'roboto', label: 'Roboto', category: 'Sans-serif', cssFamily: 'Roboto, sans-serif' },
+  { value: 'opensans', label: 'Open Sans', category: 'Sans-serif', cssFamily: '"Open Sans", sans-serif' },
+  { value: 'lato', label: 'Lato', category: 'Sans-serif', cssFamily: 'Lato, sans-serif' },
+  { value: 'montserrat', label: 'Montserrat', category: 'Sans-serif', cssFamily: 'Montserrat, sans-serif' },
+  { value: 'poppins', label: 'Poppins', category: 'Sans-serif', cssFamily: 'Poppins, sans-serif' },
+  { value: 'raleway', label: 'Raleway', category: 'Sans-serif', cssFamily: 'Raleway, sans-serif' },
+  { value: 'nunito', label: 'Nunito', category: 'Sans-serif', cssFamily: 'Nunito, sans-serif' },
+  { value: 'inter', label: 'Inter', category: 'Sans-serif', cssFamily: 'Inter, sans-serif' },
+  { value: 'playfair', label: 'Playfair Display', category: 'Serifadas', cssFamily: '"Playfair Display", serif' },
+  { value: 'merriweather', label: 'Merriweather', category: 'Serifadas', cssFamily: 'Merriweather, serif' },
 ];
+
+/** Google Fonts CSS URL to load all custom fonts for preview */
+export const GOOGLE_FONTS_URL =
+  'https://fonts.googleapis.com/css2?family=' +
+  ['Inter', 'Lato', 'Merriweather', 'Montserrat', 'Nunito', 'Open+Sans', 'Playfair+Display', 'Poppins', 'Raleway', 'Roboto']
+    .map(f => `${f}:wght@400;700`)
+    .join('&family=') +
+  '&display=swap';
